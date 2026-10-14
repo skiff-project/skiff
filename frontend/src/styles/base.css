@@ -1,0 +1,181 @@
+/* ==========================================================================
+   Skiff design tokens
+   ========================================================================== */
+
+:root {
+  --accent: #4f7cff;
+  --font-ui: "Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", Roboto, "Helvetica Neue", Ubuntu, Cantarell, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", "SF Mono", ui-monospace, Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  --fs: 13px;
+  --fs-sm: 12px;
+  --fs-xs: 11px;
+  --fs-lg: 15px;
+  --row-h: 28px;
+  --ctl-h: 30px;
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --dur: 140ms;
+
+  /* light theme (default values, overridden for dark) */
+  --bg: #f4f5f8;
+  --bg-elev: #ffffff;
+  --panel: #ffffff;
+  --panel-2: #f7f8fa;
+  --surface: #f0f2f5;
+  --surface-hover: #e9ecf1;
+  --border: #e2e5eb;
+  --border-strong: #cfd4dd;
+  --text: #191d26;
+  --text-2: #3d4454;
+  --muted: #6b7385;
+  --faint: #9aa1b1;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, .06);
+  --shadow: 0 4px 16px rgba(16, 24, 40, .08), 0 1px 3px rgba(16, 24, 40, .06);
+  --shadow-lg: 0 24px 64px rgba(16, 24, 40, .18), 0 4px 16px rgba(16, 24, 40, .08);
+  --overlay: rgba(15, 18, 26, .32);
+  --scroll-thumb: rgba(80, 90, 110, .28);
+  --scroll-thumb-hover: rgba(80, 90, 110, .45);
+
+  --ok: #12a150;
+  --warn: #d97706;
+  --danger: #e5484d;
+  --info: #0b88d9;
+
+  --accent-strong: color-mix(in oklab, var(--accent) 86%, black);
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
+  --accent-softer: color-mix(in srgb, var(--accent) 7%, transparent);
+  --accent-ring: color-mix(in srgb, var(--accent) 45%, transparent);
+  --accent-text: color-mix(in oklab, var(--accent) 80%, black);
+  --on-accent: #fff;
+  --sel: color-mix(in srgb, var(--accent) 16%, transparent);
+  --sel-focus: color-mix(in srgb, var(--accent) 24%, transparent);
+
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0e1015;
+  --bg-elev: #161920;
+  --panel: #13161c;
+  --panel-2: #171a21;
+  --surface: #1c2029;
+  --surface-hover: #232835;
+  --border: #252a35;
+  --border-strong: #333a48;
+  --text: #e7e9ee;
+  --text-2: #c4c9d4;
+  --muted: #8b93a6;
+  --faint: #5d6577;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+  --shadow: 0 6px 20px rgba(0, 0, 0, .35), 0 1px 3px rgba(0, 0, 0, .3);
+  --shadow-lg: 0 28px 80px rgba(0, 0, 0, .55), 0 6px 18px rgba(0, 0, 0, .35);
+  --overlay: rgba(4, 6, 10, .55);
+  --scroll-thumb: rgba(160, 170, 190, .20);
+  --scroll-thumb-hover: rgba(160, 170, 190, .36);
+  --accent-strong: color-mix(in oklab, var(--accent) 82%, white);
+  --accent-text: color-mix(in oklab, var(--accent) 72%, white);
+  --sel: color-mix(in srgb, var(--accent) 20%, transparent);
+  --sel-focus: color-mix(in srgb, var(--accent) 30%, transparent);
+  --ok: #3dd68c;
+  --warn: #f5a524;
+  --danger: #ff6369;
+  --info: #52a9ff;
+  color-scheme: dark;
+}
+
+:root[data-density="compact"] {
+  --row-h: 24px;
+  --ctl-h: 27px;
+  --fs: 12.5px;
+}
+
+:root[data-density="spacious"] {
+  --row-h: 32px;
+  --ctl-h: 34px;
+}
+
+/* ==========================================================================
+   Reset & base
+   ========================================================================== */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-ui);
+  font-size: var(--fs);
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  user-select: none;
+  -webkit-user-select: none;
+  font-feature-settings: "cv11", "ss01", "tnum" 0;
+}
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+input, textarea, [contenteditable="true"], .selectable {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+code, kbd, .mono { font-family: var(--font-mono); font-size: .92em; }
+
+::selection { background: var(--accent-ring); }
+
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--accent-ring); outline-offset: 1px; }
+
+/* scrollbars */
+* { scrollbar-width: thin; scrollbar-color: var(--scroll-thumb) transparent; }
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+  border-radius: 10px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--scroll-thumb-hover); background-clip: content-box; }
+::-webkit-scrollbar-corner { background: transparent; }
+
+.tnum { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.faint { color: var(--faint); }
+.danger-text { color: var(--danger); }
+.ok-text { color: var(--ok); }
+.warn-text { color: var(--warn); }
+.ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.grow { flex: 1 1 auto; min-width: 0; }
+.row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.col { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.spacer { flex: 1; }
+.hidden { display: none !important; }
+
+@keyframes fade-in { from { opacity: 0 } to { opacity: 1 } }
+@keyframes pop-in { from { opacity: 0; transform: translateY(6px) scale(.98) } to { opacity: 1; transform: none } }
+@keyframes slide-up { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
+@keyframes spin { to { transform: rotate(360deg) } }
+@keyframes shimmer { 0% { background-position: -200px 0 } 100% { background-position: 200px 0 } }
+@keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: .45 } }
+@keyframes indeterminate { 0% { transform: translateX(-100%) } 100% { transform: translateX(250%) } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+}

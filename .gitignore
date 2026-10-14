@@ -1,0 +1,13 @@
+# build output
+/bin/
+/dist/
+frontend/node_modules/
+frontend/dist/*
+!frontend/dist/.gitkeep
+
+# local test data / editors
+/testenv/data/
+*.log
+.DS_Store
+.idea/
+.vscode/

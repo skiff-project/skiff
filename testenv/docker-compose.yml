@@ -1,0 +1,41 @@
+# Local test servers for every protocol Skiff supports.
+#   docker compose -f testenv/docker-compose.yml up -d
+# Credentials: skiff / skiff (S3 access key skiffadmin, secret skiffsecret)
+services:
+  ssh:
+    image: lscr.io/linuxserver/openssh-server:latest
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - USER_NAME=skiff
+      - USER_PASSWORD=skiff
+      - PASSWORD_ACCESS=true
+      - SUDO_ACCESS=false
+    ports:
+      - "2222:2222"
+  ftp:
+    image: stilliard/pure-ftpd:latest
+    environment:
+      - PUBLICHOST=127.0.0.1
+      - FTP_USER_NAME=skiff
+      - FTP_USER_PASS=skiff
+      - FTP_USER_HOME=/home/skiff
+      - ADDED_FLAGS=--tls=1
+      - TLS_CN=localhost
+      - TLS_ORG=Skiff
+      - TLS_C=FR
+    ports:
+      - "2121:21"
+      - "30000-30009:30000-30009"
+  webdav:
+    image: rclone/rclone:latest
+    command: serve webdav /data --addr :8080 --user skiff --pass skiff
+    ports:
+      - "8080:8080"
+  s3:
+    image: chrislusf/seaweedfs:latest
+    command: server -s3 -s3.port=9000 -s3.config=/etc/seaweedfs/s3.json -dir=/data -master.volumeSizeLimitMB=64
+    volumes:
+      - ./s3.json:/etc/seaweedfs/s3.json:ro
+    ports:
+      - "9000:9000"

@@ -1,0 +1,9 @@
+{
+  "identities": [
+    {
+      "name": "skiff",
+      "credentials": [{ "accessKey": "skiffadmin", "secretKey": "skiffsecret" }],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}
