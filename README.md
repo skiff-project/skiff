@@ -5,10 +5,15 @@ SFTP · SCP · FTP/FTPS · WebDAV · S3 — une alternative à WinSCP pour Windo
 
 Skiff reprend les fonctionnalités de WinSCP (interface Commander à deux panneaux, file de transferts, synchronisation, éditeur, scripts compatibles `winscp.com`, import des sessions…) avec une interface moderne et fluide, et ajoute un terminal SSH intégré, la gestion des tunnels et des hôtes de rebond, un diff visuel, une palette de commandes et un mode web distant.
 
+> 📖 **[Documentation complète](docs/README.md)** : chaque fonctionnalité décrite écran par écran, avec plus de cent captures d'écran.
+
+![Skiff connecté à un serveur SFTP](docs/images/commander.png)
+
 ---
 
 ## Sommaire
 
+- [Documentation complète](docs/README.md)
 - [Fonctionnalités](#fonctionnalités)
 - [WinSCP → Skiff](#winscp--skiff)
 - [Installation et compilation](#installation-et-compilation)
@@ -140,7 +145,7 @@ skiff [url-de-session]           ouvre la fenêtre (et se connecte éventuelleme
 skiff serve [options]            interface web pour un usage distant
 skiff run [options] [script]     exécute un script compatible WinSCP
 skiff shell [url-de-session]     console interactive
-skiff keygen [options]           génère une paire de clés SSH
+skiff keygen [options]           génère (ou convertit, -convert) une paire de clés SSH
 skiff import <source> [fichier]  importe des sessions (winscp-ini, winscp-registry, putty, filezilla, ssh-config)
 skiff version
 ```

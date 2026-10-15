@@ -1,0 +1,12 @@
+{
+  "name": "skiff-docs-capture",
+  "private": true,
+  "type": "module",
+  "description": "Regenerates the documentation screenshots (docs/images) by driving the Skiff UI.",
+  "scripts": {
+    "capture": "node capture.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.64.1"
+  }
+}
