@@ -578,8 +578,14 @@ func (f *FS) Info() []vfs.InfoItem {
 	sort.Strings(feats)
 	out = append(out, vfs.InfoItem{Group: "FTP", Key: "Features", Value: strings.Join(feats, ", ")})
 	if f.cfg.TLSVerifier != nil {
-		for k, v := range netx.TLSInfo(f.cfg.TLSVerifier.LastState) {
-			out = append(out, vfs.InfoItem{Group: "TLS", Key: k, Value: v})
+		ti := netx.TLSInfo(f.cfg.TLSVerifier.LastState)
+		keys := make([]string, 0, len(ti))
+		for k := range ti {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			out = append(out, vfs.InfoItem{Group: "TLS", Key: k, Value: ti[k]})
 		}
 	}
 	return out

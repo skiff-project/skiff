@@ -723,7 +723,7 @@ func (j *job) handleError(ctx context.Context, t *task, err error) error {
 		Kind:    prompt.Error,
 		Title:   "Transfer error",
 		Message: err.Error(),
-		Details: map[string]string{"file": t.src},
+		Details: map[string]string{"file": t.src, "conn": j.req.Src},
 		Choices: []prompt.Choice{
 			{ID: "skip", Label: "Skip", Primary: true},
 			{ID: "skipall", Label: "Skip all"},

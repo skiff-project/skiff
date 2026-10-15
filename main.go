@@ -20,7 +20,7 @@ Usage:
   skiff serve [flags]              run the web UI for remote/browser use
   skiff run [flags] [script]       run a WinSCP-compatible script
   skiff shell [session-url]        interactive console
-  skiff keygen [flags]             generate an SSH key pair (OpenSSH or PuTTY .ppk)
+  skiff keygen [flags]             generate (or -convert) an SSH key pair (OpenSSH or PuTTY .ppk)
   skiff import <source> [file]     import sessions (winscp-ini, winscp-registry, putty, filezilla, ssh-config)
   skiff version                    print the version
 

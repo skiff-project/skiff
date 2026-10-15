@@ -4,7 +4,7 @@ import { Dialog } from '../ui/Dialog'
 import { openDialog } from '../../lib/dialogs'
 import { call } from '../../lib/api'
 import { errorToast, toast, useStore } from '../../lib/store'
-import { setBottom } from '../../lib/actions'
+import { displayPath, setBottom } from '../../lib/actions'
 import { sessionTab } from '../../lib/fileops'
 import { t } from '../../lib/i18n'
 import type { SyncAction, SyncPlan, SyncRequest } from '../../lib/types'
@@ -20,7 +20,7 @@ export function openSyncDialog(tabId: string) {
   const remoteSide = localSide === 'left' ? 'right' : 'left'
   const l = tab.panes[localSide]
   const r = tab.panes[remoteSide]
-  openDialog((close) => <SyncDialog init={{ localConn: l.conn, localDir: l.path, remoteConn: r.conn, remoteDir: r.path }} close={close} />)
+  openDialog((close) => <SyncDialog init={{ localConn: l.conn, localDir: displayPath(l.conn, l.path), remoteConn: r.conn, remoteDir: displayPath(r.conn, r.path) }} close={close} />)
 }
 
 type Init = Pick<SyncRequest, 'localConn' | 'localDir' | 'remoteConn' | 'remoteDir'>
@@ -52,7 +52,7 @@ function SyncDialog({ init, close }: { init: Init; close: () => void }) {
     setBusy(true)
     try {
       const r = await call<{ jobs: string[]; deleted: number; errors?: string[] }>('sync.execute', { planId: plan.id, ids: [...checked] })
-      toast('ok', t('sync.started'), `${r.jobs.length} transfer job(s)${r.deleted ? `, ${r.deleted} deleted` : ''}`)
+      toast('ok', t('sync.started'), `${t('sync.jobs', { n: r.jobs.length })}${r.deleted ? ` · ${t('sync.deleted', { n: r.deleted })}` : ''}`)
       if (r.errors?.length) toast('error', t('sync.title'), r.errors.join('\n'))
       if (r.jobs.length) setBottom(true, 'queue')
       close()

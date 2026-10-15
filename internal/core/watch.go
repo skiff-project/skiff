@@ -12,6 +12,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 
 	"skiff/internal/mask"
+	"skiff/internal/vfs/localfs"
 	"skiff/internal/transfer"
 	"skiff/internal/vfs"
 )
@@ -80,6 +81,9 @@ func (w *watcher) log(c *Core, ev WatchEvent) {
 
 // StartWatch begins keeping a remote directory up to date.
 func (c *Core) StartWatch(r WatchRequest) (WatchInfo, error) {
+	if c.Local.Root == "" {
+		r.LocalDir = localfs.ExpandHome(r.LocalDir)
+	}
 	if c.Local.Root != "" {
 		if _, err := c.Local.Stat(context.Background(), r.LocalDir); err != nil {
 			return WatchInfo{}, err

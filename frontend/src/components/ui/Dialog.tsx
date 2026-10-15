@@ -45,6 +45,24 @@ export function Dialog({ title, icon, iconTone = 'accent', size = 'md', onClose,
     }
   }, [])
 
+  // Escape must close the topmost dialog even when the focus left it
+  // (e.g. after clicking a button that is then removed from the DOM).
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return
+      const dialogs = document.querySelectorAll('.dialog')
+      if (dialogs[dialogs.length - 1] !== ref.current) return
+      if (ref.current?.contains(document.activeElement)) return // handled by onKeyDown
+      if (document.querySelector('.menu')) return
+      e.preventDefault()
+      closeRef.current()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       e.stopPropagation()

@@ -6,6 +6,7 @@ import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap } 
 import { bracketMatching, foldGutter, foldKeymap, HighlightStyle, indentOnInput, indentUnit, syntaxHighlighting, LanguageDescription } from '@codemirror/language'
 import { languages } from '@codemirror/language-data'
 import { tags } from '@lezer/highlight'
+import { getLang } from '../../lib/i18n'
 
 export const highlight = HighlightStyle.define([
   { tag: [tags.keyword, tags.controlKeyword, tags.moduleKeyword, tags.operatorKeyword], color: 'var(--syn-kw)' },
@@ -76,7 +77,39 @@ export function baseExtensions(opts: { readOnly?: boolean; tabSize: number }): E
     keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...historyKeymap, ...foldKeymap, ...completionKeymap, indentWithTab]),
     baseTheme,
     EditorState.readOnly.of(!!opts.readOnly),
+    getLang() === 'fr' ? EditorState.phrases.of(PHRASES_FR) : [],
   ]
+}
+
+// French labels for CodeMirror's built-in panels (search, go to line, folding).
+const PHRASES_FR: Record<string, string> = {
+  Find: 'Rechercher',
+  Replace: 'Remplacer',
+  next: 'suivant',
+  previous: 'précédent',
+  all: 'tout',
+  'match case': 'respecter la casse',
+  regexp: 'expression régulière',
+  'by word': 'mot entier',
+  replace: 'remplacer',
+  'replace all': 'tout remplacer',
+  close: 'fermer',
+  'current match': 'occurrence courante',
+  'on line': 'à la ligne',
+  'replaced match on line $': 'occurrence remplacée à la ligne $',
+  'replaced $ matches': '$ occurrences remplacées',
+  'Go to line': 'Aller à la ligne',
+  go: 'aller',
+  'Folded lines': 'Lignes repliées',
+  'Unfolded lines': 'Lignes dépliées',
+  to: 'à',
+  'folded code': 'code replié',
+  unfold: 'déplier',
+  'Fold line': 'Replier la ligne',
+  'Unfold line': 'Déplier la ligne',
+  'Selection deleted': 'Sélection supprimée',
+  'Control character': 'Caractère de contrôle',
+  Completions: 'Suggestions',
 }
 
 export async function languageFor(filename: string): Promise<Extension | null> {
@@ -100,7 +133,7 @@ export async function languageFor(filename: string): Promise<Extension | null> {
 }
 
 export function languageName(filename: string): string {
-  return LanguageDescription.matchFilename(languages, filename)?.name || 'Plain text'
+  return LanguageDescription.matchFilename(languages, filename)?.name || ''
 }
 
 export { Compartment, EditorState, EditorView }

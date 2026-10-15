@@ -40,7 +40,7 @@ export function TunnelsPanel() {
             <th />
             <th>{t('tunnel.dest')}</th>
             <th>{t('common.connect')}</th>
-            <th>Traffic</th>
+            <th>{t('tunnel.traffic')}</th>
             <th />
           </tr>
         </thead>

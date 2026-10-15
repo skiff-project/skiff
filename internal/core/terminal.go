@@ -95,7 +95,12 @@ func (c *Core) OpenTerminal(conn string, cols, rows int, cwd string) (*Terminal,
 		title = cn.Title
 		sess, err := s.NewSession()
 		if err != nil {
-			return nil, err
+			// the server may limit sessions per connection: free the idle
+			// transfer channels and try again
+			cn.closeIdle()
+			if sess, err = s.NewSession(); err != nil {
+				return nil, err
+			}
 		}
 		modes := ssh.TerminalModes{ssh.ECHO: 1, ssh.TTY_OP_ISPEED: 115200, ssh.TTY_OP_OSPEED: 115200}
 		if err := sess.RequestPty(term, rows, cols, modes); err != nil {

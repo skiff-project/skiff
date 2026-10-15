@@ -4,7 +4,7 @@ import { Dialog } from '../ui/Dialog'
 import { openDialog } from '../../lib/dialogs'
 import { call } from '../../lib/api'
 import { errorToast, toast, useStore } from '../../lib/store'
-import { reloadSites } from '../../lib/actions'
+import { displayPath, reloadSites } from '../../lib/actions'
 import { t } from '../../lib/i18n'
 import type { ImportItem, ImportSource } from '../../lib/types'
 import { copyToClipboard } from '../../lib/fileops'
@@ -19,7 +19,7 @@ function ImportDialog({ close }: { close: () => void }) {
   const [data, setData] = useState('')
   const [items, setItems] = useState<ImportItem[] | null>(null)
   const [sel, setSel] = useState<Set<number>>(new Set())
-  const [folder, setFolder] = useState('Imported')
+  const [folder, setFolder] = useState(t('import.defaultFolder'))
   const [busy, setBusy] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -91,8 +91,8 @@ function ImportDialog({ close }: { close: () => void }) {
               <label key={s.id} className={`source-item${src === s.id ? ' on' : ''}${!s.available ? ' disabled' : ''}`}>
                 <input type="radio" name="src" checked={src === s.id} disabled={!s.available} onChange={() => { setSrc(s.id); setData('') }} />
                 <div className="grow">
-                  <div className="strong">{s.name}</div>
-                  <div className="faint mono ellipsis" style={{ fontSize: 11 }}>{s.path || (s.needsFile ? 'select a file' : s.available ? 'detected' : 'not found')}</div>
+                  <div className="strong">{t(`import.src.${s.id}`) === `import.src.${s.id}` ? s.name : t(`import.src.${s.id}`)}</div>
+                  <div className="faint mono ellipsis" style={{ fontSize: 11 }}>{s.path ? displayPath('local', s.path) : s.needsFile ? t('import.selectFile') : s.available ? t('import.detected') : t('import.notFound')}</div>
                 </div>
                 {s.path && !s.needsFile && <span className="badge ok">✓</span>}
               </label>
@@ -109,7 +109,7 @@ function ImportDialog({ close }: { close: () => void }) {
                 data-dropzone
               >
                 <FileUp />
-                <span>{data ? `${data.length.toLocaleString()} characters loaded` : 'WinSCP.ini, sitemanager.xml, ssh config, JSON…'}</span>
+                <span>{data ? t('import.loaded', { n: data.length.toLocaleString() }) : 'WinSCP.ini, sitemanager.xml, ssh config, JSON…'}</span>
               </div>
               <input ref={fileRef} type="file" hidden onChange={(e) => pickFile(e.target.files?.[0])} />
               <textarea className="textarea mono" rows={5} value={data} onChange={(e) => setData(e.target.value)} placeholder={t('import.fileHint')} style={{ fontSize: 11 }} />
@@ -175,7 +175,7 @@ function ExportDialog({ close }: { close: () => void }) {
     URL.revokeObjectURL(a.href)
   }
   return (
-    <Dialog size="lg" title={t('export.title')} icon={<Upload />} onClose={close} footer={<><span className="faint">{sites.length} sites · passwords are never exported</span><div className="spacer" /><button className="btn" onClick={() => copyToClipboard(out)}>{t('common.copy')}</button><button className="btn primary" onClick={save}><Download /> {t('common.save')}</button></>}>
+    <Dialog size="lg" title={t('export.title')} icon={<Upload />} onClose={close} footer={<><span className="faint">{t('export.footer', { n: sites.length })}</span><div className="spacer" /><button className="btn" onClick={() => copyToClipboard(out)}>{t('common.copy')}</button><button className="btn primary" onClick={save}><Download /> {t('common.save')}</button></>}>
       <div className="form">
         <div className="segmented">
           {[['json', 'Skiff JSON'], ['winscp-ini', 'WinSCP.ini'], ['ssh-config', 'OpenSSH config'], ['urls', 'URLs']].map(([v, l]) => <button key={v} className={format === v ? 'on' : ''} onClick={() => setFormat(v)}>{l}</button>)}

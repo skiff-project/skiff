@@ -2,6 +2,7 @@
 /bin/
 /dist/
 frontend/node_modules/
+docs/capture/node_modules/
 frontend/dist/*
 !frontend/dist/.gitkeep
 

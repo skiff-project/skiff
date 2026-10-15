@@ -271,14 +271,19 @@ func (s *Store) MoveSites(ids []string, folder string) error {
 }
 
 // DuplicateSite copies a site (including encrypted secrets).
-func (s *Store) DuplicateSite(id string) (Site, error) {
+// DuplicateSite copies a site (secrets included). name is the copy's name;
+// empty means "<title> (copy)".
+func (s *Store) DuplicateSite(id, name string) (Site, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, st := range s.sites.Sites {
 		if st.ID == id {
 			c := st
 			c.ID = NewID()
-			c.Name = st.Title() + " (copy)"
+			c.Name = name
+			if c.Name == "" {
+				c.Name = st.Title() + " (copy)"
+			}
 			c.Created, c.Updated, c.LastUsed, c.UseCount = time.Now(), time.Now(), time.Time{}, 0
 			c.Jumps = append([]Jump(nil), st.Jumps...)
 			c.Forwards = append([]Forward(nil), st.Forwards...)

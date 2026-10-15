@@ -2,7 +2,7 @@
 //
 //	*.txt; *.log | *.bak; temp/       include masks | exclude masks
 //	*.jpg>100K                        size condition
-//	*.log<1D, *>=2024-01-01           modification time conditions
+//	*.log>1D, *>=2024-01-01           modification time conditions (>1D = newer than a day)
 //	/home/*/public_html/*.php         path masks
 //	cache/                            directory masks (end with /)
 //
@@ -159,29 +159,15 @@ func parseCond(op, val string) (cond, bool) {
 			return cond{op: op, t: t, isT: true}, true
 		}
 	}
-	// relative age: 30S 15N(minutes) 2H 1D 3W? WinSCP: S, N, H, D, M, Y
-	last := unicode.ToUpper(rune(val[len(val)-1]))
-	if n, err := strconv.Atoi(val[:len(val)-1]); err == nil && strings.ContainsRune("SNHDMY", last) {
-		now := time.Now()
-		var t time.Time
-		switch last {
-		case 'S':
-			t = now.Add(-time.Duration(n) * time.Second)
-		case 'N':
-			t = now.Add(-time.Duration(n) * time.Minute)
-		case 'H':
-			t = now.Add(-time.Duration(n) * time.Hour)
-		case 'D':
-			t = now.AddDate(0, 0, -n)
-		case 'M':
-			t = now.AddDate(0, -n, 0)
-		case 'Y':
-			t = now.AddDate(-n, 0, 0)
-		}
-		// "<1D" means "newer than 1 day" → mtime > t
-		inv := map[string]string{"<": ">", ">": "<", "<=": ">=", ">=": "<=", "=": "="}[op]
-		return cond{op: inv, t: t, isT: true}, true
+	// relative time, as in WinSCP: <number><unit>[S] with Y (years),
+	// D (days), H (hours), N (minutes) or S (seconds); "today" and
+	// "yesterday" are accepted too. ">1D" means "newer than one day",
+	// "<1D" older. A trailing S rounds down to the start of the unit
+	// (">1DS" = since midnight yesterday). M is a size unit, not months.
+	if t, ok := relativeTime(val, time.Now()); ok {
+		return cond{op: op, t: t, isT: true}, true
 	}
+	last := unicode.ToUpper(rune(val[len(val)-1]))
 	// size with K/M/G suffix
 	mult := int64(1)
 	switch unicode.ToUpper(last) {
@@ -341,4 +327,60 @@ func (m *Mask) String() string {
 		return ""
 	}
 	return m.src
+}
+
+// relativeTime parses WinSCP relative times ("1D", "2HS", "today",
+// "yesterday") into the corresponding point in the past.
+func relativeTime(val string, now time.Time) (time.Time, bool) {
+	startOfDay := func(t time.Time) time.Time {
+		y, m, d := t.Date()
+		return time.Date(y, m, d, 0, 0, 0, 0, t.Location())
+	}
+	switch strings.ToLower(val) {
+	case "today":
+		return startOfDay(now), true
+	case "yesterday":
+		return startOfDay(now).AddDate(0, 0, -1), true
+	}
+	v := strings.ToUpper(val)
+	round := false
+	if len(v) > 2 && strings.HasSuffix(v, "S") && strings.ContainsRune("YDHNS", rune(v[len(v)-2])) {
+		if _, err := strconv.Atoi(v[:len(v)-2]); err == nil {
+			round, v = true, v[:len(v)-1]
+		}
+	}
+	if len(v) < 2 {
+		return time.Time{}, false
+	}
+	unit := rune(v[len(v)-1])
+	n, err := strconv.Atoi(v[:len(v)-1])
+	if err != nil || !strings.ContainsRune("YDHNS", unit) {
+		return time.Time{}, false
+	}
+	var t time.Time
+	switch unit {
+	case 'Y':
+		t = now.AddDate(-n, 0, 0)
+		if round {
+			t = time.Date(t.Year(), 1, 1, 0, 0, 0, 0, t.Location())
+		}
+	case 'D':
+		t = now.AddDate(0, 0, -n)
+		if round {
+			t = startOfDay(t)
+		}
+	case 'H':
+		t = now.Add(-time.Duration(n) * time.Hour)
+		if round {
+			t = t.Truncate(time.Hour)
+		}
+	case 'N':
+		t = now.Add(-time.Duration(n) * time.Minute)
+		if round {
+			t = t.Truncate(time.Minute)
+		}
+	case 'S':
+		t = now.Add(-time.Duration(n) * time.Second)
+	}
+	return t, true
 }

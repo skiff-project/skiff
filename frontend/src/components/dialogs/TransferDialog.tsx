@@ -4,7 +4,7 @@ import { Dialog } from '../ui/Dialog'
 import { openDialog } from '../../lib/dialogs'
 import { call } from '../../lib/api'
 import { get } from '../../lib/store'
-import { savePrefs } from '../../lib/actions'
+import { displayPath, savePrefs } from '../../lib/actions'
 import { t } from '../../lib/i18n'
 import type { Entry, TransferOptions } from '../../lib/types'
 import { formatSize } from '../../lib/format'
@@ -20,13 +20,13 @@ export function transferDialog(p: { src: string; dst: string; dstDir: string; en
 }
 
 function TransferDialog({ src, dst, dstDir, entries, move, close }: { src: string; dst: string; dstDir: string; entries: Entry[]; move: boolean; close: (r?: TransferResult) => void }) {
-  const [dir, setDir] = useState(dstDir)
+  const [dir, setDir] = useState(displayPath(dst, dstDir))
   const [name, setName] = useState(entries.length === 1 ? entries[0].name : '')
   const [o, setO] = useState<TransferOptions | null>(null)
   const [adv, setAdv] = useState(false)
   const conns = get().conns
   const dstTitle = dst === 'local' ? t('common.local') : conns[dst]?.title
-  const what = entries.length === 1 ? `"${entries[0].name}"` : `${entries.length} items`
+  const what = entries.length === 1 ? `"${entries[0].name}"` : t('common.items', { n: entries.length })
   const label = dst === 'local' && src !== 'local' ? t('transfer.downloadTo', { what }) : src === 'local' && dst !== 'local' ? t('transfer.uploadTo', { what }) : move ? t('transfer.moveTo', { what }) : t('transfer.copyTo', { what })
   const bytes = entries.reduce((n, e) => n + (e.isDir ? 0 : e.size), 0)
 

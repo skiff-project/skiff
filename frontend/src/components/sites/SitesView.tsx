@@ -99,7 +99,7 @@ export function SitesView() {
       { label: t('sites.openTerminal'), icon: <SquareTerminal />, hidden: !(s.protocol === 'sftp' || s.protocol === 'scp'), onClick: () => connectAndTerminal(s.id) },
       { separator: true },
       { label: t('common.edit'), icon: <Edit3 />, onClick: () => { setDraft(null); setSel(s.id) } },
-      { label: t('common.duplicate'), icon: <Copy />, onClick: async () => { const d = await call<SiteView>('sites.duplicate', { id: s.id }); await reloadSites(); setSel(d.id) } },
+      { label: t('common.duplicate'), icon: <Copy />, onClick: async () => { const d = await call<SiteView>('sites.duplicate', { id: s.id, name: t('sites.copyName', { name: s.name || s.host }) }); await reloadSites(); setSel(d.id) } },
       { label: t('common.rename'), icon: <Edit3 />, onClick: async () => {
         const name = await prompt({ title: t('common.rename'), label: t('site.name'), value: s.name || s.host })
         if (name) { await call('sites.save', { site: { ...s, name }, secrets: {} }); reloadSites() }
@@ -107,8 +107,8 @@ export function SitesView() {
       { label: t('sites.copyUrl'), icon: <Link2 />, onClick: async () => copyToClipboard(await call<string>('sites.url', { id: s.id })) },
       { label: t('gen.menu'), icon: <Code2 />, onClick: () => openGenerateDialog(s) },
       {
-        label: 'Move to folder', icon: <Folder />, submenu: [
-          { label: '(root)', onClick: () => moveSites([s.id], '') },
+        label: t('sites.moveToFolder'), icon: <Folder />, submenu: [
+          { label: t('sites.rootFolder'), onClick: () => moveSites([s.id], '') },
           ...folders.map((f) => ({ label: f, onClick: () => moveSites([s.id], f) })),
         ],
       },
@@ -124,7 +124,7 @@ export function SitesView() {
     showMenu(e.clientX, e.clientY, [
       { label: t('sites.newSite'), icon: <Plus />, onClick: () => newSite(f.path) },
       { label: t('sites.newFolder'), icon: <FolderPlus />, onClick: () => newFolder(f.path) },
-      { label: 'Connect all', icon: <Plug />, onClick: () => collectSites(f).forEach((s) => connectSite(s.id)) },
+      { label: t('sites.connectAll'), icon: <Plug />, onClick: () => collectSites(f).forEach((s) => connectSite(s.id)) },
       { separator: true },
       { label: t('common.rename'), icon: <Edit3 />, onClick: async () => {
         const name = await prompt({ title: t('common.rename'), label: t('common.folder'), value: f.name })
@@ -420,7 +420,7 @@ function Welcome({ onNew, recent, onSelect }: { onNew: () => void; recent: SiteV
         </div>
       )}
       <div className="welcome-foot faint">
-        <kbd>Ctrl</kbd>+<kbd>K</kbd> palette · <kbd>F5</kbd> copy · <kbd>F6</kbd> move · <kbd>Tab</kbd> switch panel
+        <kbd>Ctrl</kbd>+<kbd>K</kbd> {t('welcome.k.palette')} · <kbd>F5</kbd> {t('welcome.k.copy')} · <kbd>F6</kbd> {t('welcome.k.move')} · <kbd>Tab</kbd> {t('welcome.k.switch')}
       </div>
     </div>
   )

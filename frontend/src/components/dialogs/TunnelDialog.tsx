@@ -74,9 +74,9 @@ function TunnelDialog({ conn: initial, close }: { conn: string; close: () => voi
           <button className={type === 'dynamic' ? 'on' : ''} onClick={() => setType('dynamic')}>{t('tunnel.dynamic')}</button>
         </div>
         <p className="muted" style={{ margin: 0, fontSize: 12 }}>
-          {type === 'local' && 'Connections to the local port are forwarded through the server to the destination (ssh -L).'}
-          {type === 'remote' && 'Connections to the port on the server are forwarded back to a destination reachable from this computer (ssh -R).'}
-          {type === 'dynamic' && 'A local SOCKS4/5 proxy that routes any connection through the server (ssh -D).'}
+          {type === 'local' && t('tunnel.hint.local')}
+          {type === 'remote' && t('tunnel.hint.remote')}
+          {type === 'dynamic' && t('tunnel.hint.dynamic')}
         </p>
         <div className="field-row r-port">
           <div className="field"><label>{t('tunnel.bind')}</label><input className="input mono" value={bindHost} onChange={(e) => setBindHost(e.target.value)} /></div>
@@ -95,7 +95,7 @@ function TunnelDialog({ conn: initial, close }: { conn: string; close: () => voi
             </div>
           </>
         )}
-        <div className="field"><label>Label</label><input className="input" value={label} onChange={(e) => setLabel(e.target.value)} /></div>
+        <div className="field"><label>{t('tunnel.label')}</label><input className="input" value={label} onChange={(e) => setLabel(e.target.value)} /></div>
       </div>
     </Dialog>
   )

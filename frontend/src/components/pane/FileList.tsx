@@ -362,7 +362,7 @@ export function FileList({ tabId, side, pane, active, visible }: Props) {
     e.dataTransfer.effectAllowed = 'copyMove'
     const ghost = document.createElement('div')
     ghost.className = 'drag-ghost'
-    ghost.textContent = names.length === 1 ? names[0] : `${names.length} items`
+    ghost.textContent = names.length === 1 ? names[0] : t('common.items', { n: names.length })
     document.body.appendChild(ghost)
     e.dataTransfer.setDragImage(ghost, -8, -8)
     setTimeout(() => ghost.remove(), 0)

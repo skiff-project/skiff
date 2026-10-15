@@ -97,8 +97,12 @@ func (s *Server) registerRPC() {
 	type idp struct {
 		ID string `json:"id"`
 	}
-	method(s, "sites.duplicate", func(ctx context.Context, p idp) (config.SiteView, error) {
-		st, err := c.Store.DuplicateSite(p.ID)
+	type dupReq struct {
+		ID   string `json:"id"`
+		Name string `json:"name,omitempty"` // name of the copy (localised by the UI)
+	}
+	method(s, "sites.duplicate", func(ctx context.Context, p dupReq) (config.SiteView, error) {
+		st, err := c.Store.DuplicateSite(p.ID, p.Name)
 		return config.View(st), err
 	})
 	type moveSites struct {

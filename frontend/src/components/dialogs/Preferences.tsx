@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react'
 import {
   ArrowDownUp, Check, CheckSquare, Code2, FileCog, Fingerprint, Info, KeyRound, Keyboard, LayoutPanelLeft, ListOrdered, Palette, Plus, ScrollText,
-  Settings, Shield, SquareTerminal, Trash2, Wand2,
+  Lock, Settings, Shield, SquareTerminal, Trash2, Wand2,
 } from 'lucide-react'
 import { Dialog } from '../ui/Dialog'
 import { openDialog } from '../../lib/dialogs'
 import { call } from '../../lib/api'
 import { get, useStore } from '../../lib/store'
-import { savePrefs } from '../../lib/actions'
-import { languages, t } from '../../lib/i18n'
+import { displayPath, savePrefs } from '../../lib/actions'
+import { commandName, languages, t } from '../../lib/i18n'
 import type { CustomCommand, KeyFile, KnownHost, Prefs } from '../../lib/types'
 import { TransferOptionsForm } from './TransferDialog'
+import { formatDate, formatSize } from '../../lib/format'
 import { masterPasswordDialog } from './MasterPassword'
-import { openKeygen } from './KeygenDialog'
+import { openConvertKey, openKeygen } from './KeygenDialog'
 import { ask } from './common'
 
 export function openPreferences(section?: string) {
@@ -27,6 +28,7 @@ function Preferences({ close, initial }: { close: () => void; initial?: string }
   const prefs = useStore((s) => s.prefs)!
   const info = useStore((s) => s.info)!
   const [sec, setSec] = useState<Sec>((initial as Sec) || 'appearance')
+  const [sampleDate] = useState(() => new Date(Date.now() - 5 * 60 * 1000).toISOString())
   const up = (p: Partial<Prefs>) => savePrefs(p)
   const sections: { id: Sec; label: string; icon: any }[] = [
     { id: 'appearance', label: t('prefs.appearance'), icon: Palette },
@@ -43,7 +45,7 @@ function Preferences({ close, initial }: { close: () => void; initial?: string }
     { id: 'about', label: t('about.title'), icon: Info },
   ]
   return (
-    <Dialog size="xl" title={t('prefs.title')} icon={<Settings />} onClose={close} noPadding footer={<><span className="faint">{t('prefs.configDir')}: <span className="mono selectable">{info.configDir}</span>{info.portable ? ` (${t('prefs.portable')})` : ''}</span><div className="spacer" /><button className="btn primary" onClick={close}>{t('common.close')}</button></>}>
+    <Dialog size="xl" title={t('prefs.title')} icon={<Settings />} onClose={close} noPadding footer={<><span className="faint">{t('prefs.configDir')}: <span className="mono selectable">{displayPath('local', info.configDir)}</span>{info.portable ? ` (${t('prefs.portable')})` : ''}</span><div className="spacer" /><button className="btn primary" onClick={close}>{t('common.close')}</button></>}>
       <div className="prefs">
         <nav className="vtabs">
           {sections.map((s) => (
@@ -108,17 +110,17 @@ function Preferences({ close, initial }: { close: () => void; initial?: string }
                 <div className="field">
                   <label>{t('prefs.sizeFormat')}</label>
                   <select className="select" value={prefs.sizeFormat} onChange={(e) => up({ sizeFormat: e.target.value as any })}>
-                    <option value="iec">1.5 MiB (1024)</option>
-                    <option value="si">1.6 MB (1000)</option>
-                    <option value="bytes">1 572 864</option>
+                    <option value="iec">{formatSize(1572864, 'iec')} (1024)</option>
+                    <option value="si">{formatSize(1572864, 'si')} (1000)</option>
+                    <option value="bytes">{formatSize(1572864, 'bytes')}</option>
                   </select>
                 </div>
                 <div className="field">
                   <label>{t('prefs.dateFormat')}</label>
                   <select className="select" value={prefs.dateFormat} onChange={(e) => up({ dateFormat: e.target.value as any })}>
-                    <option value="short">Oct 14, 21:05</option>
-                    <option value="relative">5 minutes ago</option>
-                    <option value="iso">2026-10-14 21:05:33</option>
+                    <option value="short">{formatDate(sampleDate, 'short')}</option>
+                    <option value="relative">{formatDate(sampleDate, 'relative')}</option>
+                    <option value="iso">{formatDate(sampleDate, 'iso')}</option>
                   </select>
                 </div>
               </div>
@@ -171,7 +173,7 @@ function Preferences({ close, initial }: { close: () => void; initial?: string }
               </div>
               <label className="switch"><input type="checkbox" checked={prefs.editor.wordWrap} onChange={(e) => up({ editor: { ...prefs.editor, wordWrap: e.target.checked } })} /> {t('prefs.wordWrap')}</label>
               <div className="form-section">
-                <h4>Associations</h4>
+                <h4>{t('prefs.associations')}</h4>
                 {(prefs.editor.associations || []).map((a, i) => (
                   <div key={i} className="row">
                     <input className="input mono" style={{ width: 160 }} value={a.mask} placeholder="*.psd" onChange={(e) => up({ editor: { ...prefs.editor, associations: prefs.editor.associations.map((x, k) => (k === i ? { ...x, mask: e.target.value } : x)) } })} />
@@ -179,7 +181,7 @@ function Preferences({ close, initial }: { close: () => void; initial?: string }
                     <button className="icon-btn sm" onClick={() => up({ editor: { ...prefs.editor, associations: prefs.editor.associations.filter((_, k) => k !== i) } })}><Trash2 /></button>
                   </div>
                 ))}
-                <div><button className="btn sm" onClick={() => up({ editor: { ...prefs.editor, associations: [...(prefs.editor.associations || []), { mask: '', command: '' }] } })}><Plus /> Add</button></div>
+                <div><button className="btn sm" onClick={() => up({ editor: { ...prefs.editor, associations: [...(prefs.editor.associations || []), { mask: '', command: '' }] } })}><Plus /> {t('common.add')}</button></div>
               </div>
             </div>
           )}
@@ -218,7 +220,7 @@ function Preferences({ close, initial }: { close: () => void; initial?: string }
                   {['normal', 'debug'].map((v) => <button key={v} className={prefs.logging.level === v ? 'on' : ''} onClick={() => up({ logging: { ...prefs.logging, level: v } })}>{v}</button>)}
                 </div>
               </div>
-              <span className="hint mono">{info.configDir}/logs</span>
+              <span className="hint mono">{displayPath('local', info.configDir)}/logs</span>
             </div>
           )}
 
@@ -230,10 +232,10 @@ function Preferences({ close, initial }: { close: () => void; initial?: string }
               <h2>Skiff <span className="faint">{info.version}</span></h2>
               <p className="muted">{t('about.desc')}</p>
               <dl className="kv" style={{ margin: '0 auto', textAlign: 'left' }}>
-                <dt>Platform</dt><dd>{info.os}/{info.arch}</dd>
-                <dt>Mode</dt><dd>{info.mode}</dd>
-                <dt>Config</dt><dd className="mono">{info.configDir}</dd>
-                <dt>SSH agent</dt><dd>{info.agent ? '✓' : '—'}</dd>
+                <dt>{t('about.platform')}</dt><dd>{info.os}/{info.arch}</dd>
+                <dt>{t('about.mode')}</dt><dd>{t(`about.mode.${info.mode}`)}</dd>
+                <dt>{t('about.config')}</dt><dd className="mono">{displayPath('local', info.configDir)}</dd>
+                <dt>{t('about.agent')}</dt><dd>{info.agent ? '✓' : '—'}</dd>
               </dl>
               <p className="faint" style={{ fontSize: 12 }}>SFTP · SCP · FTP/FTPS · WebDAV · S3 — Go + React</p>
             </div>
@@ -258,7 +260,7 @@ function SecuritySection() {
       <div className="form-section">
         <h4>{t('prefs.masterPassword')}</h4>
         <p className="muted" style={{ margin: 0 }}>{t('prefs.masterPasswordDesc')}</p>
-        <div className="row">
+        <div className="row" style={{ flexWrap: 'wrap' }}>
           {!info.hasMaster ? (
             <button className="btn primary" onClick={() => masterPasswordDialog('set')}><Shield /> {t('prefs.setMaster')}</button>
           ) : (
@@ -266,6 +268,7 @@ function SecuritySection() {
               <span className="badge ok"><Shield /> {t('common.on')}</span>
               <button className="btn" onClick={() => masterPasswordDialog('change')}>{t('prefs.changeMaster')}</button>
               <button className="btn" onClick={() => masterPasswordDialog('remove')}>{t('prefs.removeMaster')}</button>
+              {!info.locked && <button className="btn" onClick={() => call('security.lock')}><Lock /> {t('prefs.lockNow')}</button>}
             </>
           )}
         </div>
@@ -277,10 +280,11 @@ function SecuritySection() {
             <tbody>
               {keys.map((k) => (
                 <tr key={k.path}>
-                  <td><KeyRound style={{ width: 14 }} /> <span className="mono">{k.path}</span></td>
-                  <td className="muted">{k.type}</td>
+                  <td><KeyRound style={{ width: 14 }} /> <span className="mono">{displayPath('local', k.path)}</span></td>
+                  <td className="muted" style={{ whiteSpace: 'nowrap' }}>{k.type}</td>
                   <td className="mono faint" style={{ fontSize: 11 }}>{k.fingerprint}</td>
                   <td>{k.encrypted ? <span className="badge">🔒</span> : ''} <span className="badge">{k.format}</span></td>
+                  <td>{info.mode !== 'web' && <button className="btn sm ghost" onClick={() => openConvertKey(k).then(load)}>{t('keygen.convert')}</button>}</td>
                 </tr>
               ))}
             </tbody>
@@ -316,38 +320,38 @@ function CommandsSection() {
   return (
     <div className="form">
       <p className="muted" style={{ margin: 0, fontSize: 12 }}>
-        Patterns: <code>!</code> file name · <code>!&amp;</code> selected files · <code>!/</code> current path · <code>!@</code> host · <code>!U</code> user · <code>!?Prompt?default!</code> ask
+        {t('cmd.patterns')} <code>!</code> {t('cmd.p.file')} · <code>!&amp;</code> {t('cmd.p.selected')} · <code>!/</code> {t('cmd.p.path')} · <code>!@</code> {t('cmd.p.host')} · <code>!U</code> {t('cmd.p.user')} · <code>!?Question?défaut!</code> {t('cmd.p.ask')}
       </p>
       {cmds.map((c, i) => (
         <div key={c.id} className="card" style={{ padding: 12 }}>
           <div className="row" style={{ marginBottom: 8 }}>
-            <input className="input" style={{ width: 220 }} value={c.name} onChange={(e) => set(cmds.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))} />
+            <input className="input" style={{ width: 220 }} value={commandName(c)} onChange={(e) => set(cmds.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))} />
             <div className="spacer" />
             <button className="icon-btn sm" onClick={() => set(cmds.filter((_, k) => k !== i))}><Trash2 /></button>
           </div>
           <input className="input mono" value={c.command} onChange={(e) => set(cmds.map((x, k) => (k === i ? { ...x, command: e.target.value } : x)))} />
           <div className="row" style={{ marginTop: 8, gap: 16, flexWrap: 'wrap' }}>
-            <label className="check"><input type="checkbox" checked={c.perFile} onChange={(e) => set(cmds.map((x, k) => (k === i ? { ...x, perFile: e.target.checked } : x)))} /> Once per file</label>
-            <label className="check"><input type="checkbox" checked={c.applyDirs} onChange={(e) => set(cmds.map((x, k) => (k === i ? { ...x, applyDirs: e.target.checked } : x)))} /> Folders</label>
-            <label className="check"><input type="checkbox" checked={c.local} onChange={(e) => set(cmds.map((x, k) => (k === i ? { ...x, local: e.target.checked } : x)))} /> Local command</label>
-            <label className="check"><input type="checkbox" checked={c.showOutput} onChange={(e) => set(cmds.map((x, k) => (k === i ? { ...x, showOutput: e.target.checked } : x)))} /> Show output</label>
+            <label className="check"><input type="checkbox" checked={c.perFile} onChange={(e) => set(cmds.map((x, k) => (k === i ? { ...x, perFile: e.target.checked } : x)))} /> {t('cmd.perFile')}</label>
+            <label className="check"><input type="checkbox" checked={c.applyDirs} onChange={(e) => set(cmds.map((x, k) => (k === i ? { ...x, applyDirs: e.target.checked } : x)))} /> {t('cmd.dirs')}</label>
+            <label className="check"><input type="checkbox" checked={c.local} onChange={(e) => set(cmds.map((x, k) => (k === i ? { ...x, local: e.target.checked } : x)))} /> {t('cmd.local')}</label>
+            <label className="check"><input type="checkbox" checked={c.showOutput} onChange={(e) => set(cmds.map((x, k) => (k === i ? { ...x, showOutput: e.target.checked } : x)))} /> {t('cmd.showOutput')}</label>
           </div>
         </div>
       ))}
-      <div><button className="btn sm" onClick={() => set([...cmds, { id: Math.random().toString(36).slice(2), name: 'New command', command: '', local: false, perFile: false, applyDirs: false, recursive: false, showOutput: true }])}><Plus /> Add command</button></div>
+      <div><button className="btn sm" onClick={() => set([...cmds, { id: Math.random().toString(36).slice(2), name: t('cmd.new'), command: '', local: false, perFile: false, applyDirs: false, recursive: false, showOutput: true }])}><Plus /> {t('cmd.add')}</button></div>
     </div>
   )
 }
 
 const SHORTCUTS: [string, string][] = [
-  ['Ctrl+K', 'Command palette'], ['Tab', 'Switch panel'], ['Enter', 'Open'], ['Backspace / Alt+↑', 'Parent folder'], ['Alt+← / Alt+→', 'Back / forward'],
-  ['F2', 'Rename'], ['F3', 'View'], ['F4 / Shift+F4', 'Edit (internal / external)'], ['F5 / Shift+F5', 'Copy (with options)'], ['F6', 'Move'], ['F7 / Shift+F7', 'New folder / file'],
-  ['F8 / Del', 'Delete'], ['Shift+Del', 'Delete permanently'], ['F9', 'Properties'], ['F10', 'Close tab'], ['F12', 'Transfer queue'],
-  ['Space / Insert', 'Toggle selection'], ['Ctrl+A', 'Select all'], ['Num + / − / *', 'Select / unselect by mask / invert'], ['Ctrl+C / X / V', 'Copy / cut / paste files'],
-  ['Ctrl+F', 'Filter'], ['Ctrl+Shift+F', 'Find files'], ['Ctrl+L', 'Edit path'], ['Ctrl+O', 'Open directory'], ['Ctrl+D', 'Bookmark'], ['Ctrl+R', 'Refresh'],
-  ['Ctrl+S', 'Synchronize'], ['Ctrl+=', 'Compare directories'], ['Ctrl+B', 'Synchronized browsing'], ['Ctrl+U', 'Keep remote up to date'], ['Ctrl+T', 'Terminal'],
-  ['Ctrl+Shift+X', 'Run command'], ['Ctrl+Shift+C', 'Copy path'], ['Ctrl+Shift+P', 'Preview panel'], ['Ctrl+Alt+H', 'Hidden files'],
-  ['Ctrl+Tab', 'Next tab'], ['Ctrl+W', 'Close tab'], ['Ctrl+N', 'New session'], ['Alt+1…9', 'Go to tab'], ['Ctrl+,', 'Preferences'],
+  ['Ctrl+K', 'sc.palette'], ['Tab', 'sc.switchPanel'], ['Enter', 'sc.open'], ['Backspace / Alt+↑', 'sc.parent'], ['Alt+← / Alt+→', 'sc.history'],
+  ['F2', 'sc.rename'], ['F3', 'sc.view'], ['F4 / Shift+F4', 'sc.edit'], ['F5 / Shift+F5', 'sc.copy'], ['F6', 'sc.move'],
+  ['F7 / Shift+F7', 'sc.newItem'], ['F8 / Del', 'sc.delete'], ['Shift+Del', 'sc.deletePerm'], ['F9', 'sc.properties'], ['F10', 'sc.closeTab'],
+  ['F12', 'sc.queue'], ['Space / Insert', 'sc.toggleSel'], ['Ctrl+A', 'sc.selectAll'], ['Num + / − / *', 'sc.selMask'], ['Ctrl+C / X / V', 'sc.clipboard'],
+  ['Ctrl+F', 'sc.filter'], ['Ctrl+Shift+F', 'sc.find'], ['Ctrl+L', 'sc.editPath'], ['Ctrl+O', 'sc.openDir'], ['Ctrl+D', 'sc.bookmark'],
+  ['Ctrl+R', 'sc.refresh'], ['Ctrl+S', 'sc.sync'], ['Ctrl+=', 'sc.compare'], ['Ctrl+B', 'sc.syncBrowse'], ['Ctrl+U', 'sc.keepUp'],
+  ['Ctrl+T', 'sc.terminal'], ['Ctrl+Shift+X', 'sc.runCmd'], ['Ctrl+Shift+C', 'sc.copyPath'], ['Ctrl+Shift+P', 'sc.preview'], ['Ctrl+Alt+H', 'sc.hidden'],
+  ['Ctrl+Tab', 'sc.nextTab'], ['Ctrl+W', 'sc.closeTab'], ['Ctrl+N', 'sc.newSession'], ['Alt+1…9', 'sc.gotoTab'], ['Ctrl+,', 'sc.prefs'],
 ]
 
 function Shortcuts() {
@@ -357,7 +361,7 @@ function Shortcuts() {
         {SHORTCUTS.map(([k, d]) => (
           <tr key={k}>
             <td style={{ width: 200 }}>{k.split(' / ').map((x, i) => <span key={i}>{i > 0 && ' / '}<kbd>{x}</kbd></span>)}</td>
-            <td>{d}</td>
+            <td>{t(d)}</td>
           </tr>
         ))}
       </tbody>

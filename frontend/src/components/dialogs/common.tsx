@@ -92,7 +92,7 @@ function PromptDialog({ title, label, value, placeholder, ok, selectStem, icon, 
 
 export function validName(v: string): string | null {
   if (!v.trim()) return null
-  if (/[\/\\]/.test(v) && false) return 'Invalid character'
-  if (v === '.' || v === '..') return 'Invalid name'
+  if (/[\/\\]/.test(v) && false) return t('err.invalidChar')
+  if (v === '.' || v === '..') return t('err.invalidName')
   return null
 }

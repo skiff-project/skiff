@@ -30,7 +30,7 @@ export function PreviewPane({ tab }: { tab: SessionTab }) {
     setErr('')
     if (!entry || entry.isDir || (kind !== 'text' && kind !== 'markdown')) return
     if (entry.size > 512 * 1024) {
-      setErr('File too large for a preview')
+      setErr(t('preview.tooLarge'))
       return
     }
     const id = setTimeout(() => {

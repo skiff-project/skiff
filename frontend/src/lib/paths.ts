@@ -94,10 +94,21 @@ export function shellQuote(s: string): string {
   return "'" + s.replace(/'/g, `'\\''`) + "'"
 }
 
-// normalize user-typed paths
+// tildify shows paths inside the home folder as "~/…" (display only).
+export function tildify(style: PathStyle, p: string, home?: string): string {
+  if (!home || !p) return p
+  const h = home.replace(/[\\/]+$/, '')
+  if (p === h) return '~'
+  const s = sep(style)
+  if (p.startsWith(h + s)) return '~' + p.slice(h.length)
+  return p
+}
+
+// normalize user-typed paths ("~" is expanded by Skiff itself)
 export function normalize(style: PathStyle, p: string, cwd: string): string {
   p = p.trim()
   if (!p) return cwd
+  if (p === '~' || p.startsWith('~/') || p.startsWith('~\\')) return p
   if (style === 'windows') {
     p = p.replace(/\//g, '\\')
     if (/^[A-Za-z]:$/.test(p)) return p + '\\'

@@ -18,6 +18,7 @@ import (
 
 	"skiff/internal/mask"
 	"skiff/internal/vfs"
+	"skiff/internal/vfs/localfs"
 )
 
 // ListResult is returned to panels.
@@ -32,11 +33,10 @@ func (c *Core) List(ctx context.Context, conn, dir string) (ListResult, error) {
 		return ListResult{}, err
 	}
 	if dir == "" {
-		if conn == LocalID {
-			dir, _ = f.Home(ctx)
-		} else {
-			dir, _ = f.Home(ctx)
-		}
+		dir, _ = f.Home(ctx)
+	}
+	if conn == LocalID && c.Local.Root == "" {
+		dir = localfs.ExpandHome(dir)
 	}
 	entries, err := f.List(ctx, dir)
 	if err != nil && conn != LocalID && isConnErr(err) {
@@ -504,7 +504,7 @@ func (c *Core) ServerInfo(conn string) ([]vfs.InfoItem, error) {
 	cn.mu.Lock()
 	defer cn.mu.Unlock()
 	out := append([]vfs.InfoItem(nil), cn.info...)
-	out = append(out, vfs.InfoItem{Group: "Session", Key: "Connected since", Value: cn.created.Format(time.RFC1123)})
+	out = append(out, vfs.InfoItem{Group: "Session", Key: "Connected since", Value: cn.created.Format(time.RFC3339)})
 	return out, nil
 }
 

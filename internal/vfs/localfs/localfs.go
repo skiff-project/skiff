@@ -58,13 +58,25 @@ func (l *FS) Caps() vfs.Caps {
 	}
 }
 
+// ExpandHome turns "~" and "~/…" into absolute paths in the user's home.
+func ExpandHome(p string) string {
+	if p != "~" && !strings.HasPrefix(p, "~/") && !strings.HasPrefix(p, `~\`) {
+		return p
+	}
+	h, err := os.UserHomeDir()
+	if err != nil {
+		return p
+	}
+	return filepath.Join(h, p[1:])
+}
+
 // resolve validates p and applies the optional jail.
 func (l *FS) resolve(p string) (string, error) {
 	if p == "" {
 		return "", vfs.ErrNotExist
 	}
 	if l.Root == "" {
-		return filepath.Clean(p), nil
+		return filepath.Clean(ExpandHome(p)), nil
 	}
 	clean := filepath.Clean(p)
 	root := filepath.Clean(l.Root)

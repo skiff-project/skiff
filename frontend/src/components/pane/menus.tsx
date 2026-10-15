@@ -12,7 +12,7 @@ import {
 } from '../../lib/fileops'
 import { clipboardCopy, clipboardPaste, hasClip } from '../../lib/clipboard'
 import { join } from '../../lib/paths'
-import { t } from '../../lib/i18n'
+import { commandName, t } from '../../lib/i18n'
 import { compileMask } from '../../lib/listing'
 import { openFindDialog } from '../dialogs/FindDialog'
 import { openSyncDialog } from '../dialogs/SyncDialog'
@@ -53,9 +53,9 @@ export function fileMenu(tabId: string, side: Side, x: number, y: number) {
     { label: t('ctx.copyAs'), icon: <Copy />, shortcut: 'Shift+F5', onClick: () => copyOrMove(tabId, side, false, true) },
     { label: t('ctx.saveAs'), icon: <Download />, hidden: !isFile || !web, onClick: () => one && saveToComputer(p.conn, join(st, p.path, one.name)) },
     { separator: true },
-    { label: 'Cut', icon: <Scissors />, shortcut: 'Ctrl+X', onClick: () => clipboardCopy(tabId, side, true) },
+    { label: t('common.cut'), icon: <Scissors />, shortcut: 'Ctrl+X', onClick: () => clipboardCopy(tabId, side, true) },
     { label: t('common.copy'), icon: <ClipboardCopy />, shortcut: 'Ctrl+C', onClick: () => clipboardCopy(tabId, side, false) },
-    { label: 'Paste', icon: <ClipboardPaste />, shortcut: 'Ctrl+V', hidden: !hasClip(), onClick: () => clipboardPaste(tabId, side) },
+    { label: t('common.paste'), icon: <ClipboardPaste />, shortcut: 'Ctrl+V', hidden: !hasClip(), onClick: () => clipboardPaste(tabId, side) },
     { label: t('ctx.duplicate'), icon: <Copy />, hidden: p.conn === 'local' || !caps?.serverCopy, onClick: async () => {
       const { call } = await import('../../lib/api')
       call('fs.duplicate', { conn: p.conn, paths: entries.map((e) => join(st, p.path, e.name)), dstDir: p.path })
@@ -66,7 +66,7 @@ export function fileMenu(tabId: string, side: Side, x: number, y: number) {
     { separator: true },
     {
       label: t('ctx.customCommands'), icon: <Wand2 />, hidden: !cmds.length,
-      submenu: cmds.map((c) => ({ label: c.name, shortcut: c.shortcut, onClick: () => runCustomCommand(tabId, side, c) })),
+      submenu: cmds.map((c) => ({ label: commandName(c), shortcut: c.shortcut, onClick: () => runCustomCommand(tabId, side, c) })),
     },
     { label: t('ctx.diffOther'), icon: <GitCompare />, hidden: !isFile, onClick: () => diffWithOther(tabId, side) },
     { label: t('ctx.checksum'), icon: <Hash />, hidden: !isFile || !caps?.checksum, onClick: () => one && checksumDialog(p.conn, join(st, p.path, one.name)) },
@@ -98,7 +98,7 @@ export function backgroundMenu(tabId: string, side: Side, x: number, y: number) 
     { label: t('ctx.newFolder'), icon: <FolderPlus />, shortcut: 'F7', onClick: () => mkdir(tabId, side) },
     { label: t('ctx.newFile'), icon: <FilePlus2 />, shortcut: 'Shift+F7', onClick: () => newFile(tabId, side) },
     { label: t('ctx.newLink'), icon: <Link />, hidden: !caps?.symlink, onClick: () => newLink(tabId, side) },
-    { label: 'Paste', icon: <ClipboardPaste />, shortcut: 'Ctrl+V', hidden: !hasClip(), onClick: () => clipboardPaste(tabId, side) },
+    { label: t('common.paste'), icon: <ClipboardPaste />, shortcut: 'Ctrl+V', hidden: !hasClip(), onClick: () => clipboardPaste(tabId, side) },
     { separator: true },
     { label: t('common.refresh'), icon: <RotateCw />, shortcut: 'Ctrl+R', onClick: () => refreshPane(tabId, side) },
     { label: t('pane.selectAll'), icon: <ListChecks />, shortcut: 'Ctrl+A', onClick: () => selectAll(tabId, side, 'all') },

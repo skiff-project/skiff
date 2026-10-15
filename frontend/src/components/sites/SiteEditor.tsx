@@ -3,7 +3,7 @@ import {
   Cable, FileKey2, Folder, Globe, KeyRound, Network, NotebookPen, Plug, Plus, Save, Server, Settings2, Shield, Trash2, Waypoints, X, Cloud,
   Clock, Copy,
 } from 'lucide-react'
-import { get, toast, errorToast, useStore } from '../../lib/store'
+import { toast, errorToast, useStore } from '../../lib/store'
 import { call } from '../../lib/api'
 import { connectAdhoc, connectSite, reloadSites } from '../../lib/actions'
 import { t } from '../../lib/i18n'
@@ -251,7 +251,7 @@ export function SiteEditor({ site, isNew, onSaved, onDeleted, onCancel }: { site
                 </div>
                 <div className="field">
                   <label>{t('site.localDir')}</label>
-                  <input className="input mono" value={s.localDir || ''} placeholder={get().info?.localHome} onChange={(e) => up({ localDir: e.target.value })} spellCheck={false} />
+                  <input className="input mono" value={s.localDir || ''} placeholder="~/Projets" onChange={(e) => up({ localDir: e.target.value })} spellCheck={false} />
                 </div>
               </div>
             </div>
@@ -335,7 +335,7 @@ export function SiteEditor({ site, isNew, onSaved, onDeleted, onCancel }: { site
                   <option value="socks5">SOCKS5</option>
                   <option value="http">HTTP</option>
                   <option value="telnet">Telnet</option>
-                  <option value="command">Local command (ProxyCommand)</option>
+                  <option value="command">{t('site.proxyLocalCmd')}</option>
                 </select>
               </div>
               {s.proxy?.type && s.proxy.type !== 'command' && (
@@ -394,7 +394,7 @@ export function SiteEditor({ site, isNew, onSaved, onDeleted, onCancel }: { site
             <div className="form">
               <div className="form-section">
                 <h4>{t('site.auth')}</h4>
-                <div className="field"><label>{t('site.keyFile')}</label><input className="input mono" value={s.keyFile || ''} placeholder="~/.ssh/id_ed25519 or C:\keys\server.ppk" onChange={(e) => up({ keyFile: e.target.value })} /></div>
+                <div className="field"><label>{t('site.keyFile')}</label><input className="input mono" value={s.keyFile || ''} placeholder={t('site.keyFilePlaceholder')} onChange={(e) => up({ keyFile: e.target.value })} /></div>
                 {pwField(t('site.passphrase'), 'passphrase', view.hasPassphrase)}
                 <label className="switch"><input type="checkbox" checked={s.useAgent} onChange={(e) => up({ useAgent: e.target.checked })} /> {t('site.useAgent')}</label>
                 <label className="switch"><input type="checkbox" checked={s.kbdInteractive} onChange={(e) => up({ kbdInteractive: e.target.checked })} /> {t('site.kbdint')}</label>
@@ -471,7 +471,7 @@ function JumpRow({ j, index, sites, hasPassword, onChange, onPassword, onRemove 
       <div className="row" style={{ marginBottom: 10 }}>
         <span className="badge accent">#{index + 1}</span>
         <select className="select" style={{ width: 240 }} value={j.siteId || ''} onChange={(e) => onChange({ ...j, siteId: e.target.value || undefined })}>
-          <option value="">Custom host</option>
+          <option value="">{t('site.customHost')}</option>
           {sites.map((s) => <option key={s.id} value={s.id}>{t('site.useSite')}: {s.name || s.host}</option>)}
         </select>
         <div className="spacer" />
@@ -511,7 +511,7 @@ function ForwardRow({ f, onChange, onRemove }: { f: Forward; onChange: (f: Forwa
           <input className="input tnum" style={{ width: 80 }} type="number" value={f.destPort || ''} onChange={(e) => onChange({ ...f, destPort: parseInt(e.target.value, 10) || 0 })} />
         </>
       )}
-      <label className="check" data-tip="Start automatically"><input type="checkbox" checked={!!f.autoStart} onChange={(e) => onChange({ ...f, autoStart: e.target.checked })} /> Auto</label>
+      <label className="check" data-tip={t('site.fwdAutoStart')}><input type="checkbox" checked={!!f.autoStart} onChange={(e) => onChange({ ...f, autoStart: e.target.checked })} /> Auto</label>
       <button className="icon-btn sm" onClick={onRemove}><Trash2 /></button>
     </div>
   )

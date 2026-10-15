@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { ArrowDownUp, Command, FileDiff, Moon, Plus, Settings, SquareTerminal, Sun, X } from 'lucide-react'
+import { ArrowDownUp, Command, FileDiff, LogOut, Moon, Plus, Settings, SquareTerminal, Sun, X } from 'lucide-react'
 import { get, set, useStore, type Tab } from '../lib/store'
 import { activate, closeTab, duplicateSession, moveTab, reconnect, savePrefs, setBottom } from '../lib/actions'
 import { showMenu } from './ui/Menu'
@@ -14,7 +14,8 @@ function TabIcon({ tab }: { tab: Tab }) {
     const c = conns[tab.conn]
     if (connecting && !connecting.error) return <span className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} />
     const state = connecting?.error ? 'danger' : c?.state === 'connected' ? 'ok' : c?.state === 'lost' ? 'danger' : 'warn'
-    return <span className={`tab-dot ${state}`} style={c?.color ? { background: c.color } : undefined} />
+    // the site colour identifies a healthy session; problems always show their own colour
+    return <span className={`tab-dot ${state}`} style={c?.color && state === 'ok' ? { background: c.color } : undefined} />
   }
   if (tab.kind === 'editor') return <FileIcon entry={{ name: tab.title, isDir: false }} size={14} />
   if (tab.kind === 'terminal') return <SquareTerminal className="tab-svg" />
@@ -38,6 +39,11 @@ export function TabBar() {
   const pct = total ? done / total : 0
 
   const dark = document.documentElement.dataset.theme === 'dark'
+  const web = useStore((s) => s.info?.mode === 'web')
+  const logout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST', headers: { 'X-Skiff': '1' }, credentials: 'same-origin' }).catch(() => {})
+    location.reload()
+  }
 
   const tabMenu = (e: React.MouseEvent, tab: Tab) => {
     e.preventDefault()
@@ -143,6 +149,11 @@ export function TabBar() {
         <button className="icon-btn" data-tip={t('toolbar.preferences')} data-kbd="Ctrl+," onClick={() => openPreferences()}>
           <Settings />
         </button>
+        {web && (
+          <button className="icon-btn" data-tip={t('web.logout')} onClick={logout}>
+            <LogOut />
+          </button>
+        )}
         {prefs && null}
       </div>
     </div>

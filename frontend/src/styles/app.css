@@ -461,3 +461,4 @@
 .tree-twist svg { width: 12px; height: 12px; }
 .tree-ic { width: 14px; height: 14px; flex: none; color: #f2b544; }
 .tree-ic.drive { color: var(--muted); }
+.crumb-home { width: 14px; height: 14px; vertical-align: -2px; }

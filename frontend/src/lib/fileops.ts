@@ -1,7 +1,7 @@
 import { call, downloadUrl, uploadFile } from './api'
 import { get, getTab, set, toast, errorToast, updatePane, type SessionTab, type Side } from './store'
 import type { Entry, TransferOptions, CustomCommand } from './types'
-import { t } from './i18n'
+import { commandName, t } from './i18n'
 import { basename, dirname, join, shellQuote } from './paths'
 import { paneStyle, loadDir, openEditor, openDiff, openTerminal, refreshPane, setBottom, navigate } from './actions'
 import { selectionOf, visibleEntries, compileMask } from './listing'
@@ -158,7 +158,7 @@ export async function uploadDropped(tabId: string, side: Side, dt: DataTransfer,
   }
   if (!files.length) return
   const total = files.reduce((n, f) => n + f.file.size, 0)
-  const tid = toast('info', t('ctx.upload'), `${files.length} file(s), ${formatSize(total)}…`, { timeout: 0 })
+  const tid = toast('info', t('ctx.upload'), `${t('size.files', { n: files.length })}, ${formatSize(total)}…`, { timeout: 0 })
   let done = 0
   let failed = 0
   let overwriteAll: boolean | null = null
@@ -192,7 +192,7 @@ export async function uploadDropped(tabId: string, side: Side, dt: DataTransfer,
     done++
   }
   set((s) => ({ toasts: s.toasts.filter((x) => x.id !== tid) }))
-  toast(failed ? 'warn' : 'ok', t('ctx.upload'), `${done} file(s) uploaded${failed ? `, ${failed} failed` : ''}`)
+  toast(failed ? 'warn' : 'ok', t('ctx.upload'), `${t('upload.done', { n: done })}${failed ? ` · ${t('upload.failed', { n: failed })}` : ''}`)
   refreshPane(tabId, side, true)
 }
 
@@ -527,7 +527,7 @@ export async function calcSize(tabId: string, side: Side) {
   try {
     const r = await call<{ bytes: number; files: number; dirs: number }>('fs.size', { conn: p.conn, paths: entries.map((e) => join(st, p.path, e.name)) })
     set((s) => ({ toasts: s.toasts.filter((x) => x.id !== id) }))
-    toast('info', `${formatSize(r.bytes, get().prefs?.sizeFormat)}`, `${r.bytes.toLocaleString()} bytes · ${r.files} files · ${r.dirs} folders`, { timeout: 8000 })
+    toast('info', `${formatSize(r.bytes, get().prefs?.sizeFormat)}`, `${t('size.bytes', { n: r.bytes.toLocaleString() })} · ${t('size.files', { n: r.files })} · ${t('size.dirs', { n: r.dirs })}`, { timeout: 8000 })
     // show folder sizes in the list
     if (entries.length === 1 && entries[0].isDir) updatePane(tabId, side, (pp) => ({ entries: pp.entries.map((e) => (e.name === entries[0].name ? { ...e, size: r.bytes } : e)) }))
   } catch (e) {
@@ -597,7 +597,7 @@ export async function runCustomCommand(tabId: string, side: Side, cmd: CustomCom
   const re = /!\?([^?]*)\?([^!]*)!/g
   const prompts = [...template.matchAll(re)]
   for (const m of prompts) {
-    const v = await prompt({ title: cmd.name, label: m[1] || t('cmd.promptTitle'), value: m[2] })
+    const v = await prompt({ title: commandName(cmd), label: m[1] || t('cmd.promptTitle'), value: m[2] })
     if (v === undefined) return
     template = template.replace(m[0], v)
   }
@@ -624,7 +624,7 @@ export async function runCustomCommand(tabId: string, side: Side, cmd: CustomCom
   refreshPane(tabId, side, true)
   if (cmd.showOutput || code !== 0) {
     const { outputDialog } = await import('../components/dialogs/OutputDialog')
-    outputDialog(cmd.name, outputs.join('\n'), code)
+    outputDialog(commandName(cmd), outputs.join('\n'), code)
   }
 }
 

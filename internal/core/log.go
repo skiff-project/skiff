@@ -26,8 +26,10 @@ type Log struct {
 	debug bool
 }
 
-func newLog(conn string, bus *Bus, dir string, toFile bool, title string) *Log {
-	l := &Log{conn: conn, bus: bus, max: 5000}
+// newLog creates a session log. Server responses ("< ..." lines) are only
+// kept at the debug level; commands, information, warnings and errors always.
+func newLog(conn string, bus *Bus, dir string, toFile bool, title string, debug bool) *Log {
+	l := &Log{conn: conn, bus: bus, max: 5000, debug: debug}
 	if toFile && dir != "" {
 		os.MkdirAll(dir, 0o700)
 		name := fmt.Sprintf("%s_%s.log", time.Now().Format("20060102-150405"), sanitize(title))
@@ -48,6 +50,9 @@ func sanitize(s string) string {
 }
 
 func (l *Log) add(level, msg string) {
+	if level == "resp" && !l.debug {
+		return
+	}
 	if l == nil {
 		return
 	}

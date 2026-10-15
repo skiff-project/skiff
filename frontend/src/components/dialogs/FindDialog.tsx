@@ -4,7 +4,7 @@ import { Dialog } from '../ui/Dialog'
 import { openDialog } from '../../lib/dialogs'
 import { call } from '../../lib/api'
 import { errorToast, get, set, type Side } from '../../lib/store'
-import { setBottom } from '../../lib/actions'
+import { displayPath, setBottom } from '../../lib/actions'
 import { sessionTab } from '../../lib/fileops'
 import { t } from '../../lib/i18n'
 
@@ -12,7 +12,7 @@ export function openFindDialog(tabId: string, side: Side) {
   const tab = sessionTab(tabId)
   if (!tab) return
   const p = tab.panes[side]
-  openDialog((close) => <FindDialog conn={p.conn} dir={p.path} close={close} />)
+  openDialog((close) => <FindDialog conn={p.conn} dir={displayPath(p.conn, p.path)} close={close} />)
 }
 
 function FindDialog({ conn, dir, close }: { conn: string; dir: string; close: () => void }) {
@@ -65,7 +65,7 @@ function FindDialog({ conn, dir, close }: { conn: string; dir: string; close: ()
         <div className="field"><label>{t('find.in')}</label><input className="input mono" value={d} onChange={(e) => setD(e.target.value)} /></div>
         <div className="field">
           <label>{t('find.contains')}</label>
-          <input className="input" value={contains} onChange={(e) => setContains(e.target.value)} placeholder={caps?.exec ? 'grep on the server' : ''} />
+          <input className="input" value={contains} onChange={(e) => setContains(e.target.value)} placeholder={caps?.exec ? t('find.grepHint') : ''} />
         </div>
         <div className="field-row r3">
           <div className="field"><label>{t('find.minSize')}</label><input className="input tnum" type="number" value={minK} onChange={(e) => setMinK(e.target.value)} /></div>

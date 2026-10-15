@@ -45,9 +45,9 @@ function ChecksumDialog({ conn, path, close }: { conn: string; path: string; clo
         {err && <div className="alert danger">{err}</div>}
         {sum && <div className="code-block" style={{ cursor: 'copy' }} onClick={() => copyToClipboard(sum)}>{sum}</div>}
         <div className="field">
-          <label>Compare with</label>
-          <input className={`input mono${match === true ? ' ok-border' : match === false ? ' bad-border' : ''}`} value={verify} onChange={(e) => setVerify(e.target.value)} placeholder="paste the expected checksum" />
-          {match !== null && <span className={`hint ${match ? 'ok-text' : 'danger-text'}`}>{match ? '✓ match' : '✗ different'}</span>}
+          <label>{t('checksum.compare')}</label>
+          <input className={`input mono${match === true ? ' ok-border' : match === false ? ' bad-border' : ''}`} value={verify} onChange={(e) => setVerify(e.target.value)} placeholder={t('checksum.paste')} />
+          {match !== null && <span className={`hint ${match ? 'ok-text' : 'danger-text'}`}>{match ? `✓ ${t('checksum.match')}` : `✗ ${t('checksum.diff')}`}</span>}
         </div>
       </div>
     </Dialog>

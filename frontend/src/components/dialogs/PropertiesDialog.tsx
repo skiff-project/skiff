@@ -4,7 +4,7 @@ import { Dialog } from '../ui/Dialog'
 import { openDialog } from '../../lib/dialogs'
 import { call } from '../../lib/api'
 import { errorToast, get } from '../../lib/store'
-import { paneStyle } from '../../lib/actions'
+import { displayPath, paneStyle } from '../../lib/actions'
 import { t } from '../../lib/i18n'
 import type { Entry } from '../../lib/types'
 import { FileIcon, typeLabel } from '../../lib/fileicons'
@@ -127,7 +127,7 @@ function PropertiesDialog({ conn, dir, entries, close }: { conn: string; dir: st
       </div>
       <dl className="kv" style={{ margin: '14px 0' }}>
         <dt>{t('props.location')}</dt>
-        <dd className="mono selectable" style={{ cursor: 'copy' }} onClick={() => copyToClipboard(one ? paths[0] : dir)}>{one ? paths[0] : dir}</dd>
+        <dd className="mono selectable" style={{ cursor: 'copy' }} onClick={() => copyToClipboard(one ? paths[0] : dir)}>{displayPath(conn, one ? paths[0] : dir)}</dd>
         {one?.isLink && one.linkTarget && (
           <>
             <dt>{t('props.linkTarget')}</dt>
@@ -137,7 +137,7 @@ function PropertiesDialog({ conn, dir, entries, close }: { conn: string; dir: st
         <dt>{t('common.size')}</dt>
         <dd className="row">
           {size ? (
-            <span className="tnum">{formatSize(size.bytes)} <span className="faint">({size.bytes.toLocaleString()} B · {size.files} files · {size.dirs} folders)</span></span>
+            <span className="tnum">{formatSize(size.bytes)} <span className="faint">({size.bytes.toLocaleString()} B · {t('size.files', { n: size.files })} · {t('size.dirs', { n: size.dirs })})</span></span>
           ) : one && !one.isDir ? (
             <span className="tnum">{formatSize(one.size)} <span className="faint">({one.size.toLocaleString()} B)</span></span>
           ) : (

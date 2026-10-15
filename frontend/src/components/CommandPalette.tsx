@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowRightLeft, Copy, CornerDownLeft, File, FileSearch, Folder, FolderPlus, GitCompareArrows, KeyRound, Link2, Moon, Network, Plug, Plus,
-  RefreshCcwDot, ScrollText, Server, Settings, SquareTerminal, Trash2, Upload, Zap, Eye, Download,
+  RefreshCcwDot, ScrollText, Server, Settings, SquareTerminal, Trash2, Upload, Zap, Eye, Download, Lock,
 } from 'lucide-react'
 import { activeSession, get, set, useStore } from '../lib/store'
 import { activate, connectSite, connectUrl, loadDir, openTerminal, savePrefs, setBottom, toggleSyncBrowsing, attachTerminalTab, openWorkspace, saveWorkspace } from '../lib/actions'
 import { prompt } from './dialogs/common'
 import { compareDirs, copyOrMove, deleteSelected, mkdir, newFile, terminalHere, openEntry } from '../lib/fileops'
 import { t } from '../lib/i18n'
+import { call } from '../lib/api'
 import { openSyncDialog } from './dialogs/SyncDialog'
 import { openFindDialog } from './dialogs/FindDialog'
 import { openWatchDialog } from './dialogs/WatchDialog'
@@ -87,6 +88,7 @@ export function CommandPalette() {
     cmd('import', t('sites.import'), Upload, () => openImportDialog())
     cmd('wsave', t('ws.save'), Copy, async () => { const n = await prompt({ title: t('ws.title'), label: t('ws.name'), value: '' }); if (n) saveWorkspace(n) })
     cmd('keygen', t('prefs.generateKey'), KeyRound, () => openKeygen())
+    cmd('lock', t('prefs.lockNow'), Lock, () => call('security.lock'), undefined, !(get().info?.hasMaster && !get().info?.locked))
     cmd('prefs', t('prefs.title'), Settings, () => openPreferences(), 'Ctrl+,')
     cmd('theme', t('toolbar.theme'), Moon, () => savePrefs({ theme: document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark' }))
     cmd('queue', t('toolbar.queue'), ArrowRightLeft, () => setBottom(true, 'queue'), 'F12')

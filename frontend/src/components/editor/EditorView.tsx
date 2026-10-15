@@ -4,7 +4,7 @@ import { keymap } from '@codemirror/view'
 import { openSearchPanel, gotoLine } from '@codemirror/search'
 import { call } from '../../lib/api'
 import { errorToast, toast, updateTab, useStore, type EditorTab } from '../../lib/store'
-import { paneStyle } from '../../lib/actions'
+import { displayPath, paneStyle } from '../../lib/actions'
 import { editExternal } from '../../lib/fileops'
 import { t } from '../../lib/i18n'
 import type { FileContent } from '../../lib/types'
@@ -129,8 +129,8 @@ export function EditorView({ tab, visible }: { tab: EditorTab; visible: boolean 
     <div className="editor">
       <div className="editor-bar">
         <FileText className="faint" />
-        <span className="mono ellipsis editor-path" data-tip={tab.path}>{tab.path}</span>
-        {tab.readOnly && <span className="badge"><Lock /> read-only</span>}
+        <span className="mono ellipsis editor-path" data-tip={tab.path}>{displayPath(tab.conn, tab.path)}</span>
+        {tab.readOnly && <span className="badge"><Lock /> {t('editor.readOnly')}</span>}
         <div className="spacer" />
         {status === 'saving' && <span className="muted row" style={{ gap: 6 }}><span className="spinner" /> {t('editor.saving')}</span>}
         {status === 'saved' && <span className="ok-text row" style={{ gap: 4 }}><Check style={{ width: 14 }} /> {t('editor.saved')}</span>}
@@ -164,15 +164,15 @@ export function EditorView({ tab, visible }: { tab: EditorTab; visible: boolean 
       <div className="editor-status">
         <span>{t('editor.line', { line: pos.line, col: pos.col })}</span>
         <span className="faint">·</span>
-        <span>{languageName(name)}</span>
+        <span>{languageName(name) || t('editor.plainText')}</span>
         <div className="spacer" />
         {meta && (
           <>
-            <select className="mini-select" value={meta.encoding} onChange={(e) => { if (tab.dirty) setMeta({ ...meta, encoding: e.target.value }); else load(e.target.value) }} data-tip="Encoding">
+            <select className="mini-select" value={meta.encoding} onChange={(e) => { if (tab.dirty) setMeta({ ...meta, encoding: e.target.value }); else load(e.target.value) }} data-tip={t('editor.encoding')}>
               {ENCODINGS.map((e) => <option key={e} value={e}>{e.toUpperCase()}</option>)}
             </select>
             <label className="check" style={{ fontSize: 11 }}><input type="checkbox" checked={meta.bom} onChange={(e) => { setMeta({ ...meta, bom: e.target.checked }); updateTab<EditorTab>(tab.id, () => ({ dirty: true })) }} /> BOM</label>
-            <select className="mini-select" value={meta.eol} onChange={(e) => { setMeta({ ...meta, eol: e.target.value }); updateTab<EditorTab>(tab.id, () => ({ dirty: true })) }} data-tip="Line endings">
+            <select className="mini-select" value={meta.eol} onChange={(e) => { setMeta({ ...meta, eol: e.target.value }); updateTab<EditorTab>(tab.id, () => ({ dirty: true })) }} data-tip={t('editor.eol')}>
               {['LF', 'CRLF', 'CR'].map((x) => <option key={x} value={x}>{x}</option>)}
             </select>
             <span className="faint">{formatSize(meta.size)}</span>

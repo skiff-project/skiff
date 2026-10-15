@@ -5,7 +5,7 @@ import {
 } from './store'
 import type { AppInfo, ConnInfo, Entry, Job, Prefs, PromptEvent, SiteView, TabState } from './types'
 import { setLang, t } from './i18n'
-import { basename, dirname, join, normalize, rel as relPath } from './paths'
+import { basename, dirname, join, normalize, rel as relPath, tildify } from './paths'
 import { visibleEntries } from './listing'
 
 // ---------------------------------------------------------------------------
@@ -269,7 +269,7 @@ export async function closeTab(id: string, force = false): Promise<boolean> {
       const running = get().jobs.filter((j) => (j.src === tab.conn || j.dst === tab.conn) && ['queued', 'scanning', 'running', 'paused'].includes(j.status))
       if (running.length && get().prefs?.confirmExit && !force) {
         const { ask } = await import('../components/dialogs/common')
-        if (!(await ask({ title: t('tabs.closeTab'), message: `${running.length} transfer(s) are running on this connection. Close anyway?`, danger: true, ok: t('tabs.closeTab') }))) return false
+        if (!(await ask({ title: t('tabs.closeTab'), message: t('tabs.runningTransfers', { n: running.length }), danger: true, ok: t('tabs.closeTab') }))) return false
       }
       call('conn.close', { conn: tab.conn }).catch(() => {})
     }
@@ -523,6 +523,14 @@ export function duplicateSession(tabId: string) {
 const dirCache = new Map<string, Entry[]>()
 const cacheKey = (conn: string, path: string) => `${conn}\u0000${path}`
 const loadSeq: Record<string, number> = {}
+
+// displayPath shortens local paths inside the home folder to "~/…".
+export function displayPath(conn: string, p: string): string {
+  if (conn !== 'local') return p
+  const info = get().info
+  if (info?.localRoot) return p
+  return tildify(info?.localStyle ?? 'posix', p, info?.localHome)
+}
 
 export function paneStyle(conn: string) {
   if (conn === 'local') return get().info?.localStyle ?? 'posix'

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"golang.org/x/term"
 
@@ -19,7 +20,11 @@ func cmdKeygen(args []string) int {
 	out := fs.String("f", "", "output file (default ~/.ssh/id_<type>)")
 	ppk := fs.Bool("ppk", false, "write a PuTTY .ppk file instead of OpenSSH format")
 	noPass := fs.Bool("N", false, "no passphrase")
+	convert := fs.String("convert", "", "convert this existing private key (OpenSSH or PuTTY .ppk) instead of generating one")
 	fs.Parse(args)
+	if *convert != "" {
+		return convertKey(*convert, *out, *ppk, *noPass)
+	}
 	if *out == "" {
 		*out = "~/.ssh/id_" + *typ
 		if *ppk {
@@ -100,5 +105,48 @@ func cmdImport(args []string) int {
 		n++
 	}
 	fmt.Printf("%d site(s) imported.\n", n)
+	return 0
+}
+
+// convertKey re-encodes an existing private key in the OpenSSH or PuTTY
+// format ("skiff keygen -convert id_ed25519 -ppk").
+func convertKey(src, out string, ppk, noPass bool) int {
+	format := "openssh"
+	if ppk {
+		format = "ppk"
+	}
+	if out == "" {
+		if ppk {
+			out = src + ".ppk"
+		} else if strings.HasSuffix(strings.ToLower(src), ".ppk") {
+			out = src[:len(src)-4]
+		} else {
+			out = src + "_openssh"
+		}
+	}
+	pass, newPass := "", ""
+	if term.IsTerminal(int(os.Stdin.Fd())) {
+		fmt.Print("Current passphrase (empty for none): ")
+		p, _ := term.ReadPassword(int(os.Stdin.Fd()))
+		fmt.Println()
+		pass, newPass = string(p), string(p)
+		if !noPass {
+			fmt.Print("New passphrase (empty to keep the current one): ")
+			p, _ = term.ReadPassword(int(os.Stdin.Fd()))
+			fmt.Println()
+			if len(p) > 0 {
+				newPass = string(p)
+			}
+		}
+	}
+	if noPass {
+		newPass = ""
+	}
+	g, err := keys.Convert(keys.ConvertRequest{Path: src, Passphrase: pass, NewPassphrase: newPass, Format: format, SaveTo: out})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	fmt.Printf("Private key: %s\nFingerprint: %s\nPublic key:\n%s\n", g.Path, g.Fingerprint, g.Public)
 	return 0
 }

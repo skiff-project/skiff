@@ -4,7 +4,7 @@ import { Dialog } from '../ui/Dialog'
 import { openDialog } from '../../lib/dialogs'
 import { call } from '../../lib/api'
 import { errorToast, set, toast } from '../../lib/store'
-import { setBottom } from '../../lib/actions'
+import { displayPath, setBottom } from '../../lib/actions'
 import { sessionTab } from '../../lib/fileops'
 import { t } from '../../lib/i18n'
 import type { WatchInfo } from '../../lib/types'
@@ -18,7 +18,7 @@ export function openWatchDialog(tabId: string) {
     toast('warn', t('watch.title'), 'Show a local folder in one panel and a remote folder in the other.')
     return
   }
-  openDialog((close) => <WatchDialog localDir={local.path} conn={remote.conn} remoteDir={remote.path} close={close} />)
+  openDialog((close) => <WatchDialog localDir={displayPath('local', local.path)} conn={remote.conn} remoteDir={remote.path} close={close} />)
 }
 
 function WatchDialog({ localDir, conn, remoteDir, close }: { localDir: string; conn: string; remoteDir: string; close: () => void }) {

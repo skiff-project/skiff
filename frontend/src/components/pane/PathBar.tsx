@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, ArrowUp, ChevronDown, ChevronRight, Filter, HardDrive, History, Home, RotateCw, Server, Star, X } from 'lucide-react'
 import { get, updatePane, useStore, type PaneState, type Side } from '../../lib/store'
-import { goHistory, goHome, goUp, loadDir, navigate, paneStyle, refreshPane, savePrefs, setPaneConn } from '../../lib/actions'
+import { displayPath, goHistory, goHome, goUp, loadDir, navigate, paneStyle, refreshPane, savePrefs, setPaneConn } from '../../lib/actions'
 import { segments } from '../../lib/paths'
 import { showMenu, showMenuAt, type MenuItem } from '../ui/Menu'
 import { t } from '../../lib/i18n'
@@ -28,7 +28,7 @@ export function PathBar({ tabId, side, pane }: { tabId: string; side: Side; pane
   const style = paneStyle(pane.conn)
   const conn = conns[pane.conn]
 
-  useEffect(() => setValue(pane.path), [pane.path])
+  useEffect(() => setValue(displayPath(pane.conn, pane.path)), [pane.path])
   useEffect(() => {
     // keep the last crumb visible
     const el = crumbsRef.current
@@ -59,7 +59,7 @@ export function PathBar({ tabId, side, pane }: { tabId: string; side: Side; pane
   })
 
   const startEdit = () => {
-    setValue(pane.path)
+    setValue(displayPath(pane.conn, pane.path))
     setEditing(true)
     setTimeout(() => {
       inputRef.current?.focus()
@@ -83,11 +83,16 @@ export function PathBar({ tabId, side, pane }: { tabId: string; side: Side; pane
     const exists = bookmarks.some((b) => b.path === pane.path)
     const items: MenuItem[] = [
       {
-        label: exists ? 'Remove bookmark' : t('pane.addBookmark'), icon: <Star />, shortcut: 'Ctrl+D',
+        label: exists ? t('pane.removeBookmark') : t('pane.addBookmark'), icon: <Star />, shortcut: 'Ctrl+D',
         onClick: () => toggleBookmark(key, pane.path, side),
       },
       { separator: true },
-      ...(bookmarks.length ? bookmarks.map((b) => ({ label: b.name, icon: <Star fill="currentColor" />, shortcut: b.path.length > 30 ? '…' + b.path.slice(-28) : b.path, onClick: () => loadDir(tabId, side, b.path) })) : [{ label: t('pane.noBookmarks'), disabled: true }]),
+      ...(bookmarks.length
+        ? bookmarks.map((b) => {
+            const shown = displayPath(pane.conn, b.path)
+            return { label: b.name, icon: <Star fill="currentColor" />, shortcut: shown.length > 30 ? '…' + shown.slice(-28) : shown, onClick: () => loadDir(tabId, side, b.path) }
+          })
+        : [{ label: t('pane.noBookmarks'), disabled: true }]),
     ]
     showMenuAt(el, items, 'right')
   }
@@ -99,12 +104,19 @@ export function PathBar({ tabId, side, pane }: { tabId: string; side: Side; pane
       const p = pane.history[i]
       if (seen.has(p)) continue
       seen.add(p)
-      items.push({ label: p || '/', checked: i === pane.hIndex, onClick: () => loadDir(tabId, side, p) })
+      items.push({ label: displayPath(pane.conn, p) || '/', checked: i === pane.hIndex, onClick: () => loadDir(tabId, side, p) })
     }
     showMenuAt(el, items)
   }
 
-  const crumbs = segments(style, pane.path)
+  let crumbs = segments(style, pane.path)
+  let homeCrumb = false
+  const home = info?.localHome
+  if (pane.conn === 'local' && home && !info?.localRoot && displayPath('local', pane.path).startsWith('~')) {
+    const homeSegs = segments(style, home).length
+    crumbs = [{ name: '~', path: home }, ...crumbs.slice(homeSegs)]
+    homeCrumb = true
+  }
   const isBookmarked = bookmarks.some((b) => b.path === pane.path)
 
   return (
@@ -148,7 +160,7 @@ export function PathBar({ tabId, side, pane }: { tabId: string; side: Side; pane
                 onDragOver={(e) => e.preventDefault()}
                 data-dropzone
               >
-                {i === 0 && style !== 'windows' ? <span className="root-slash">/</span> : c.name}
+                {i === 0 && homeCrumb ? <Home className="crumb-home" /> : i === 0 && style !== 'windows' ? <span className="root-slash">/</span> : c.name}
               </button>
             </span>
           ))}

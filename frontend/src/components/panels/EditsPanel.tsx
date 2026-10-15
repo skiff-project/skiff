@@ -14,7 +14,7 @@ export function EditsPanel() {
         <tr>
           <th>{t('common.file')}</th>
           <th>{t('common.remote')}</th>
-          <th>Uploads</th>
+          <th>{t('edits.uploads')}</th>
           <th />
         </tr>
       </thead>

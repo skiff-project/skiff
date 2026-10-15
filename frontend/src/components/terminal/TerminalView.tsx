@@ -176,7 +176,7 @@ export function TerminalView({ tab, visible }: { tab: TerminalTab; visible: bool
         )}
         <button className="icon-btn sm" data-tip={t('common.search')} data-kbd="Ctrl+Shift+F" onClick={() => setFindOpen(!findOpen)}><Search /></button>
         <button className="icon-btn sm" data-tip={t('common.copy')} data-kbd="Ctrl+Shift+C" onClick={() => navigator.clipboard?.writeText(term.current?.getSelection() || '')}><Copy /></button>
-        <button className="icon-btn sm" data-tip="Paste" data-kbd="Ctrl+Shift+V" onClick={() => navigator.clipboard?.readText().then((txt) => term.current?.paste(txt))}><ClipboardPaste /></button>
+        <button className="icon-btn sm" data-tip={t('common.paste')} data-kbd="Ctrl+Shift+V" onClick={() => navigator.clipboard?.readText().then((txt) => term.current?.paste(txt))}><ClipboardPaste /></button>
         <button className="icon-btn sm" onClick={() => setFontSize((n) => Math.max(9, n - 1))}><Minus /></button>
         <button className="icon-btn sm" onClick={() => setFontSize((n) => Math.min(28, n + 1))}><Plus /></button>
         {exited && (

@@ -6,8 +6,9 @@ import { openDialog } from '../../lib/dialogs'
 import { call } from '../../lib/api'
 import { errorToast, toast, useStore } from '../../lib/store'
 import { t } from '../../lib/i18n'
-import type { GeneratedKey } from '../../lib/types'
+import type { GeneratedKey, KeyFile } from '../../lib/types'
 import { copyToClipboard } from '../../lib/fileops'
+import { displayPath } from '../../lib/actions'
 import { PasswordMeter } from './MasterPassword'
 
 export function openKeygen() {
@@ -23,7 +24,7 @@ function Keygen({ close }: { close: () => void }) {
   const [pass, setPass] = useState('')
   const [format, setFormat] = useState('openssh')
   const sep = info?.localStyle === 'windows' ? '\\' : '/'
-  const [saveTo, setSaveTo] = useState(`${info?.localHome}${sep}.ssh${sep}id_ed25519_skiff`)
+  const [saveTo, setSaveTo] = useState(displayPath('local', `${info?.localHome}${sep}.ssh${sep}id_ed25519_skiff`))
   const [res, setRes] = useState<GeneratedKey | null>(null)
   const [busy, setBusy] = useState(false)
   const [target, setTarget] = useState(conns[0]?.id || '')
@@ -69,7 +70,7 @@ function Keygen({ close }: { close: () => void }) {
           <div className="field">
             <label>{t('keygen.type')}</label>
             <div className="segmented">
-              {[['ed25519', 'Ed25519 (recommended)'], ['ecdsa', 'ECDSA'], ['rsa', 'RSA']].map(([v, l]) => (
+              {[['ed25519', `Ed25519 (${t('keygen.recommended')})`], ['ecdsa', 'ECDSA'], ['rsa', 'RSA']].map(([v, l]) => (
                 <button key={v} className={type === v ? 'on' : ''} onClick={() => {
                   setType(v)
                   setBits(v === 'rsa' ? 4096 : v === 'ecdsa' ? 256 : 0)
@@ -99,7 +100,7 @@ function Keygen({ close }: { close: () => void }) {
         </div>
       ) : (
         <div className="form">
-          <div className="alert info"><KeyRound /><span>{res.type} · <span className="mono">{res.fingerprint}</span>{res.path ? <> · <span className="mono">{res.path}</span></> : null}</span></div>
+          <div className="alert info"><KeyRound /><span>{res.type} · <span className="mono">{res.fingerprint}</span>{res.path ? <> · <span className="mono">{displayPath('local', res.path)}</span></> : null}</span></div>
           <div className="field">
             <label>{t('keygen.public')}</label>
             <div className="code-block" style={{ cursor: 'copy' }} onClick={() => copyToClipboard(res.public)}>{res.public}</div>
@@ -118,6 +119,48 @@ function Keygen({ close }: { close: () => void }) {
           )}
         </div>
       )}
+    </Dialog>
+  )
+}
+
+// openConvertKey converts an existing private key between the OpenSSH and
+// PuTTY (.ppk) formats, optionally changing its passphrase.
+export function openConvertKey(key: KeyFile) {
+  return openDialog((close) => <ConvertKey k={key} close={close} />)
+}
+
+function ConvertKey({ k, close }: { k: KeyFile; close: () => void }) {
+  const target = k.format === 'ppk' ? 'openssh' : 'ppk'
+  const [pass, setPass] = useState('')
+  const [newPass, setNewPass] = useState('')
+  const [saveTo, setSaveTo] = useState(displayPath('local', target === 'ppk' ? `${k.path}.ppk` : k.path.replace(/\.ppk$/i, '') + (k.path.toLowerCase().endsWith('.ppk') ? '' : '_openssh')))
+  const [busy, setBusy] = useState(false)
+  const run = async () => {
+    setBusy(true)
+    try {
+      const g = await call<GeneratedKey>('keys.convert', { path: k.path, passphrase: pass, newPassphrase: newPass, format: target, saveTo })
+      toast('ok', t('keygen.converted'), displayPath('local', g.path || saveTo))
+      close()
+    } catch (e) {
+      errorToast(t('keygen.convert'), e)
+      setBusy(false)
+    }
+  }
+  return (
+    <Dialog
+      size="md"
+      title={t('keygen.convert')}
+      icon={<KeyRound />}
+      onClose={close}
+      onSubmit={run}
+      footer={<><div className="spacer" /><button className="btn" onClick={close}>{t('common.cancel')}</button><button className="btn primary" disabled={busy || !saveTo} onClick={run}>{t('keygen.convert')}</button></>}
+    >
+      <div className="form">
+        <div className="alert info"><KeyRound /><span><span className="mono">{displayPath('local', k.path)}</span> · {k.type} · {k.format === 'ppk' ? 'PuTTY .ppk' : 'OpenSSH'} → {target === 'ppk' ? 'PuTTY .ppk (v3)' : 'OpenSSH'}</span></div>
+        {k.encrypted && <div className="field"><label>{t('keygen.currentPassphrase')}</label><input className="input" type="password" value={pass} onChange={(e) => setPass(e.target.value)} data-autofocus /></div>}
+        <div className="field"><label>{t('keygen.newPassphrase')}</label><input className="input" type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} />{newPass && <PasswordMeter pw={newPass} />}</div>
+        <div className="field"><label>{t('keygen.saveTo')}</label><input className="input mono" value={saveTo} onChange={(e) => setSaveTo(e.target.value)} /></div>
+      </div>
     </Dialog>
   )
 }

@@ -23,7 +23,7 @@ export function QueuePanel() {
   return (
     <div className="queue">
       <div className="queue-head">
-        <span className="muted">{jobs.length} job(s)</span>
+        <span className="muted">{t('queue.count', { n: jobs.length })}</span>
         <div className="spacer" />
         <button className="btn sm ghost" disabled={!finished} onClick={() => call('transfer.clear')}>
           <Trash2 /> {t('queue.clearDone')}

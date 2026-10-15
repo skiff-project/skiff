@@ -3,6 +3,7 @@ import { CircleAlert, FolderPlus, Square, Trash2, Upload, Zap } from 'lucide-rea
 import { useStore } from '../../lib/store'
 import { call } from '../../lib/api'
 import { t } from '../../lib/i18n'
+import { displayPath } from '../../lib/actions'
 
 export function WatchPanel() {
   const watches = useStore(useShallow((s) => Object.values(s.watches)))
@@ -23,7 +24,7 @@ export function WatchPanel() {
           <div className="watch-head">
             <span className="dot ok" />
             <div className="grow">
-              <div className="strong ellipsis mono">{w.req.localDir}</div>
+              <div className="strong ellipsis mono">{displayPath('local', w.req.localDir)}</div>
               <div className="faint ellipsis mono">→ {conns[w.req.remoteConn]?.title}:{w.req.remoteDir}</div>
             </div>
             <span className="badge ok"><Upload /> {w.uploads}</span>
@@ -35,7 +36,7 @@ export function WatchPanel() {
               <div key={i} className={`log-line ${ev.error ? 'error' : ''}`}>
                 <span className="log-t">{new Date(ev.time).toLocaleTimeString()}</span>
                 {ev.action === 'upload' ? <Upload className="ok-text" /> : ev.action === 'delete' ? <Trash2 className="danger-text" /> : ev.action === 'mkdir' ? <FolderPlus /> : ev.error ? <CircleAlert className="danger-text" /> : <Zap />}
-                <span className="log-m">{ev.path}{ev.error ? ` — ${ev.error}` : ''}</span>
+                <span className="log-m">{displayPath('local', ev.path)}{ev.error ? ` — ${ev.error}` : ''}</span>
               </div>
             ))}
           </div>

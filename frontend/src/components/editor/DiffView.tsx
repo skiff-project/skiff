@@ -3,7 +3,7 @@ import { AlertTriangle, ArrowLeftRight, Edit3, Save } from 'lucide-react'
 import { MergeView } from '@codemirror/merge'
 import { call } from '../../lib/api'
 import { errorToast, toast, useStore, type DiffTab } from '../../lib/store'
-import { openEditor } from '../../lib/actions'
+import { displayPath, openEditor } from '../../lib/actions'
 import { t } from '../../lib/i18n'
 import type { FileContent } from '../../lib/types'
 import { baseExtensions, EditorView, languageFor } from './cm'
@@ -72,14 +72,14 @@ export function DiffView({ tab }: { tab: DiffTab }) {
       <div className="diff-head">
         <div className="diff-side">
           <span className="badge">{title(tab.left.conn)}</span>
-          <span className="mono ellipsis">{tab.left.path}</span>
+          <span className="mono ellipsis">{displayPath(tab.left.conn, tab.left.path)}</span>
           <button className="icon-btn sm" onClick={() => openEditor(tab.left.conn, tab.left.path)}><Edit3 /></button>
         </div>
         <ArrowLeftRight className="faint" style={{ width: 16, flex: 'none' }} />
         <div className="diff-side">
           <span className="badge">{title(tab.right.conn)}</span>
-          <span className="mono ellipsis">{tab.right.path}</span>
-          <span className="faint">{stats.chunks} change(s)</span>
+          <span className="mono ellipsis">{displayPath(tab.right.conn, tab.right.path)}</span>
+          <span className="faint">{t('diff.changes', { n: stats.chunks })}</span>
           <button className="btn sm primary" disabled={!dirty} onClick={saveRight}><Save /> {t('common.save')}</button>
         </div>
       </div>

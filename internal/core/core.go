@@ -92,6 +92,7 @@ type Conn struct {
 	err      string
 	log      *Log
 	idle     []vfs.FS
+	forks    int // extra connections (channels) opened by acquire, in use or idle
 	gen      int
 	created  time.Time
 	info     []vfs.InfoItem
@@ -195,7 +196,7 @@ func (c *Core) Connect(ctx context.Context, siteID string, adhoc *config.Site, p
 	}
 	conn := &Conn{ID: randID(6), SiteID: siteID, Title: site.Title(), core: c, site: site, state: "connecting", created: time.Now()}
 	prefs := c.Store.Prefs()
-	conn.log = newLog(conn.ID, c.Bus, c.Store.LogDir(), prefs.Logging.ToFile, conn.Title)
+	conn.log = newLog(conn.ID, c.Bus, c.Store.LogDir(), prefs.Logging.ToFile, conn.Title, prefs.Logging.Level == "debug")
 	c.mu.Lock()
 	c.conns[conn.ID] = conn
 	c.mu.Unlock()
@@ -296,7 +297,7 @@ func (conn *Conn) Reconnect(ctx context.Context) error {
 	}
 	conn.reconnecting = true
 	old, oldTunnel, idle := conn.fs, conn.tunnel, conn.idle
-	conn.idle = nil
+	conn.idle, conn.forks = nil, 0
 	conn.state = "connecting"
 	conn.mu.Unlock()
 	defer func() {
@@ -334,7 +335,7 @@ func (conn *Conn) Close() {
 	c.edits.closeConn(conn.ID)
 	conn.mu.Lock()
 	fs, tunnel, idle := conn.fs, conn.tunnel, conn.idle
-	conn.fs, conn.idle, conn.state = nil, nil, "closed"
+	conn.fs, conn.idle, conn.forks, conn.state = nil, nil, 0, "closed"
 	conn.mu.Unlock()
 	for _, f := range idle {
 		if _, ok := f.(vfs.SharedFork); !ok {
@@ -414,6 +415,16 @@ func (c *Core) Acquire(ctx context.Context, id string) (vfs.FS, func(), error) {
 	return conn.acquire(ctx)
 }
 
+// Extra connections opened for parallel transfers. Over SSH each one is an
+// SFTP channel of the same connection, and OpenSSH allows 10 sessions per
+// connection (MaxSessions): stay well below so that terminals and commands
+// can always open their own channel. Past the limit, work shares the main
+// connection, which handles concurrent requests anyway.
+const (
+	maxForks     = 5
+	maxIdleForks = 2
+)
+
 func (conn *Conn) acquire(ctx context.Context) (vfs.FS, func(), error) {
 	main, err := conn.FS(ctx)
 	if err != nil {
@@ -427,13 +438,20 @@ func (conn *Conn) acquire(ctx context.Context) (vfs.FS, func(), error) {
 		conn.mu.Unlock()
 		return f, conn.releaser(f, gen), nil
 	}
-	conn.mu.Unlock()
 	fk, ok := main.(vfs.Forker)
-	if !ok {
+	if !ok || conn.forks >= maxForks {
+		conn.mu.Unlock()
 		return main, func() {}, nil
 	}
+	conn.forks++
+	conn.mu.Unlock()
 	f, err := fk.Fork(ctx)
 	if err != nil {
+		conn.mu.Lock()
+		if conn.gen == gen {
+			conn.forks--
+		}
+		conn.mu.Unlock()
 		// fall back to the main connection
 		conn.log.Warnf("Cannot open an extra connection: %v", err)
 		return main, func() {}, nil
@@ -449,14 +467,31 @@ func (conn *Conn) releaser(f vfs.FS, gen int) func() {
 				return
 			}
 			conn.mu.Lock()
-			if conn.gen == gen && conn.state == "connected" && len(conn.idle) < 8 {
+			if conn.gen == gen && conn.state == "connected" && len(conn.idle) < maxIdleForks {
 				conn.idle = append(conn.idle, f)
 				conn.mu.Unlock()
 				return
 			}
+			if conn.gen == gen {
+				conn.forks--
+			}
 			conn.mu.Unlock()
 			f.Close()
 		})
+	}
+}
+
+// closeIdle closes the idle extra connections, freeing server sessions.
+func (conn *Conn) closeIdle() {
+	conn.mu.Lock()
+	idle := conn.idle
+	conn.idle = nil
+	conn.forks -= len(idle)
+	conn.mu.Unlock()
+	for _, f := range idle {
+		if _, ok := f.(vfs.SharedFork); !ok {
+			f.Close()
+		}
 	}
 }
 
@@ -471,6 +506,9 @@ func (c *Core) Title(id string) string {
 }
 
 func (c *Core) Changed(conn, dir string) {
+	if (conn == LocalID || conn == "") && c.Local.Root == "" {
+		dir = localfs.ExpandHome(dir)
+	}
 	c.Bus.Publish("fs.changed", map[string]string{"conn": conn, "dir": dir})
 }
 

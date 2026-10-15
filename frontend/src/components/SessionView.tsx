@@ -54,7 +54,7 @@ export function SessionView({ tab, visible }: { tab: SessionTab; visible: boolea
       {lost && (
         <div className="lost-bar">
           <PlugZap />
-          <span><b>{t('conn.lost')}</b> — {conn.error || t('conn.lostHint')}</span>
+          <span><b>{t('conn.lost')}</b> — {!conn.error || /^connection lost$/i.test(conn.error) ? t('conn.lostHint') : conn.error}</span>
           <div className="spacer" />
           <button className="btn sm primary" onClick={() => reconnect(tab.conn)}><RefreshCw /> {t('tabs.reconnect')}</button>
         </div>

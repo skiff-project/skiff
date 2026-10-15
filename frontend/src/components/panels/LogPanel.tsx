@@ -54,7 +54,7 @@ export function LogPanel() {
           <Search />
           <input className="input sm" placeholder={t('common.search')} value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
-        <label className="check"><input type="checkbox" checked={follow} onChange={(e) => setFollow(e.target.checked)} /> Auto-scroll</label>
+        <label className="check"><input type="checkbox" checked={follow} onChange={(e) => setFollow(e.target.checked)} /> {t('log.autoScroll')}</label>
         <div className="spacer" />
         <button className="btn sm ghost" onClick={() => copyToClipboard(shown.map((l) => `${l.t} ${l.l} ${l.m}`).join('\n'))}><Copy /> {t('common.copy')}</button>
       </div>

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, ChevronRight, Folder, FolderOpen, HardDrive } from 'lucide-react'
+import { ChevronDown, ChevronRight, Folder, FolderOpen, HardDrive, Home } from 'lucide-react'
 import { call } from '../../lib/api'
 import { loadDir, paneStyle } from '../../lib/actions'
 import { useStore, type PaneState, type Side } from '../../lib/store'
-import { basename, join } from '../../lib/paths'
+import { basename, join, sep } from '../../lib/paths'
+import { t } from '../../lib/i18n'
 import { naturalCompare } from '../../lib/format'
 import type { Entry } from '../../lib/types'
 
@@ -19,12 +20,16 @@ interface Node {
 export function DirTree({ tabId, side, pane }: { tabId: string; side: Side; pane: PaneState }) {
   const showHidden = useStore((s) => !!s.prefs?.showHidden)
   const style = paneStyle(pane.conn)
-  const rootPath = style === 'windows' ? '' : '/'
-  const [nodes, setNodes] = useState<Record<string, Node>>({ [rootPath]: { path: rootPath, name: style === 'windows' ? 'This PC' : '/' } })
+  // local panes inside the home folder are rooted at "~", like the path bar
+  const home = useStore((s) => (pane.conn === 'local' && !s.info?.localRoot ? s.info?.localHome?.replace(/[\\/]+$/, '') : undefined))
+  const underHome = !!home && (pane.path === home || pane.path.startsWith(home + sep(style)))
+  const rootPath = underHome ? home! : style === 'windows' ? '' : '/'
+  const rootName = underHome ? '~' : style === 'windows' ? t('tree.thisPc') : '/'
+  const [nodes, setNodes] = useState<Record<string, Node>>({ [rootPath]: { path: rootPath, name: rootName } })
   const [open, setOpen] = useState<Record<string, boolean>>({ [rootPath]: true })
   const ref = useRef<HTMLDivElement>(null)
 
-  const nameOf = (p: string) => (p === rootPath ? (style === 'windows' ? 'This PC' : '/') : basename(style, p))
+  const nameOf = (p: string) => (p === rootPath ? rootName : basename(style, p))
   const load = async (p: string) => {
     setNodes((n) => ({ ...n, [p]: { ...(n[p] || { path: p, name: nameOf(p) }), loading: true } }))
     try {
@@ -48,14 +53,20 @@ export function DirTree({ tabId, side, pane }: { tabId: string; side: Side; pane
 
   // reset when the connection changes
   useEffect(() => {
-    setNodes({ [rootPath]: { path: rootPath, name: style === 'windows' ? 'This PC' : '/' } })
+    setNodes({ [rootPath]: { path: rootPath, name: rootName } })
     setOpen({ [rootPath]: true })
-  }, [pane.conn, showHidden])
+  }, [pane.conn, showHidden, rootPath])
 
   // expand the ancestors of the current folder
   useEffect(() => {
     const chain: string[] = [rootPath]
-    if (style === 'windows') {
+    if (underHome) {
+      let acc = rootPath
+      for (const part of pane.path.slice(rootPath.length).split(sep(style)).filter(Boolean)) {
+        acc = join(style, acc, part)
+        chain.push(acc)
+      }
+    } else if (style === 'windows') {
       const parts = pane.path.split('\\').filter(Boolean)
       let acc = ''
       parts.forEach((part, i) => {
@@ -102,7 +113,7 @@ export function DirTree({ tabId, side, pane }: { tabId: string; side: Side; pane
           >
             {n.children && n.children.length === 0 ? null : isOpen ? <ChevronDown /> : <ChevronRight />}
           </span>
-          {style === 'windows' && depth === 1 ? <HardDrive className="tree-ic drive" /> : isOpen ? <FolderOpen className="tree-ic" /> : <Folder className="tree-ic" />}
+          {depth === 0 && underHome ? <Home className="tree-ic" /> : style === 'windows' && depth === 1 && !underHome ? <HardDrive className="tree-ic drive" /> : isOpen ? <FolderOpen className="tree-ic" /> : <Folder className="tree-ic" />}
           <span className="ellipsis">{n.name}</span>
           {n.loading && <span className="spinner" style={{ width: 10, height: 10, borderWidth: 1.5 }} />}
         </div>

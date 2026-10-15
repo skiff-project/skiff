@@ -13,6 +13,7 @@ import (
 	"skiff/internal/mask"
 	"skiff/internal/transfer"
 	"skiff/internal/vfs"
+	"skiff/internal/vfs/localfs"
 )
 
 // SyncRequest mirrors WinSCP's "Synchronize" dialog.
@@ -72,6 +73,9 @@ func (c *Core) listAdjusted(ctx context.Context, f vfs.FS, conn, dir string) ([]
 func (c *Core) SyncCompare(ctx context.Context, r SyncRequest) (*SyncPlan, error) {
 	if r.LocalConn == "" {
 		r.LocalConn = LocalID
+	}
+	if r.LocalConn == LocalID && c.Local.Root == "" {
+		r.LocalDir = localfs.ExpandHome(r.LocalDir)
 	}
 	if r.Direction == "" {
 		r.Direction = "remote"

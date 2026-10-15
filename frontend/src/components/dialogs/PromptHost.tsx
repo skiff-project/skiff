@@ -6,6 +6,7 @@ import { Dialog } from '../ui/Dialog'
 import { t } from '../../lib/i18n'
 import type { PromptEvent } from '../../lib/types'
 import { formatDate, formatSize } from '../../lib/format'
+import { displayPath } from '../../lib/actions'
 
 // PromptHost shows server-side questions one at a time.
 export function PromptHost() {
@@ -61,7 +62,7 @@ function PromptDialog({ p }: { p: PromptEvent }) {
         <>
           <p style={{ marginTop: 0 }} className={changed ? 'danger-text' : ''}>{t(changed ? 'prompt.hostkey.changedMsg' : 'prompt.hostkey.unknownMsg', { host: (p.details?.host || '').replace(/:\d+$/, '') })}</p>
           <dl className="kv">
-            <dt>Host</dt>
+            <dt>{t('prompt.host')}</dt>
             <dd className="mono">{p.details?.host}</dd>
             <dt>{t('prompt.keyType')}</dt>
             <dd className="mono">{p.details?.keyType}</dd>
@@ -89,11 +90,11 @@ function PromptDialog({ p }: { p: PromptEvent }) {
         <>
           <div className="alert warn" style={{ marginBottom: 12 }}><AlertTriangle /><span>{p.details?.error || p.message}</span></div>
           <dl className="kv">
-            <dt>Host</dt><dd className="mono">{p.details?.host}</dd>
-            <dt>Subject</dt><dd>{p.details?.subject}</dd>
-            <dt>Issuer</dt><dd>{p.details?.issuer}</dd>
-            {p.details?.names && <><dt>Names</dt><dd>{p.details.names}</dd></>}
-            <dt>Valid</dt><dd>{p.details?.validFrom} → {p.details?.validTo}</dd>
+            <dt>{t('prompt.host')}</dt><dd className="mono">{p.details?.host}</dd>
+            <dt>{t('prompt.subject')}</dt><dd>{p.details?.subject}</dd>
+            <dt>{t('prompt.issuer')}</dt><dd>{p.details?.issuer}</dd>
+            {p.details?.names && <><dt>{t('prompt.names')}</dt><dd>{p.details.names}</dd></>}
+            <dt>{t('prompt.valid')}</dt><dd>{p.details?.validFrom} → {p.details?.validTo}</dd>
             <dt>SHA-256</dt><dd className="mono selectable" style={{ fontSize: 11 }}>{p.details?.sha256}</dd>
           </dl>
         </>
@@ -164,7 +165,7 @@ function PromptDialog({ p }: { p: PromptEvent }) {
       size = 'md'
       body = (
         <>
-          <p className="mono selectable" style={{ marginTop: 0 }}>{p.details?.file}</p>
+          <p className="mono selectable" style={{ marginTop: 0 }}>{p.details?.conn ? displayPath(p.details.conn, p.details.file || '') : p.details?.file}</p>
           <div className="alert danger"><AlertTriangle /><span className="selectable">{p.message}</span></div>
         </>
       )
