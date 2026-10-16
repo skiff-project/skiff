@@ -109,7 +109,7 @@ Options de `get` et `put` :
 
 | Commande | Description |
 |---|---|
-| `synchronize local\|remote\|both [options] [dossier local] [dossier distant]` (`sync`) | Synchronise comme la [boîte de synchronisation](07-synchronisation.md). Options : `-delete`, `-mirror`, `-criteria=time\|size\|either\|checksum\|none`, `-filemask=…`, `-transfer=…`, `-preview` (affiche les actions sans les exécuter) |
+| `synchronize local\|remote\|both [options] [dossier local] [dossier distant]` (`sync`) | Synchronise comme la [boîte de synchronisation](07-synchronisation.md) ; un dossier de destination absent est créé. Options : `-delete`, `-mirror`, `-criteria=time\|size\|either\|checksum\|none`, `-filemask=…`, `-transfer=…`, `-preview` (affiche les actions sans les exécuter) |
 | `keepuptodate [-delete] [-filemask=…] [dossier local] [dossier distant]` | Surveille le dossier local et envoie les changements jusqu'à `Ctrl+C` |
 
 ### Divers
@@ -155,7 +155,7 @@ exit
 skiff shell sftp://alex@serveur.example.com
 ```
 
-Une console où l'on tape les commandes de script une à une. L'invite affiche la session et le dossier courants (`Serveur:/var/www> `). Les questions (clé d'hôte, mot de passe, écrasement) sont posées dans le terminal. `help` liste les commandes, `exit` ou `Ctrl+D` quitte.
+Une console où l'on tape les commandes de script une à une. L'invite affiche la session et le dossier courants (`skiff@serveur:/var/www> `). Dans un terminal, les questions (clé d'hôte, mot de passe, écrasement) sont posées avec des choix numérotés (`1) Accept  2) Connect once  3) Cancel`). Si l'entrée de la console est redirigée (un fichier, un tube), elle se comporte comme un script : une clé d'hôte inconnue est refusée, d'où l'option `-hostkey=`. `help` liste les commandes, `exit` ou `Ctrl+D` quitte.
 
 ## 13.5 Compatibilité `winscp.com`
 

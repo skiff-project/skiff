@@ -73,7 +73,9 @@ La barre de navigation du panneau contient, de gauche à droite :
 | Horloge | **Dossiers récents** ([§ 4.6](#46-dossiers-récents)) |
 | Flèche circulaire | **Actualiser** (`Ctrl+R`, `Ctrl+F5`) |
 
-La séparation entre les deux panneaux se déplace à la souris. `Ctrl+O` ouvre la boîte **Ouvrir un dossier**. Dans la saisie d'un chemin, `~` désigne votre dossier personnel et les chemins relatifs partent du dossier courant.
+La séparation entre les deux panneaux se déplace à la souris. `Ctrl+O` ouvre la boîte **Ouvrir un dossier**.
+
+Le panneau local se met à jour tout seul quand le contenu du dossier affiché change en dehors de Skiff (fichier téléchargé par le navigateur, enregistré par une autre application…). Les panneaux distants sont actualisés après chaque opération faite par Skiff ; pour voir les changements faits par d'autres sur le serveur, utilisez **Actualiser** (`Ctrl+R`). Dans la saisie d'un chemin, `~` désigne votre dossier personnel et les chemins relatifs partent du dossier courant.
 
 ### La liste des fichiers
 
@@ -106,7 +108,7 @@ La séparation entre les deux panneaux se déplace à la souris. `Ctrl+O` ouvre 
 | `Maj+clic`, `Maj+↑/↓` | Sélectionne une plage |
 | `Espace`, `Inser` | Sélectionne ou désélectionne l'élément courant (`Inser` passe au suivant) |
 | `Ctrl+A` / `Ctrl+Maj+A` | Tout sélectionner / tout désélectionner |
-| `Num +` | **Sélectionner des fichiers** par masque (`*.html`, `*.jpg; *.png`, `rapport-202?.*`, `*>1M`) |
+| `Num +` | **Sélectionner des fichiers** par masque (`*.html`, `*.jpg; *.png`, `rapport-202?.*`, `*>1M`). Les dossiers ne sont sélectionnés que si leur nom correspond (`*` les sélectionne tous). |
 | `Num −` | **Désélectionner des fichiers** par masque |
 | `Num *` | **Inverser la sélection** |
 
@@ -164,8 +166,8 @@ La barre de statut indique combien d'éléments sont filtrés. `Échap` ou la cr
 
 | Type | Aperçu |
 |---|---|
-| Images (PNG, JPEG, GIF, WebP, SVG, AVIF…) | Image |
-| Vidéo, audio | Lecteur intégré |
+| Images (PNG, JPEG, GIF, BMP, WebP, ICO, AVIF) | Image. Les SVG ne sont pas prévisualisés : ils peuvent contenir du code actif, que Skiff n'exécute jamais. |
+| Vidéo (MP4, WebM, MOV, M4V, OGV), audio (MP3, WAV, OGG, FLAC, M4A, AAC, Opus) | Lecteur intégré |
 | PDF | Visionneuse |
 | Markdown | Rendu mis en forme |
 | Texte et code | Les 20 000 premiers caractères |

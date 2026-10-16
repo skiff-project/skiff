@@ -19,7 +19,7 @@
 | **Fichiers existants seulement** | Met à jour les fichiers présents des deux côtés, sans en créer de nouveaux |
 | **Exclure les fichiers cachés** | Ignore les fichiers et dossiers commençant par un point |
 
-**Comparer** lance l'analyse. Dans les deux sens, deux fichiers différents ayant la même date sont signalés comme conflit au lieu d'être transférés.
+**Comparer** lance l'analyse. Si le dossier de destination n'existe pas encore, il est considéré comme vide et sera créé : c'est le cas d'une première synchronisation vers un nouveau dossier. Dans les deux sens, deux fichiers différents ayant la même date sont signalés comme conflit au lieu d'être transférés.
 
 ## 7.2 Vérifier les changements
 

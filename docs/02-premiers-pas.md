@@ -53,7 +53,7 @@ Le chemin éventuel devient le dossier distant d'ouverture. Le détail des URL a
 | Bouton | Effet |
 |---|---|
 | **Accepter** | Se connecte et enregistre la clé dans le `known_hosts` de Skiff. Les connexions suivantes ne demandent plus rien. |
-| **Se connecter une fois** | Se connecte sans enregistrer la clé. La question reviendra la prochaine fois. |
+| **Se connecter une fois** | Se connecte sans enregistrer la clé sur le disque. La clé reste acceptée jusqu'à la fermeture de Skiff (reconnexions comprises) ; la question reviendra au prochain démarrage. |
 | **Annuler** | Abandonne la connexion |
 
 Comparez l'empreinte SHA-256 avec celle que donne l'administrateur du serveur (`ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`). Si la clé change plus tard, Skiff affiche une alerte rouge (voir [Sécurité](11-securite.md#111-clés-dhôte-ssh)).

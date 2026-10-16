@@ -9,7 +9,7 @@ Pour les sessions SFTP et SCP, **Terminal** (`Ctrl+T`) ouvre un terminal SSH com
 ![Terminal SSH intégré](images/terminal-ssh.png)
 
 - Émulation xterm complète (xterm.js) : couleurs, 256 couleurs et vraies couleurs, souris, applications plein écran (`vim`, `htop`, `mc`, `tmux`…), redimensionnement automatique.
-- Barre d'outils : **Rechercher** dans le défilement (`Ctrl+Maj+F`), **Copier** la sélection (`Ctrl+Maj+C`), **Coller** (`Ctrl+Maj+V`).
+- Barre d'outils : **Rechercher** dans le défilement (`Ctrl+Maj+F`), **Copier** la sélection (`Ctrl+Maj+C`), **Coller** (`Ctrl+Maj+V`), **Réduire la police** et **Agrandir la police** (de 9 à 28 px, pour ce terminal).
 - Option **Copier à la sélection** (Préférences → Terminal) : sélectionner du texte le copie.
 - Le terminal continue de tourner quand vous changez d'onglet. Quand l'interface se recharge (par exemple en mode web), les 256 derniers Kio affichés sont restitués.
 - Quand le shell se termine, le terminal affiche « La session est terminée » et un bouton **Rouvrir**.

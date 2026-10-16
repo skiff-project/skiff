@@ -9,7 +9,7 @@ Chaque serveur SSH possède une clé d'hôte qui prouve son identité. Skiff la 
 - Les clés acceptées sont enregistrées dans le fichier `known_hosts` de Skiff (dossier de configuration, format OpenSSH).
 - Le `~/.ssh/known_hosts` d'OpenSSH est aussi consulté, en lecture seule : un serveur déjà connu d'OpenSSH ne déclenche aucune question.
 
-**Serveur inconnu** : à la première connexion, Skiff affiche l'hôte, le type de clé et les empreintes SHA-256 et MD5, et propose **Accepter** (enregistre la clé), **Se connecter une fois** ou **Annuler** :
+**Serveur inconnu** : à la première connexion, Skiff affiche l'hôte, le type de clé et les empreintes SHA-256 et MD5, et propose **Accepter** (enregistre la clé), **Se connecter une fois** (la clé est acceptée jusqu'à la fermeture de Skiff, sans être enregistrée) ou **Annuler** :
 
 ![Clé d'hôte inconnue](images/connexion-cle-hote.png)
 

@@ -247,9 +247,10 @@ L'interface communique avec le cœur Go par HTTP et WebSocket. C'est la même in
 ## Développement et tests
 
 ```bash
-./build.sh dev   # recompile l'interface à la volée, Skiff sur http://127.0.0.1:8484/?token=dev
-./build.sh test  # go vet, tests unitaires, typecheck TypeScript
-./build.sh itest # lance les serveurs Docker et teste SFTP, SCP, FTP, FTPS, WebDAV et S3 de bout en bout
+./build.sh dev    # recompile l'interface à la volée, Skiff sur http://127.0.0.1:8484/?token=dev
+./build.sh test   # go vet, tests unitaires, typecheck TypeScript, traductions
+./build.sh itest  # tests de bout en bout : chaque méthode de l'API, mode web, ligne de commande et scripts
+./build.sh uitest # tests de bout en bout de l'interface dans un navigateur (Playwright)
 ```
 
 Serveurs de test (`testenv/docker-compose.yml`) : SSH `127.0.0.1:2222`, FTP `127.0.0.1:2121` (TLS explicite), WebDAV `http://127.0.0.1:8080`, S3 `http://127.0.0.1:9000` (`skiffadmin` / `skiffsecret`). Identifiants : `skiff` / `skiff`.

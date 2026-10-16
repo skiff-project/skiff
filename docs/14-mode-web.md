@@ -24,7 +24,7 @@ WEBPW=… skiff serve --password-env WEBPW --user alex    # mot de passe fourni 
 | `--tls-cert`, `--tls-key` | | Certificat et clé PEM. Sans eux, Skiff crée un certificat auto-signé (`web-cert.pem`) et affiche son empreinte SHA-256 au démarrage. |
 | `--no-tls` | | HTTP sans chiffrement, à réserver à une écoute locale derrière un reverse proxy HTTPS. Un avertissement s'affiche si l'adresse est publique. |
 | `--root dossier` | | Limite le panneau **Local** à ce dossier |
-| `--allow-local-terminal` | | Autorise les terminaux sur la machine qui exécute Skiff |
+| `--allow-local-terminal` | | Autorise les terminaux sur la machine qui exécute Skiff (sans effet avec `--root`) |
 
 Au premier lancement, si aucun mot de passe n'est enregistré, Skiff le demande dans le terminal.
 
@@ -57,7 +57,7 @@ La session du navigateur dure sept jours. Les sites, préférences, mots de pass
 | Récupérer un fichier sur votre ordinateur | **Enregistrer sur l'ordinateur** (menu contextuel, aperçu) : téléchargement par le navigateur |
 | **Ouvrir avec l'application par défaut** | Remplacé par un téléchargement, ou l'aperçu pour les images, vidéos et PDF |
 | Éditeur externe, **Afficher dans le gestionnaire de fichiers** | Indisponibles |
-| Terminal local | Désactivé, sauf avec `--allow-local-terminal` |
+| Terminal local | Désactivé, sauf avec `--allow-local-terminal`. Jamais disponible avec `--root` : un shell ne peut pas être confiné à un dossier. |
 | Commandes locales (commandes personnalisées marquées **Commande locale**) | Désactivées |
 | Import depuis un fichier | Collez le contenu du fichier ou envoyez-le par le navigateur (seul `~/.ssh/config` du serveur est lu directement) |
 | Conversion de clés | Indisponible |

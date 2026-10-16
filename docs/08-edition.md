@@ -47,7 +47,7 @@ Fermer un onglet modifié propose **Enregistrer**, **Ne pas enregistrer** ou **A
 
 ## 8.2 Conflits à l'enregistrement
 
-Skiff mémorise la date du fichier à l'ouverture. Si quelqu'un d'autre l'a modifié sur le serveur entre-temps, l'enregistrement est bloqué et un bandeau l'indique :
+Skiff mémorise la date et la taille du fichier à l'ouverture (et après chaque enregistrement). Si quelqu'un d'autre l'a modifié sur le serveur entre-temps, l'enregistrement est bloqué et un bandeau l'indique :
 
 ![Conflit : le fichier a été modifié sur le serveur](images/editeur-conflit.png)
 
