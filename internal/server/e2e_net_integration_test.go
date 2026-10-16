@@ -499,12 +499,25 @@ func testKeys(t *testing.T, e *e2e) {
 	if formats["id_e2e"].Format != "openssh" || formats["id_rsa_e2e.ppk"].Format != "ppk" || !formats["id_rsa_e2e.ppk"].Encrypted || formats["id_e2e"].Fingerprint != ed.Fingerprint {
 		t.Errorf("keys.list = %+v", list)
 	}
+	// the listed public keys, even of an encrypted key: what the install
+	// dialog offers
+	sameKey := func(a, b string) bool { f, g := strings.Fields(a), strings.Fields(b); return len(f) > 1 && len(g) > 1 && f[0] == g[0] && f[1] == g[1] }
+	if !sameKey(formats["id_e2e"].PublicKey, ed.Public) || !strings.HasSuffix(formats["id_e2e"].PublicKey, " e2e@test") {
+		t.Errorf("public key of id_e2e %q, want %q", formats["id_e2e"].PublicKey, ed.Public)
+	}
+	if !sameKey(formats["id_rsa_e2e.ppk"].PublicKey, rsa.Public) {
+		t.Errorf("public key of the encrypted .ppk %q, want %q", formats["id_rsa_e2e.ppk"].PublicKey, rsa.Public)
+	}
 	// install the public keys, then log in with the keys only
 	var where string
 	e.must(t, "keys.install", map[string]string{"conn": ci.ID, "publicKey": ed.Public}, &where)
-	e.must(t, "keys.install", map[string]string{"conn": ci.ID, "publicKey": rsa.Public}, &where)
+	e.must(t, "keys.install", map[string]string{"conn": ci.ID, "publicKey": formats["id_rsa_e2e.ppk"].PublicKey}, &where)
+	e.must(t, "keys.install", map[string]string{"conn": ci.ID, "publicKey": formats["id_e2e"].PublicKey}, &where) // already there
 	if !strings.HasSuffix(where, ".ssh/authorized_keys") {
 		t.Errorf("installed in %s", where)
+	}
+	if n := strings.Count(e.readText(t, ci.ID, where), strings.Fields(ed.Public)[1]); n != 1 {
+		t.Errorf("the key is %d times in authorized_keys", n)
 	}
 	keyOnly := func(keyFile, passphrase string) config.Site {
 		s := testSite("sftp")

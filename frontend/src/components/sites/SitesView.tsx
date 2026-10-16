@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ChevronDown, ChevronRight, Clock, Copy, Download, Edit3, Folder, FolderOpen, FolderPlus, Import, KeyRound, Link2, Lock, MoreHorizontal,
-  Plug, Plus, Search, Server, SquareTerminal, Trash2, Upload, Zap, Code2, LayoutGrid, Save, FileCog, Box, CalendarClock,
+  Plug, Plus, Search, Server, SquareTerminal, Trash2, Upload, Zap, Code2, LayoutGrid, Save, FileCog, Box, CalendarClock, ServerCog,
 } from 'lucide-react'
 import { get, useStore } from '../../lib/store'
 import { openTasks, connectSite, connectSshHost, connectUrl, openTerminal, reloadSites, reloadSshConfig, saveWorkspace, openWorkspace, deleteWorkspace } from '../../lib/actions'
@@ -16,7 +16,7 @@ import { SiteEditor, newSiteDraft } from './SiteEditor'
 import { showMenu, showMenuAt, type MenuItem } from '../ui/Menu'
 import { ask, prompt } from '../dialogs/common'
 import { openImportDialog, openExportDialog } from '../dialogs/ImportDialog'
-import { openKeygen } from '../dialogs/KeygenDialog'
+import { openInstallKey, openKeygen } from '../dialogs/KeygenDialog'
 import { unlockDialog } from '../dialogs/MasterPassword'
 import { copyToClipboard } from '../../lib/fileops'
 import { errorToast } from '../../lib/store'
@@ -286,6 +286,7 @@ export function SitesView() {
             { label: t('ws.save'), icon: <Save />, onClick: async () => { const n = await prompt({ title: t('ws.title'), label: t('ws.name'), value: '' }); if (n) saveWorkspace(n) } },
             { separator: true },
             { label: t('prefs.generateKey'), icon: <KeyRound />, onClick: () => openKeygen() },
+            { label: t('keys.installTitle') + '…', icon: <ServerCog />, onClick: () => openInstallKey() },
           ], 'right')}><MoreHorizontal /></button>
         </div>
         <div

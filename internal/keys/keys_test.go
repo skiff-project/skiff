@@ -2,6 +2,9 @@ package keys
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/kayrus/putty"
@@ -51,4 +54,57 @@ func mustPub(t *testing.T, s string) ssh.PublicKey {
 		t.Fatal(err)
 	}
 	return k
+}
+
+// List gives the public key of each key, without its passphrase.
+func TestListPublicKeys(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	dir := home + "/.ssh"
+	gen := func(name, pass, format string, keepPub bool) Generated {
+		g, err := Generate(GenerateRequest{Type: "ed25519", Comment: "moi@pc", Passphrase: pass, Format: format, SaveTo: dir + "/" + name})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !keepPub {
+			if err := os.Remove(dir + "/" + strings.TrimSuffix(name, ".ppk") + ".pub"); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return g
+	}
+	want := map[string]struct {
+		g       Generated
+		comment bool
+	}{
+		"with_pub":       {gen("with_pub", "secret", "openssh", true), true},
+		"encrypted_only": {gen("encrypted_only", "secret", "openssh", false), false},
+		"plain_only":     {gen("plain_only", "", "openssh", false), false},
+		"putty.ppk":      {gen("putty.ppk", "secret", "ppk", false), true},
+	}
+	list := List()
+	if len(list) != len(want) {
+		t.Fatalf("%d keys listed: %+v", len(list), list)
+	}
+	for _, k := range list {
+		w, ok := want[filepath.Base(k.Path)]
+		if !ok {
+			t.Fatalf("unexpected %s", k.Path)
+		}
+		if k.PublicKey == "" {
+			t.Errorf("%s: no public key", k.Path)
+			continue
+		}
+		pk := mustPub(t, k.PublicKey)
+		if !bytes.Equal(pk.Marshal(), mustPub(t, w.g.Public).Marshal()) {
+			t.Errorf("%s: public key %q, want %q", k.Path, k.PublicKey, w.g.Public)
+		}
+		if w.comment != strings.HasSuffix(k.PublicKey, " moi@pc") {
+			t.Errorf("%s: comment in %q", k.Path, k.PublicKey)
+		}
+		if k.Fingerprint != w.g.Fingerprint {
+			t.Errorf("%s: fingerprint %s, want %s", k.Path, k.Fingerprint, w.g.Fingerprint)
+		}
+	}
 }

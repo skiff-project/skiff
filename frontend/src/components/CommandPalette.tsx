@@ -15,7 +15,7 @@ import { openWatchDialog } from './dialogs/WatchDialog'
 import { openPreferences } from './dialogs/Preferences'
 import { openContainers } from './dialogs/ContainersDialog'
 import { openImportDialog } from './dialogs/ImportDialog'
-import { openKeygen } from './dialogs/KeygenDialog'
+import { openInstallKey, openKeygen } from './dialogs/KeygenDialog'
 import { openTunnelDialog } from './dialogs/TunnelDialog'
 import { FileIcon } from '../lib/fileicons'
 import { visibleEntries } from '../lib/listing'
@@ -89,6 +89,7 @@ export function CommandPalette() {
     cmd('import', t('sites.import'), Upload, () => openImportDialog())
     cmd('wsave', t('ws.save'), Copy, async () => { const n = await prompt({ title: t('ws.title'), label: t('ws.name'), value: '' }); if (n) saveWorkspace(n) })
     cmd('keygen', t('prefs.generateKey'), KeyRound, () => openKeygen())
+    cmd('installkey', t('keys.installTitle'), KeyRound, () => openInstallKey({ conn: s?.conn }))
     cmd('lock', t('prefs.lockNow'), Lock, () => call('security.lock'), undefined, !(get().info?.hasMaster && !get().info?.locked))
     cmd('prefs', t('prefs.title'), Settings, () => openPreferences(), 'Ctrl+,')
     cmd('theme', t('toolbar.theme'), Moon, () => savePrefs({ theme: document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark' }))

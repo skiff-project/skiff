@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   ArrowDownUp, Check, CheckSquare, Code2, FileCog, Fingerprint, Info, KeyRound, Keyboard, LayoutPanelLeft, ListOrdered, Palette, Plus, ScrollText,
-  Lock, Settings, Shield, SquareTerminal, Trash2, Wand2, KeySquare, Copy, Pencil, Laptop, RefreshCw,
+  Lock, Settings, Shield, SquareTerminal, Trash2, Wand2, KeySquare, Copy, Pencil, Laptop, RefreshCw, ServerCog,
 } from 'lucide-react'
 import { Dialog } from '../ui/Dialog'
 import { openDialog } from '../../lib/dialogs'
@@ -15,7 +15,7 @@ import { formatDate, formatSize } from '../../lib/format'
 import { masterPasswordDialog, PasswordMeter } from './MasterPassword'
 import { loadShells } from '../../lib/actions'
 import { devSyncSummary } from '../../lib/summaries'
-import { openConvertKey, openKeygen } from './KeygenDialog'
+import { openConvertKey, openInstallKey, openKeygen } from './KeygenDialog'
 import { openKeychainAdd } from './KeychainDialog'
 import { copyToClipboard } from '../../lib/fileops'
 import { ask, prompt } from './common'
@@ -351,9 +351,10 @@ function SecuritySection() {
                 <tr key={k.id}>
                   <td><KeySquare style={{ width: 14 }} /> <span className="strong">{k.name}</span></td>
                   <td className="muted" style={{ whiteSpace: 'nowrap' }}>{k.type}</td>
-                  <td className="mono faint" style={{ fontSize: 11 }}>{k.fingerprint}</td>
+                  <td className="mono faint" style={{ fontSize: 11 }}><span className="key-fp" title={k.fingerprint}>{k.fingerprint}</span></td>
                   <td style={{ whiteSpace: 'nowrap' }}>
                     <button className="icon-btn sm" data-tip={t('keychain.copyPublic')} onClick={() => copyToClipboard(k.publicKey)}><Copy /></button>
+                    <button className="icon-btn sm" data-tip={t('keys.installOn')} onClick={() => openInstallKey({ publicKey: k.publicKey })}><ServerCog /></button>
                     <button className="icon-btn sm" data-tip={t('common.rename')} onClick={async () => { const n = await prompt({ title: t('common.rename'), label: t('keychain.name'), value: k.name }); if (n) { await call('keychain.rename', { id: k.id, name: n }); load() } }}><Pencil /></button>
                     <button className="icon-btn sm" data-tip={t('common.delete')} onClick={async () => { if (await ask({ title: t('keychain.remove'), message: t('keychain.removeConfirm', { name: k.name }), danger: true, ok: t('common.delete') })) { await call('keychain.remove', { id: k.id }); load() } }}><Trash2 /></button>
                   </td>
@@ -371,11 +372,13 @@ function SecuritySection() {
             <tbody>
               {keys.map((k) => (
                 <tr key={k.path}>
-                  <td><KeyRound style={{ width: 14 }} /> <span className="mono">{displayPath('local', k.path)}</span></td>
+                  <td style={{ whiteSpace: 'nowrap' }}><KeyRound style={{ width: 14 }} /> <span className="mono">{displayPath('local', k.path)}</span></td>
                   <td className="muted" style={{ whiteSpace: 'nowrap' }}>{k.type}</td>
-                  <td className="mono faint" style={{ fontSize: 11 }}>{k.fingerprint}</td>
-                  <td>{k.encrypted ? <span className="badge">🔒</span> : ''} <span className="badge">{k.format}</span></td>
+                  <td className="mono faint" style={{ fontSize: 11 }}><span className="key-fp" title={k.fingerprint}>{k.fingerprint}</span></td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{k.encrypted ? <span className="badge">🔒</span> : ''} <span className="badge">{k.format}</span></td>
                   <td style={{ whiteSpace: 'nowrap' }}>
+                    {k.publicKey && <button className="icon-btn sm" data-tip={t('keychain.copyPublic')} onClick={() => copyToClipboard(k.publicKey!)}><Copy /></button>}
+                    {k.publicKey && <button className="icon-btn sm" data-tip={t('keys.installOn')} onClick={() => openInstallKey({ publicKey: k.publicKey })}><ServerCog /></button>}
                     {info.mode !== 'web' && <button className="btn sm ghost" onClick={() => openConvertKey(k).then(load)}>{t('keygen.convert')}</button>}
                     {info.mode !== 'web' && (inChain(k.fingerprint)
                       ? <span className="badge ok">{t('keychain.inChain')}</span>

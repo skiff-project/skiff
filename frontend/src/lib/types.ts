@@ -352,7 +352,7 @@ export interface Prefs {
 export interface ImportSource { id: string; name: string; path?: string; available: boolean; needsFile: boolean }
 export interface ImportItem { site: Site; password?: string; passphrase?: string; note?: string }
 
-export interface KeyFile { path: string; type: string; fingerprint: string; comment: string; encrypted: boolean; format: string }
+export interface KeyFile { path: string; type: string; fingerprint: string; comment: string; encrypted: boolean; format: string; publicKey?: string }
 export interface GeneratedKey { private: string; public: string; fingerprint: string; type: string; path?: string; format: string }
 export interface MonitorProc { pid: number; user: string; name: string; state: string; cpu: number; mem: number; threads: number }
 export interface MonitorSample {

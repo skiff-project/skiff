@@ -318,6 +318,18 @@ type KeyFile struct {
 	Comment     string `json:"comment"`
 	Encrypted   bool   `json:"encrypted"`
 	Format      string `json:"format"`
+	// PublicKey is the authorized_keys line, when it can be known without
+	// the passphrase (the .pub file, or the public part of the key file).
+	PublicKey string `json:"publicKey,omitempty"`
+}
+
+// authorizedLine is the authorized_keys line of a public key.
+func authorizedLine(pk ssh.PublicKey, comment string) string {
+	line := strings.TrimSpace(string(ssh.MarshalAuthorizedKey(pk)))
+	if comment = strings.TrimSpace(comment); comment != "" {
+		line += " " + comment
+	}
+	return line
 }
 
 // List finds private keys in ~/.ssh.
@@ -359,6 +371,7 @@ func List() []KeyFile {
 				}
 				if sp, err := ssh.NewPublicKey(pk); err == nil {
 					kf.Fingerprint = ssh.FingerprintSHA256(sp)
+					kf.PublicKey = authorizedLine(sp, k.Comment)
 				}
 			}
 		case bytes.Contains(data, []byte("PRIVATE KEY")):
@@ -366,6 +379,7 @@ func List() []KeyFile {
 			if pubData, err := os.ReadFile(p + ".pub"); err == nil {
 				if pk, c, _, _, err := ssh.ParseAuthorizedKey(pubData); err == nil {
 					kf.Type, kf.Fingerprint, kf.Comment = pk.Type(), ssh.FingerprintSHA256(pk), c
+					kf.PublicKey = authorizedLine(pk, c)
 				}
 			}
 			if _, err := ssh.ParseRawPrivateKey(data); err != nil {
@@ -374,11 +388,13 @@ func List() []KeyFile {
 					kf.Encrypted = true
 					if kf.Type == "" && pm.PublicKey != nil {
 						kf.Type, kf.Fingerprint = pm.PublicKey.Type(), ssh.FingerprintSHA256(pm.PublicKey)
+						kf.PublicKey = authorizedLine(pm.PublicKey, "")
 					}
 				}
 			} else if kf.Type == "" {
 				if s, err := ssh.ParsePrivateKey(data); err == nil {
 					kf.Type, kf.Fingerprint = s.PublicKey().Type(), ssh.FingerprintSHA256(s.PublicKey())
+					kf.PublicKey = authorizedLine(s.PublicKey(), "")
 				}
 			}
 		default:

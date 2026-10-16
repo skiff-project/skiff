@@ -555,3 +555,6 @@
 .tb-split .tb-btn:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; padding-right: 6px; }
 .tb-chevron { padding: 0 3px !important; border-top-left-radius: 0 !important; border-bottom-left-radius: 0 !important; }
 .tb-chevron svg { width: 13px !important; height: 13px !important; }
+
+/* key fingerprints in the security preferences: shortened, full on hover */
+.key-fp { display: inline-block; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }

@@ -989,6 +989,45 @@ step('trousseau Skiff et transfert d’agent', async () => {
   await until('forwarding saved', async () => (await rpc('sites.list')).sites.some((x) => x.name === 'Site des tâches' && x.forwardAgent))
 })
 
+step('installer une clé existante sur le serveur', async () => {
+  const c = await sftp()
+  const ak = `${c.home}/.ssh/authorized_keys`
+  const before = await rpc('fs.readText', { conn: c.id, path: ak }).then((r) => r.content).catch(() => null)
+  const body = (pub) => pub.split(' ')[1]
+  // an encrypted key without its .pub file: the public key comes from the key itself
+  const k = await rpc('keys.generate', { type: 'ed25519', comment: 'installe-ui', passphrase: 'phrase-ui', format: 'openssh', saveTo: join(HOME, '.ssh', 'id_installe_ui') })
+  rmSync(join(HOME, '.ssh', 'id_installe_ui.pub'))
+  try {
+    await page.keyboard.press('Control+,')
+    const d = dialog()
+    await d.locator('nav.vtabs').getByRole('button', { name: 'Sécurité', exact: true }).click()
+    await d.locator('tr', { hasText: 'id_installe_ui' }).locator('[data-tip="Installer sur un serveur…"]').click()
+    const inst = page.locator('.dialog').last()
+    await inst.getByText('Installer une clé publique', { exact: true }).waitFor()
+    assert.ok((await inst.locator('.code-block').innerText()).includes(body(k.public)), 'the public key of the chosen key')
+    await button(inst, 'Installer').click()
+    await until('key installed', async () => (await remoteText(ak)).includes(body(k.public)))
+    await until('install dialog closed', async () => (await page.locator('.dialog').count()) === 1)
+    await page.keyboard.press('Escape')
+    // a pasted key, from the palette of the session
+    const other = await rpc('keys.generate', { type: 'ed25519', comment: 'collee-ui', format: 'openssh' })
+    await page.keyboard.press('Control+k')
+    await page.locator('.palette input').fill('Installer une clé publique')
+    await page.keyboard.press('Enter')
+    const inst2 = page.locator('.dialog').last()
+    const field = (name) => inst2.locator('.field').filter({ has: page.locator('label', { hasText: new RegExp(`^${name}$`) }) })
+    await field('Clé').locator('select').selectOption('paste')
+    await inst2.locator('textarea').fill(other.public)
+    assert.equal(await field('Serveur').locator('select').inputValue(), c.id, 'the server of the session')
+    await button(inst2, 'Installer').click()
+    await until('pasted key installed', async () => (await remoteText(ak)).includes(body(other.public)))
+  } finally {
+    rmSync(join(HOME, '.ssh', 'id_installe_ui'), { force: true })
+    if (before === null) await rpc('fs.delete', { conn: c.id, paths: [ak] })
+    else await rpc('fs.writeText', { conn: c.id, path: ak, content: before, encoding: 'utf-8', eol: 'LF', force: true })
+  }
+})
+
 step('appareils : partager les réglages par un fichier chiffré', async () => {
   await page.keyboard.press('Control+,')
   const d = dialog()
