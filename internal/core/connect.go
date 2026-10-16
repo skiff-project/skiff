@@ -13,6 +13,7 @@ import (
 	"skiff/internal/config"
 	"skiff/internal/netx"
 	"skiff/internal/prompt"
+	"skiff/internal/sshconfig"
 	"skiff/internal/sshx"
 	"skiff/internal/vfs"
 	"skiff/internal/vfs/davfs"
@@ -30,6 +31,12 @@ type dialed struct {
 	// password typed interactively (to reuse for extra connections)
 	password string
 	remember bool
+	// forwards to start with the session (the site's, else ssh_config's)
+	forwards []config.Forward
+	// where an SSH site really leads once ssh_config is applied
+	host string
+	port int
+	user string
 }
 
 // rememberingPrompter records password prompts answered with "remember".
@@ -48,7 +55,13 @@ func (r *rememberingPrompter) Prompt(ctx context.Context, req prompt.Request) (p
 	return resp, err
 }
 
-func (c *Core) jumpTargets(site config.Site) ([]sshx.Target, error) {
+// jumpTargets lists the jump hosts of a site. A jump given by host name is
+// completed by the OpenSSH configuration of that host.
+func (c *Core) jumpTargets(site config.Site, depth int) ([]sshx.Target, error) {
+	var cfg *sshconfig.Config
+	if !site.IgnoreSSHConfig {
+		cfg = c.SSHConfig()
+	}
 	var out []sshx.Target
 	for _, j := range site.Jumps {
 		if j.SiteID != "" {
@@ -61,40 +74,31 @@ func (c *Core) jumpTargets(site config.Site) ([]sshx.Target, error) {
 				return nil, err
 			}
 			// a jump site may itself have jumps
-			sub, err := c.jumpTargets(r)
+			sub, err := c.resolveSSH(r, depth+1)
 			if err != nil {
 				return nil, err
 			}
-			out = append(out, sub...)
-			out = append(out, siteTarget(r))
+			out = append(out, sub.jumps...)
+			out = append(out, sub.target)
 			continue
 		}
-		t := sshx.Target{Host: j.Host, Port: j.Port, User: j.User, Password: j.Password, UseAgent: true, KbdInteractive: true, HostKey: j.HostKey}
+		port := j.Port
+		if port == 22 {
+			port = 0 // the editor's default: ssh_config may give another one
+		}
+		t := sshx.Target{Host: j.Host, Port: port, User: j.User, Password: j.Password, UseAgent: true, KbdInteractive: true, HostKey: j.HostKey}
 		if j.KeyFile != "" {
 			t.KeyFiles = []string{j.KeyFile}
-		} else {
-			t.KeyFiles = sshx.DefaultKeyFiles()
 		}
+		configKeys := false
+		if cfg != nil {
+			h := cfg.Resolve(j.Host, sshconfig.Query{User: j.User, Port: port})
+			configKeys = applyTarget(&t, h, j.KeyFile != "", map[string]string{})
+		}
+		finishTarget(&t, configKeys)
 		out = append(out, t)
 	}
 	return out, nil
-}
-
-func siteTarget(s config.Site) sshx.Target {
-	t := sshx.Target{
-		Host: s.Host, Port: s.EffectivePort(), User: s.User, Password: s.Password,
-		Passphrase: s.Passphrase, UseAgent: s.UseAgent, KbdInteractive: s.KbdInteractive, HostKey: s.HostKey,
-	}
-	if s.KeyFile != "" {
-		if strings.Contains(s.KeyFile, "PRIVATE KEY") || strings.HasPrefix(s.KeyFile, "PuTTY-User-Key-File") {
-			t.KeyPEM = s.KeyFile
-		} else {
-			t.KeyFiles = []string{s.KeyFile}
-		}
-	} else {
-		t.KeyFiles = sshx.DefaultKeyFiles()
-	}
-	return t
 }
 
 func proxyConfig(s config.Site) *netx.ProxyConfig {
@@ -105,24 +109,21 @@ func proxyConfig(s config.Site) *netx.ProxyConfig {
 	return &netx.ProxyConfig{Type: p.Type, Host: p.Host, Port: p.Port, User: p.User, Password: p.Password, Command: p.Command, RemoteDNS: p.RemoteDNS}
 }
 
-func (c *Core) sshOptions(site config.Site, pr prompt.Prompter, log *Log, jumps []sshx.Target) sshx.Options {
-	timeout := time.Duration(site.Timeout) * time.Second
-	if timeout <= 0 {
-		timeout = 15 * time.Second
-	}
+func (c *Core) sshOptions(s *sshSetup, site config.Site, pr prompt.Prompter, log *Log) sshx.Options {
 	return sshx.Options{
-		Target:       siteTarget(site),
-		Jumps:        jumps,
-		Dial:         netx.Options{Timeout: timeout, IPVersion: site.IPVersion, Proxy: proxyConfig(site)},
-		Keepalive:    time.Duration(site.Keepalive) * time.Second,
-		Ciphers:      site.Ciphers,
-		KeyExchanges: site.KeyExchanges,
-		MACs:         site.MACs,
-		HostKeyAlgos: site.HostKeyAlgos,
-		Legacy:       site.LegacyAlgos,
-		HostKeys:     c.HostKeys,
-		Prompter:     pr,
-		Logf:         log.Logf,
+		Target:         s.target,
+		Jumps:          s.jumps,
+		Dial:           netx.Options{Timeout: s.timeout, IPVersion: s.ipVersion, Proxy: s.proxy},
+		Keepalive:      s.keepalive,
+		KeepaliveCount: s.keepaliveCount,
+		Ciphers:        s.ciphers,
+		KeyExchanges:   s.kex,
+		MACs:           s.macs,
+		HostKeyAlgos:   s.hostKeyAlgos,
+		Legacy:         site.LegacyAlgos,
+		HostKeys:       c.HostKeys,
+		Prompter:       pr,
+		Logf:           log.Logf,
 		Banner: func(host, msg string) {
 			log.Logf("Banner from %s:\n%s", host, msg)
 			c.Bus.Publish("banner", map[string]string{"host": host, "message": msg})
@@ -164,10 +165,6 @@ func (c *Core) dial(ctx context.Context, site config.Site, pr prompt.Prompter, l
 	if rp != nil {
 		p = rp
 	}
-	jumps, err := c.jumpTargets(site)
-	if err != nil {
-		return nil, err
-	}
 	timeout := time.Duration(site.Timeout) * time.Second
 	if timeout <= 0 {
 		timeout = 15 * time.Second
@@ -182,7 +179,19 @@ func (c *Core) dial(ctx context.Context, site config.Site, pr prompt.Prompter, l
 
 	switch site.Protocol {
 	case config.ProtoSFTP, config.ProtoSCP:
-		opts := c.sshOptions(site, p, log, jumps)
+		setup, err := c.resolveSSH(site, 0)
+		if err != nil {
+			return nil, err
+		}
+		if len(setup.applied) > 0 {
+			log.Logf("OpenSSH configuration of %s: %s", site.Host, strings.Join(setup.applied, "; "))
+		}
+		for _, w := range setup.report.Warnings {
+			log.Warnf("OpenSSH configuration: %s", w)
+		}
+		d.forwards = setup.forwards
+		d.host, d.port, d.user = setup.target.Host, setup.target.Port, setup.target.User
+		opts := c.sshOptions(setup, site, p, log)
 		opts.OnPassword = func(host, pw string) {}
 		conn, err := sshx.Dial(ctx, opts)
 		if err != nil {
@@ -208,6 +217,10 @@ func (c *Core) dial(ctx context.Context, site config.Site, pr prompt.Prompter, l
 	}
 
 	// Non-SSH protocols: optional SSH tunnel through the jump chain.
+	jumps, err := c.jumpTargets(site, 0)
+	if err != nil {
+		return nil, err
+	}
 	var via netx.Dialer
 	if len(jumps) > 0 {
 		target := jumps[len(jumps)-1]

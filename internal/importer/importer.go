@@ -142,7 +142,7 @@ func Load(source, path string, data []byte) ([]Item, error) {
 			p = filepath.Join(home(), ".ssh", "config")
 		}
 		if b, err = read(p); err == nil {
-			items, err = parseSSHConfig(b, filepath.Dir(p))
+			items, err = parseSSHConfig(b, p)
 		}
 	case "skiff-json":
 		var b []byte

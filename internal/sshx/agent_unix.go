@@ -11,8 +11,12 @@ import (
 	"golang.org/x/crypto/ssh/agent"
 )
 
-func agentClient() (agent.Agent, func(), error) {
-	sock := os.Getenv("SSH_AUTH_SOCK")
+// agentClient connects to the agent at path, or to $SSH_AUTH_SOCK.
+func agentClient(path string) (agent.Agent, func(), error) {
+	sock := path
+	if sock == "" {
+		sock = os.Getenv("SSH_AUTH_SOCK")
+	}
 	if sock == "" {
 		return nil, nil, errors.New("SSH_AUTH_SOCK is not set")
 	}
@@ -23,8 +27,8 @@ func agentClient() (agent.Agent, func(), error) {
 	return agent.NewClient(c), func() { c.Close() }, nil
 }
 
-func agentSigners() ([]ssh.Signer, error) {
-	ag, _, err := agentClient()
+func agentSigners(path string) ([]ssh.Signer, error) {
+	ag, _, err := agentClient(path)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +38,7 @@ func agentSigners() ([]ssh.Signer, error) {
 
 // AgentAvailable reports whether an agent can be reached.
 func AgentAvailable() bool {
-	_, closer, err := agentClient()
+	_, closer, err := agentClient("")
 	if err != nil {
 		return false
 	}

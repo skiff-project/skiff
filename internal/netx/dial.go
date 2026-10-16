@@ -41,6 +41,9 @@ type ProxyConfig struct {
 	Password  string `json:"password,omitempty"`
 	Command   string `json:"command,omitempty"` // telnet command or local command line
 	RemoteDNS bool   `json:"remoteDns,omitempty"`
+	// Expanded marks a command whose placeholders are already replaced
+	// (an OpenSSH ProxyCommand).
+	Expanded bool `json:"-"`
 }
 
 func (p *ProxyConfig) Enabled() bool { return p != nil && p.Type != "" && p.Type != "none" }
@@ -352,7 +355,10 @@ func (c *cmdConn) SetReadDeadline(t time.Time) error  { return nil }
 func (c *cmdConn) SetWriteDeadline(t time.Time) error { return nil }
 
 func dialCommand(ctx context.Context, p *ProxyConfig, addr string) (net.Conn, error) {
-	line := expandProxyCommand(p.Command, p, addr)
+	line := p.Command
+	if !p.Expanded {
+		line = expandProxyCommand(p.Command, p, addr)
+	}
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
 		cmd = exec.Command("cmd", "/C", line)

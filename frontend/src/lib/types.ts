@@ -112,6 +112,7 @@ export interface Site {
   kex?: string[]
   macs?: string[]
   hostKeyAlgos?: string[]
+  ignoreSshConfig?: boolean
   ftps?: 'none' | 'explicit' | 'implicit'
   ftpActive?: boolean
   ftpActiveIp?: string
@@ -334,6 +335,7 @@ export interface Prefs {
   workspaces: { name: string; tabs: TabState[] }[]
   lastTabs: TabState[]
   customCommands: CustomCommand[]
+  ssh?: { ignoreConfig: boolean; configFile?: string }
   ui: Record<string, any>
 }
 
@@ -343,3 +345,49 @@ export interface ImportItem { site: Site; password?: string; passphrase?: string
 export interface KeyFile { path: string; type: string; fingerprint: string; comment: string; encrypted: boolean; format: string }
 export interface GeneratedKey { private: string; public: string; fingerprint: string; type: string; path?: string; format: string }
 export interface KnownHost { hosts: string; keyType: string; fingerprint: string; line: number }
+
+// OpenSSH client configuration (ssh_config)
+export interface SshConfigFile {
+  path: string
+  scope: 'user' | 'system' | 'include'
+  exists: boolean
+  error?: string
+}
+
+export interface SshHost {
+  alias: string
+  source: string
+  hostName: string
+  user?: string
+  port: number
+}
+
+export interface SshConfigInfo {
+  enabled: boolean
+  userFile: string
+  systemFile: string
+  files: SshConfigFile[]
+  hosts: SshHost[]
+}
+
+export interface SshConfigOption {
+  key: string
+  value: string
+  source: string
+  status: 'applied' | 'site' | 'ignored'
+}
+
+export interface SshConfigReport {
+  enabled: boolean
+  alias: string
+  options: SshConfigOption[]
+  warnings?: string[]
+  host: string
+  port: number
+  user: string
+  keyFiles?: string[]
+  agent: boolean
+  jumps?: string[]
+  proxyCommand?: string
+  forwards?: string[]
+}

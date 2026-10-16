@@ -3,45 +3,45 @@ package config
 import "encoding/json"
 
 type TransferPrefs struct {
-	Mode            string `json:"mode"` // binary, text, auto
-	TextMask        string `json:"textMask"`
-	PreserveTime    bool   `json:"preserveTime"`
-	PreservePerms   bool   `json:"preservePerms"` // copy source permissions
-	SetPerms        bool   `json:"setPerms"`      // apply Perms on upload
-	Perms           uint32 `json:"perms"`
-	AddXToDirs      bool   `json:"addXToDirs"`
-	Overwrite       string `json:"overwrite"` // ask, overwrite, skip, newer, resume, rename, differentSize
-	ResumeThreshold int64  `json:"resumeThreshold"` // bytes; transfer via ".filepart" above it, -1 never
-	FileMask        string `json:"fileMask"`
-	SpeedLimit      int64  `json:"speedLimit"` // KiB/s, 0 = unlimited
-	CaseMode        string `json:"caseMode"`   // none, lower, upper, firstUpper, lowerSFN
-	Verify          bool   `json:"verify"`     // compare checksums after transfer
-	ExcludeHidden   bool   `json:"excludeHidden"`
-	ReplaceInvalid  bool   `json:"replaceInvalid"` // replace characters invalid on the target OS
-	IgnorePermErrors bool  `json:"ignorePermErrors"`
-	ClearArchive    bool   `json:"clearArchive"`
+	Mode             string `json:"mode"` // binary, text, auto
+	TextMask         string `json:"textMask"`
+	PreserveTime     bool   `json:"preserveTime"`
+	PreservePerms    bool   `json:"preservePerms"` // copy source permissions
+	SetPerms         bool   `json:"setPerms"`      // apply Perms on upload
+	Perms            uint32 `json:"perms"`
+	AddXToDirs       bool   `json:"addXToDirs"`
+	Overwrite        string `json:"overwrite"`       // ask, overwrite, skip, newer, resume, rename, differentSize
+	ResumeThreshold  int64  `json:"resumeThreshold"` // bytes; transfer via ".filepart" above it, -1 never
+	FileMask         string `json:"fileMask"`
+	SpeedLimit       int64  `json:"speedLimit"` // KiB/s, 0 = unlimited
+	CaseMode         string `json:"caseMode"`   // none, lower, upper, firstUpper, lowerSFN
+	Verify           bool   `json:"verify"`     // compare checksums after transfer
+	ExcludeHidden    bool   `json:"excludeHidden"`
+	ReplaceInvalid   bool   `json:"replaceInvalid"` // replace characters invalid on the target OS
+	IgnorePermErrors bool   `json:"ignorePermErrors"`
+	ClearArchive     bool   `json:"clearArchive"`
 }
 
 type QueuePrefs struct {
-	MaxParallel     int  `json:"maxParallel"`
-	Background      bool `json:"background"`
-	AutoPopup       bool `json:"autoPopup"`
-	RetryCount      int  `json:"retryCount"`
-	RetryDelay      int  `json:"retryDelay"` // seconds
-	ContinueOnError bool `json:"continueOnError"`
-	Notify          bool `json:"notify"`
+	MaxParallel     int   `json:"maxParallel"`
+	Background      bool  `json:"background"`
+	AutoPopup       bool  `json:"autoPopup"`
+	RetryCount      int   `json:"retryCount"`
+	RetryDelay      int   `json:"retryDelay"` // seconds
+	ContinueOnError bool  `json:"continueOnError"`
+	Notify          bool  `json:"notify"`
 	SegmentSize     int64 `json:"segmentSize"` // parallel chunks for big SFTP files (bytes); 0 = off
 }
 
 type EditorPrefs struct {
-	Default      string `json:"default"` // internal, external
-	ExternalCmd  string `json:"externalCmd"`
-	TabSize      int    `json:"tabSize"`
-	WordWrap     bool   `json:"wordWrap"`
-	FontSize     int    `json:"fontSize"`
-	MaxSizeMB    int    `json:"maxSizeMB"`
-	Encoding     string `json:"encoding"`
-	AutoReload   bool   `json:"autoReload"`
+	Default      string        `json:"default"` // internal, external
+	ExternalCmd  string        `json:"externalCmd"`
+	TabSize      int           `json:"tabSize"`
+	WordWrap     bool          `json:"wordWrap"`
+	FontSize     int           `json:"fontSize"`
+	MaxSizeMB    int           `json:"maxSizeMB"`
+	Encoding     string        `json:"encoding"`
+	AutoReload   bool          `json:"autoReload"`
 	Associations []EditorAssoc `json:"associations"`
 }
 
@@ -84,15 +84,21 @@ type Workspace struct {
 }
 
 type CustomCommand struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Command     string `json:"command"`
-	Local       bool   `json:"local"`       // run on this computer instead of the server
-	PerFile     bool   `json:"perFile"`     // run once per selected file
-	ApplyDirs   bool   `json:"applyDirs"`   // allowed on directories
-	Recursive   bool   `json:"recursive"`
-	ShowOutput  bool   `json:"showOutput"`
-	Shortcut    string `json:"shortcut,omitempty"`
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Command    string `json:"command"`
+	Local      bool   `json:"local"`     // run on this computer instead of the server
+	PerFile    bool   `json:"perFile"`   // run once per selected file
+	ApplyDirs  bool   `json:"applyDirs"` // allowed on directories
+	Recursive  bool   `json:"recursive"`
+	ShowOutput bool   `json:"showOutput"`
+	Shortcut   string `json:"shortcut,omitempty"`
+}
+
+// SSHPrefs controls the use of the OpenSSH client configuration.
+type SSHPrefs struct {
+	IgnoreConfig bool   `json:"ignoreConfig"`         // do not read ssh_config at all
+	ConfigFile   string `json:"configFile,omitempty"` // replaces ~/.ssh/config
 }
 
 type WebPrefs struct {
@@ -109,16 +115,16 @@ type Prefs struct {
 	FontSize  int    `json:"fontSize"`
 	Interface string `json:"interface"` // commander, explorer
 
-	ShowHidden   bool   `json:"showHidden"`
-	DirsFirst    bool   `json:"dirsFirst"`
-	SizeFormat   string `json:"sizeFormat"` // iec, si, bytes
-	DateFormat   string `json:"dateFormat"` // relative, short, iso
-	ShowFKeyBar  bool   `json:"showFKeyBar"`
-	ShowTree     bool   `json:"showTree"`
-	DoubleClick  string `json:"doubleClick"` // open, edit, copy
-	ShowPreview  bool   `json:"showPreview"`
-	FullRowSelect bool  `json:"fullRowSelect"`
-	NaturalSort  bool   `json:"naturalSort"`
+	ShowHidden    bool   `json:"showHidden"`
+	DirsFirst     bool   `json:"dirsFirst"`
+	SizeFormat    string `json:"sizeFormat"` // iec, si, bytes
+	DateFormat    string `json:"dateFormat"` // relative, short, iso
+	ShowFKeyBar   bool   `json:"showFKeyBar"`
+	ShowTree      bool   `json:"showTree"`
+	DoubleClick   string `json:"doubleClick"` // open, edit, copy
+	ShowPreview   bool   `json:"showPreview"`
+	FullRowSelect bool   `json:"fullRowSelect"`
+	NaturalSort   bool   `json:"naturalSort"`
 
 	ConfirmDelete    bool `json:"confirmDelete"`
 	ConfirmTransfer  bool `json:"confirmTransfer"`
@@ -140,6 +146,7 @@ type Prefs struct {
 	Workspaces     []Workspace           `json:"workspaces"`
 	LastTabs       []TabState            `json:"lastTabs"`
 	CustomCommands []CustomCommand       `json:"customCommands"`
+	SSH            SSHPrefs              `json:"ssh"`
 	Web            WebPrefs              `json:"web"`
 	UI             map[string]any        `json:"ui"`
 }
@@ -155,10 +162,10 @@ func DefaultPrefs() Prefs {
 			Mode: "binary", TextMask: DefaultTextMask, PreserveTime: true, PreservePerms: true, Perms: 0o644,
 			AddXToDirs: true, Overwrite: "ask", ResumeThreshold: 100 * 1024, CaseMode: "none", ReplaceInvalid: true,
 		},
-		Queue:  QueuePrefs{MaxParallel: 3, Background: true, AutoPopup: true, RetryCount: 2, RetryDelay: 3},
-		Editor: EditorPrefs{Default: "internal", TabSize: 4, WordWrap: false, FontSize: 13, MaxSizeMB: 20, Encoding: "auto", AutoReload: true},
-		Terminal: TerminalPrefs{FontSize: 13, FontFamily: "", Scrollback: 10000, CursorBlink: true, Term: "xterm-256color"},
-		Logging:  LoggingPrefs{ToFile: false, Level: "normal", KeepDays: 14},
+		Queue:       QueuePrefs{MaxParallel: 3, Background: true, AutoPopup: true, RetryCount: 2, RetryDelay: 3},
+		Editor:      EditorPrefs{Default: "internal", TabSize: 4, WordWrap: false, FontSize: 13, MaxSizeMB: 20, Encoding: "auto", AutoReload: true},
+		Terminal:    TerminalPrefs{FontSize: 13, FontFamily: "", Scrollback: 10000, CursorBlink: true, Term: "xterm-256color"},
+		Logging:     LoggingPrefs{ToFile: false, Level: "normal", KeepDays: 14},
 		RestoreTabs: true, AutoReconnect: true, ReconnectDelay: 5,
 		Bookmarks: map[string][]Bookmark{},
 		CustomCommands: []CustomCommand{

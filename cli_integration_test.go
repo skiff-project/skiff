@@ -390,6 +390,26 @@ func freeTCPPort(t *testing.T) int {
 	return l.Addr().(*net.TCPAddr).Port
 }
 
+// TestCLISSHConfig opens a host of ~/.ssh/config by its alias, as
+// "ssh alias" would, from a script and from winscp.com-style arguments.
+func TestCLISSHConfig(t *testing.T) {
+	c := newCLI(t)
+	c.env = append(c.env, "SKIFF_SSH_SYSTEM_CONFIG=none")
+	os.MkdirAll(filepath.Join(c.home, ".ssh"), 0o700)
+	os.WriteFile(filepath.Join(c.home, ".ssh", "config"), []byte("Host cli-box\n    HostName 127.0.0.1\n    Port 2222\n    User skiff\n    StrictHostKeyChecking accept-new\n"), 0o600)
+	out, code := c.run("", "run", "-c", "open cli-box -password=skiff", "-c", "pwd", "-c", "exit")
+	if code != 0 || !strings.Contains(out, "Active session: [1] cli-box") || !strings.Contains(out, "/config") {
+		t.Errorf("open alias: %d %s", code, out)
+	}
+	if b, _ := os.ReadFile(filepath.Join(c.home, "config", "known_hosts")); !strings.Contains(string(b), "[127.0.0.1]:2222") {
+		t.Errorf("accept-new did not record the key: %s", b)
+	}
+	out, code = c.run("", "run", "-c", "open sftp://cli-box/ -password=skiff", "-c", "exit")
+	if code != 0 {
+		t.Errorf("open sftp://alias: %d %s", code, out)
+	}
+}
+
 func TestCLIServe(t *testing.T) {
 	c := newCLI(t)
 	// no password and no terminal: refuse to start

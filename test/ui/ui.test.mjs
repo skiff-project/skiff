@@ -73,6 +73,13 @@ const tip = (t) => V(`[data-tip="${t}"]`)
 const dialog = () => page.locator('.dialog').last()
 const button = (scope, name) => scope.getByRole('button', { name, exact: true })
 
+// fillField types into a dialog field once the dialog has focused it (it
+// focuses and selects the name stem a tick after opening).
+async function fillField(input, value) {
+  await until('field focused', () => input.evaluate((el) => el === document.activeElement))
+  await input.fill(value)
+}
+
 async function waitList(i) {
   await sleep(150)
   await pane(i).locator('.pathbar-progress').waitFor({ state: 'detached', timeout: 15000 }).catch(() => {})
@@ -138,10 +145,15 @@ before(async () => {
   writeFileSync(join(LOCAL, 'site', 'index.html'), '<h1>ui</h1>')
   writeFileSync(join(LOCAL, 'site', 'css', 'style.css'), 'body{}')
   mkdirSync(join(HOME, '.ssh'), { recursive: true })
+  writeFileSync(join(HOME, '.ssh', 'config'), [
+    'Host ui-box', '    HostName 127.0.0.1', '    Port 2222', '    User skiff',
+    '    StrictHostKeyChecking accept-new', '    HostKeyAlias ui-box-key', '    ForwardAgent yes', '',
+  ].join('\n'))
   skiff = spawn(SKIFF, [], {
     env: {
       ...process.env, HOME, SKIFF_HOME: join(TMP, 'config'), SKIFF_NO_WINDOW: '1', SKIFF_PORT: String(PORT), SKIFF_DEV_TOKEN: 'ui',
       SKIFF_UI_DIR: join(ROOT, 'frontend/dist'), SSH_AUTH_SOCK: '', XDG_DATA_HOME: join(HOME, '.local/share'),
+      SKIFF_SSH_SYSTEM_CONFIG: 'none',
     },
     stdio: 'ignore',
   })
@@ -192,7 +204,7 @@ step('copier (F5), dossier (F7), renommer (F2), propriétés (F9), supprimer (F8
   await refresh(1)
   await focus(1, 'a.txt')
   await page.keyboard.press('F7')
-  await dialog().locator('input').fill('dossier-ui')
+  await fillField(dialog().locator('input'), 'dossier-ui')
   await page.keyboard.press('Enter')
   await until('mkdir', () => remoteExists(`${REMOTE}/dossier-ui`))
   await refresh(1)
@@ -220,7 +232,7 @@ step('copier (F5), dossier (F7), renommer (F2), propriétés (F9), supprimer (F8
 step('nouveau fichier (Maj+F7), éditeur, enregistrement et conflit', async () => {
   await pane(1).locator('.pane-status').click()
   await page.keyboard.press('Shift+F7')
-  await dialog().locator('input').fill('note.txt')
+  await fillField(dialog().locator('input'), 'note.txt')
   await page.keyboard.press('Enter')
   await V('.cm-editor').waitFor()
   await V('.cm-content').click()
@@ -290,7 +302,7 @@ step('garder le dossier distant à jour', async () => {
 step('rechercher des fichiers', async () => {
   await nav(1, REMOTE)
   await page.keyboard.press('Control+Shift+F')
-  await dialog().locator('input').first().fill('*.css')
+  await fillField(dialog().locator('input').first(), '*.css')
   await button(dialog(), 'Rechercher').click()
   const results = page.locator('.findp table tbody tr')
   await until('results', async () => (await results.count()) === 1)
@@ -375,6 +387,52 @@ step('sites : créer, dupliquer, supprimer', async () => {
   await until('deleted', async () => !(await rpc('sites.list')).sites.some((s) => s.name.endsWith('(copie)')))
 })
 
+step('configuration OpenSSH : hôtes, paramètres détectés, préférences', async () => {
+  await page.locator('.tab.home').click()
+  const host = page.locator('[data-ssh-host="ui-box"]')
+  assert.match(await host.innerText(), /skiff@127\.0\.0\.1:2222/)
+  await host.click()
+  const panel = page.locator('.sshcfg-panel')
+  const hostName = panel.locator('.sshcfg-row', { hasText: 'HostName' })
+  await hostName.waitFor()
+  assert.match(await hostName.innerText(), /127\.0\.0\.1\s+appliqué\s+~\/\.ssh\/config:2/)
+  assert.match(await panel.locator('.sshcfg-row', { hasText: 'ForwardAgent' }).innerText(), /ignoré/)
+  // connect by the alias: the password is asked (no key), not the host key (accept-new)
+  await button(panel, 'Connexion').click()
+  const d = dialog()
+  await d.locator('input[type="password"]').fill('skiff')
+  await button(d, 'OK').click()
+  await until('alias connected', async () => (await conns()).some((c) => c.title === 'ui-box' && c.state === 'connected'))
+  await V('.toolbar').getByText('skiff@127.0.0.1').waitFor()
+  assert.ok((await rpc('hostkeys.list')).some((k) => k.hosts === '[ui-box-key]:2222'), 'key recorded under the HostKeyAlias')
+  await page.locator('.tab', { hasText: 'ui-box' }).click({ button: 'right' })
+  await page.locator('.menu-item', { hasText: "Fermer l'onglet" }).click()
+  await until('alias closed', async () => !(await conns()).some((c) => c.title === 'ui-box' && c.state === 'connected'))
+  // a site made from the host keeps the alias; the editor shows what applies
+  await page.locator('.tab.home').click()
+  await host.click({ button: 'right' })
+  await page.locator('.menu-item', { hasText: 'Créer un site' }).click()
+  const ed = page.locator('.site-editor')
+  await ed.locator('.sshcfg-detected').waitFor()
+  const user = ed.locator('.field', { hasText: "Nom d'utilisateur" }).locator('input').first()
+  assert.equal(await user.getAttribute('placeholder'), 'skiff')
+  await user.fill('root')
+  await ed.locator('.sshcfg-detected button').click()
+  await until('user replaced by the site', async () => /\bsite\b/.test(await ed.locator('.sshcfg-row', { hasText: /^User/ }).innerText()))
+  await ed.getByRole('button', { name: 'Annuler' }).click()
+  // preferences: files read; turned off, the hosts disappear
+  await page.keyboard.press('Control+,')
+  const prefs = dialog()
+  await prefs.locator('nav.vtabs').getByRole('button', { name: 'SSH', exact: true }).click()
+  assert.match(await prefs.locator('.sshcfg-file').first().innerText(), /Utilisateur\s+~\/\.ssh\/config\s+trouvé/)
+  await prefs.locator('label', { hasText: 'Lire la configuration OpenSSH' }).click()
+  await until('turned off', async () => (await rpc('prefs.get')).ssh.ignoreConfig === true)
+  await page.keyboard.press('Escape')
+  await host.waitFor({ state: 'detached' })
+  await rpc('prefs.set', { ...(await rpc('prefs.get')), ssh: { ignoreConfig: false } })
+  await host.waitFor()
+})
+
 const moreMenu = () => page.locator('.sites-side [data-tip="Plus"]')
 
 step('importer et exporter', async () => {
@@ -440,7 +498,7 @@ step('filtre et sélection par masque', async () => {
   await focus(0, 'a.txt')
   await page.keyboard.press('Escape')
   await page.keyboard.press('NumpadAdd')
-  await dialog().locator('input').fill('*.txt; *.md')
+  await fillField(dialog().locator('input'), '*.txt; *.md')
   await page.keyboard.press('Enter')
   await until('selection', async () => (await pane(0).locator('.pane-foot, .pane-status').first().innerText()).includes('2 sélectionné'))
   await page.keyboard.press('Escape')
@@ -498,7 +556,7 @@ step('somme de contrôle, nouveau lien, calcul de taille', async () => {
   await focus(1, 'notes.md')
   await pane(1).locator('.filelist').click({ button: 'right', position: { x: 300, y: 400 } })
   await page.locator('.menu-item', { hasText: 'Nouveau lien' }).click()
-  await dialog().locator('input').first().fill('lien-notes')
+  await fillField(dialog().locator('input').first(), 'lien-notes')
   await button(dialog(), 'OK').click()
   await until('symlink', async () => (await rpc('fs.list', { conn: (await sftp()).id, path: REMOTE })).entries.some((e) => e.name === 'lien-notes' && e.isLink))
 })
@@ -512,7 +570,7 @@ step('commande personnalisée et exécuter une commande', async () => {
   await dialog().locator('pre').getByText(/site/).waitFor()
   await page.keyboard.press('Escape')
   await page.keyboard.press('Control+Shift+X')
-  await dialog().locator('input').fill('echo commande-$((1+1))')
+  await fillField(dialog().locator('input'), 'echo commande-$((1+1))')
   await page.keyboard.press('Enter')
   await dialog().locator('pre').getByText('commande-2').waitFor()
   await dialog().getByText('Code de sortie 0').waitFor()
@@ -602,7 +660,7 @@ step('URL et code de session, espaces de travail', async () => {
   await page.keyboard.press('Control+k')
   await page.locator('.palette input').fill('espace de travail')
   await page.keyboard.press('Enter')
-  await dialog().locator('input').fill('Espace UI')
+  await fillField(dialog().locator('input'), 'Espace UI')
   await page.keyboard.press('Enter')
   await until('workspace saved', async () => (await rpc('prefs.get')).workspaces?.some((w) => w.name === 'Espace UI'))
   await page.locator('.tab.home').click()

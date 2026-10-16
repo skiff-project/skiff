@@ -83,6 +83,12 @@ type Conn struct {
 
 	core *Core
 	site config.Site // resolved, secrets in plain text (memory only)
+	// forwards started with the session: the site's, else ssh_config's
+	forwards []config.Forward
+	// host, port and user really used (ssh_config may change them)
+	host string
+	port int
+	user string
 
 	mu           sync.Mutex
 	fs           vfs.FS
@@ -127,9 +133,13 @@ type ConnInfo struct {
 func (c *Conn) Info() ConnInfo {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	host, port, user := c.site.Host, c.site.EffectivePort(), c.site.User
+	if c.host != "" {
+		host, port, user = c.host, c.port, c.user
+	}
 	return ConnInfo{
-		ID: c.ID, SiteID: c.SiteID, Title: c.Title, Protocol: c.site.Protocol, Host: c.site.Host,
-		Port: c.site.EffectivePort(), User: c.site.User, State: c.state, Error: c.err, Caps: c.caps,
+		ID: c.ID, SiteID: c.SiteID, Title: c.Title, Protocol: c.site.Protocol, Host: host,
+		Port: port, User: user, State: c.state, Error: c.err, Caps: c.caps,
 		Home: c.home, RemoteDir: c.site.RemoteDir, LocalDir: c.site.LocalDir, Color: c.site.Color,
 		SyncBrowsing: c.site.SyncBrowsing, URL: c.site.URL(false, ""), Created: c.created,
 		RecycleBin: c.site.RecycleBin, EOL: c.site.EOL,
@@ -217,7 +227,7 @@ func (c *Core) Connect(ctx context.Context, siteID string, adhoc *config.Site, p
 		c.Store.TouchSite(siteID)
 	}
 	// Auto-start tunnels.
-	for _, f := range site.Forwards {
+	for _, f := range conn.forwards {
 		if f.AutoStart && conn.ssh != nil {
 			if _, err := c.StartTunnel(conn.ID, f); err != nil {
 				conn.log.Errorf("Tunnel %s: %v", f.Label, err)
@@ -232,6 +242,14 @@ func (conn *Conn) open(ctx context.Context) error {
 	d, err := c.dial(ctx, conn.site, prompt.WithConn(c.Prompter, conn.ID), conn.log)
 	if err != nil {
 		return err
+	}
+	if conn.forwards == nil {
+		conn.forwards = d.forwards
+	}
+	if d.host != "" {
+		conn.mu.Lock()
+		conn.host, conn.port, conn.user = d.host, d.port, d.user
+		conn.mu.Unlock()
 	}
 	if d.password != "" {
 		conn.site.Password = d.password

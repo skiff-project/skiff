@@ -1,15 +1,16 @@
 import { useMemo, useState } from 'react'
 import {
   Cable, FileKey2, Folder, Globe, KeyRound, Network, NotebookPen, Plug, Plus, Save, Server, Settings2, Shield, Trash2, Waypoints, X, Cloud,
-  Clock, Copy,
+  Clock, Copy, FileCog,
 } from 'lucide-react'
 import { toast, errorToast, useStore } from '../../lib/store'
 import { call } from '../../lib/api'
-import { connectAdhoc, connectSite, reloadSites } from '../../lib/actions'
+import { connectAdhoc, connectSite, displayPath, reloadSites } from '../../lib/actions'
 import { t } from '../../lib/i18n'
 import type { Forward, Jump, Protocol, SecretInput, Site, SiteView } from '../../lib/types'
 import { ask } from '../dialogs/common'
 import { copyToClipboard } from '../../lib/fileops'
+import { SshConfigOptions, SshEffective, SshWarnings, useSshReport } from './SshConfig'
 
 export function newSiteDraft(): Site {
   return {
@@ -43,6 +44,9 @@ export function SiteEditor({ site, isNew, onSaved, onDeleted, onCancel }: { site
   const sites = useStore((st) => st.sites)
   const view = site as SiteView
   const ssh = s.protocol === 'sftp' || s.protocol === 'scp'
+  const sshConfigOn = useStore((st) => st.sshConfig?.enabled ?? false)
+  const report = useSshReport(ssh ? s : null, sshConfigOn)
+  const detected = report?.enabled && report.options.length ? report : null
 
   const up = (patch: Partial<Site>) => {
     setS((cur) => ({ ...cur, ...patch }))
@@ -202,13 +206,13 @@ export function SiteEditor({ site, isNew, onSaved, onDeleted, onCancel }: { site
                 </div>
                 <div className="field">
                   <label>{t('site.port')}</label>
-                  <input className="input tnum" type="number" min={0} max={65535} value={s.port || ''} placeholder={String(defaultPort(s))} onChange={(e) => up({ port: parseInt(e.target.value, 10) || 0 })} />
+                  <input className="input tnum" type="number" min={0} max={65535} value={s.port || ''} placeholder={String(detected?.port || defaultPort(s))} onChange={(e) => up({ port: parseInt(e.target.value, 10) || 0 })} />
                 </div>
               </div>
               <div className="field-row">
                 <div className="field">
                   <label>{isS3 ? t('site.accessKey') : t('site.user')}</label>
-                  <input className="input" value={s.user || ''} onChange={(e) => up({ user: e.target.value })} spellCheck={false} autoComplete="off" />
+                  <input className="input" value={s.user || ''} placeholder={detected?.user || ''} onChange={(e) => up({ user: e.target.value })} spellCheck={false} autoComplete="off" />
                 </div>
                 {pwField(isS3 ? t('site.secretKey') : t('site.password'), 'password', view.hasPassword)}
               </div>
@@ -220,9 +224,19 @@ export function SiteEditor({ site, isNew, onSaved, onDeleted, onCancel }: { site
                   <label>{t('site.keyFile')}</label>
                   <div className="row">
                     <FileKey2 style={{ width: 16, color: 'var(--faint)' }} />
-                    <input className="input mono" value={s.keyFile || ''} placeholder="~/.ssh/id_ed25519" onChange={(e) => up({ keyFile: e.target.value })} spellCheck={false} />
+                    <input className="input mono" value={s.keyFile || ''} placeholder={detected?.keyFiles?.[0] ? displayPath('local', detected.keyFiles[0]) : '~/.ssh/id_ed25519'} onChange={(e) => up({ keyFile: e.target.value })} spellCheck={false} />
                   </div>
                   <span className="hint">{t('site.keyFileHint')}</span>
+                </div>
+              )}
+              {detected && (
+                <div className="alert info sshcfg-detected">
+                  <FileCog />
+                  <div className="grow" style={{ minWidth: 0 }}>
+                    <div>{t('sshcfg.detectedFor', { host: s.host.trim(), n: detected.options.filter((o) => o.status === 'applied').length })}</div>
+                    <div className="mono faint ellipsis">{detected.options.filter((o) => o.status === 'applied').slice(0, 5).map((o) => `${o.key} ${o.value}`).join(' · ')}</div>
+                  </div>
+                  <button className="btn sm" onClick={() => setSection('ssh')}>{t('sshcfg.details')}</button>
                 </div>
               )}
               {s.protocol === 'webdav' && <div className="alert info"><Globe /><span>{t('site.webdavPathHint')}</span></div>}
@@ -376,7 +390,7 @@ export function SiteEditor({ site, isNew, onSaved, onDeleted, onCancel }: { site
                   onRemove={() => up({ jumps: (s.jumps || []).filter((_, k) => k !== i) })}
                 />
               ))}
-              <div><button className="btn sm" onClick={() => up({ jumps: [...(s.jumps || []), { host: '', port: 22, user: '' }] })}><Plus /> {t('site.addJump')}</button></div>
+              <div><button className="btn sm" onClick={() => up({ jumps: [...(s.jumps || []), { host: '', user: '' }] })}><Plus /> {t('site.addJump')}</button></div>
             </div>
           )}
 
@@ -392,6 +406,20 @@ export function SiteEditor({ site, isNew, onSaved, onDeleted, onCancel }: { site
 
           {section === 'ssh' && (
             <div className="form">
+              <div className="form-section">
+                <h4>{t('sshcfg.title')}</h4>
+                <label className="switch">
+                  <input type="checkbox" checked={!s.ignoreSshConfig} disabled={!sshConfigOn} onChange={(e) => up({ ignoreSshConfig: !e.target.checked })} /> {t('sshcfg.apply')}
+                </label>
+                <span className="hint">{sshConfigOn ? t('sshcfg.applyHint') : t('sshcfg.disabledHint')}</span>
+                {report?.enabled && (
+                  <>
+                    <SshEffective report={report} />
+                    <SshWarnings report={report} />
+                    <SshConfigOptions report={report} />
+                  </>
+                )}
+              </div>
               <div className="form-section">
                 <h4>{t('site.auth')}</h4>
                 <div className="field"><label>{t('site.keyFile')}</label><input className="input mono" value={s.keyFile || ''} placeholder={t('site.keyFilePlaceholder')} onChange={(e) => up({ keyFile: e.target.value })} /></div>
@@ -481,7 +509,7 @@ function JumpRow({ j, index, sites, hasPassword, onChange, onPassword, onRemove 
         <div className="form" style={{ gap: 10 }}>
           <div className="field-row r-port">
             <input className="input" placeholder={t('site.host')} value={j.host || ''} onChange={(e) => onChange({ ...j, host: e.target.value })} />
-            <input className="input tnum" type="number" placeholder="22" value={j.port || ''} onChange={(e) => onChange({ ...j, port: parseInt(e.target.value, 10) || 22 })} />
+            <input className="input tnum" type="number" placeholder="22" value={j.port || ''} onChange={(e) => onChange({ ...j, port: parseInt(e.target.value, 10) || 0 })} />
           </div>
           <div className="field-row">
             <input className="input" placeholder={t('site.user')} value={j.user || ''} onChange={(e) => onChange({ ...j, user: e.target.value })} />

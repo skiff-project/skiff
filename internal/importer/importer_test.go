@@ -67,7 +67,7 @@ Host app
 Host *.wild
     User x
 `
-	items, err := parseSSHConfig([]byte(cfg), "/tmp")
+	items, err := parseSSHConfig([]byte(cfg), "/tmp/config")
 	if err != nil {
 		t.Fatal(err)
 	}

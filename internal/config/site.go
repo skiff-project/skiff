@@ -81,6 +81,9 @@ type Site struct {
 	KeyExchanges   []string `json:"kex,omitempty"`
 	MACs           []string `json:"macs,omitempty"`
 	HostKeyAlgos   []string `json:"hostKeyAlgos,omitempty"`
+	// IgnoreSSHConfig stops the OpenSSH configuration (~/.ssh/config)
+	// from completing the settings of this site.
+	IgnoreSSHConfig bool `json:"ignoreSshConfig,omitempty"`
 
 	// FTP
 	FTPS           string `json:"ftps,omitempty"` // none, explicit, implicit
@@ -108,15 +111,15 @@ type Site struct {
 	SyncBrowsing    bool   `json:"syncBrowsing,omitempty"`
 	RecycleBin      string `json:"recycleBin,omitempty"`
 	ResolveSymlinks bool   `json:"resolveSymlinks"`
-	EOL             string `json:"eol,omitempty"` // "LF" or "CRLF"
+	EOL             string `json:"eol,omitempty"`        // "LF" or "CRLF"
 	TimeOffset      int    `json:"timeOffset,omitempty"` // minutes added to listed times
 
 	// Connection
-	Timeout   int     `json:"timeout,omitempty"`   // seconds
-	Keepalive int     `json:"keepalive,omitempty"` // seconds, 0 = off
-	IPVersion string  `json:"ipVersion,omitempty"`
-	Proxy     Proxy   `json:"proxy,omitempty"`
-	Jumps     []Jump  `json:"jumps,omitempty"`
+	Timeout   int       `json:"timeout,omitempty"`   // seconds
+	Keepalive int       `json:"keepalive,omitempty"` // seconds, 0 = off
+	IPVersion string    `json:"ipVersion,omitempty"`
+	Proxy     Proxy     `json:"proxy,omitempty"`
+	Jumps     []Jump    `json:"jumps,omitempty"`
 	Forwards  []Forward `json:"forwards,omitempty"`
 	// Parallel is the number of connections for background transfers.
 	Parallel int `json:"parallel,omitempty"`

@@ -1,10 +1,11 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ChevronDown, ChevronRight, Clock, Copy, Download, Edit3, Folder, FolderOpen, FolderPlus, Import, KeyRound, Link2, Lock, MoreHorizontal,
-  Plug, Plus, Search, Server, SquareTerminal, Trash2, Upload, Zap, Code2, LayoutGrid, Save,
+  Plug, Plus, Search, Server, SquareTerminal, Trash2, Upload, Zap, Code2, LayoutGrid, Save, FileCog,
 } from 'lucide-react'
 import { get, useStore } from '../../lib/store'
-import { connectSite, connectUrl, openTerminal, reloadSites, saveWorkspace, openWorkspace, deleteWorkspace } from '../../lib/actions'
+import { connectSite, connectSshHost, connectUrl, openTerminal, reloadSites, reloadSshConfig, saveWorkspace, openWorkspace, deleteWorkspace } from '../../lib/actions'
+import { SshHostPanel, SshHostRow } from './SshConfig'
 import { openGenerateDialog } from '../dialogs/GenerateDialog'
 import { call } from '../../lib/api'
 import { t } from '../../lib/i18n'
@@ -69,8 +70,14 @@ export function SitesView() {
   const sites = useStore((s) => s.sites)
   const folders = useStore((s) => s.folders)
   const info = useStore((s) => s.info)
+  const sshConfig = useStore((s) => s.sshConfig)
   const workspaces = useStore((s) => s.prefs?.workspaces ?? NO_WS)
-  const [sel, setSel] = useState<string | null>(null)
+  const [sel, setSelSite] = useState<string | null>(null)
+  const [sshSel, setSshSel] = useState<string | null>(null)
+  const setSel = (id: string | null) => {
+    setSelSite(id)
+    if (id) setSshSel(null)
+  }
   const [draft, setDraft] = useState<Site | null>(null)
   const [q, setQ] = useState('')
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
@@ -83,14 +90,39 @@ export function SitesView() {
     return sites.filter((s) => [s.name, s.host, s.user, s.folder, s.notes].some((v) => v?.toLowerCase().includes(lq)))
   }, [sites, q])
   const tree = useMemo(() => buildTree(q ? [] : folders, filtered), [folders, filtered, q])
+  const sshHosts = useMemo(() => {
+    const hosts = sshConfig?.enabled ? sshConfig.hosts : []
+    if (!q) return hosts
+    const lq = q.toLowerCase()
+    return hosts.filter((h) => [h.alias, h.hostName, h.user].some((v) => v?.toLowerCase().includes(lq)))
+  }, [sshConfig, q])
+  // the files may change outside Skiff
+  useEffect(() => {
+    reloadSshConfig()
+    window.addEventListener('focus', reloadSshConfig)
+    return () => window.removeEventListener('focus', reloadSshConfig)
+  }, [])
   const recent = useMemo(() => [...sites].filter((s) => s.lastUsed && new Date(s.lastUsed).getFullYear() > 1971).sort((a, b) => +new Date(b.lastUsed!) - +new Date(a.lastUsed!)).slice(0, 5), [sites])
 
   const selected = sel ? sites.find((s) => s.id === sel) : undefined
   const editing: Site | SiteView | null = draft ?? selected ?? null
+  const sshSelected = !editing && sshSel ? sshConfig?.hosts.find((h) => h.alias === sshSel) : undefined
 
   const newSite = (folder = '') => {
     setSel(null)
+    setSshSel(null)
     setDraft({ ...newSiteDraft(), folder })
+  }
+  // a site for an ssh_config host keeps the alias: the file still applies
+  const siteFromSshHost = (alias: string) => {
+    setSel(null)
+    setSshSel(null)
+    setDraft({ ...newSiteDraft(), name: alias, host: alias })
+  }
+  const selectSshHost = (alias: string) => {
+    setDraft(null)
+    setSel(null)
+    setSshSel(alias)
   }
 
   const siteMenu = (e: React.MouseEvent | HTMLElement, s: SiteView) => {
@@ -184,6 +216,9 @@ export function SitesView() {
     } else if (e.key === 'Enter' && sel) {
       e.preventDefault()
       connectSite(sel)
+    } else if (e.key === 'Enter' && sshSel) {
+      e.preventDefault()
+      connectSshHost(sshSel)
     } else if (e.key === 'Enter' && flat.length === 1) {
       connectSite(flat[0].id)
     } else if (e.key === 'Delete' && sel) {
@@ -286,7 +321,7 @@ export function SitesView() {
             </>
           )}
           {sites.length === 0 ? (
-            <div className="empty" style={{ height: 'auto', paddingTop: 40 }}>
+            <div className="empty" style={{ height: 'auto', paddingTop: sshHosts.length ? 20 : 40 }}>
               <Server className="big" />
               <h4>{t('sites.empty')}</h4>
               <p>{t('sites.emptyHint')}</p>
@@ -297,6 +332,18 @@ export function SitesView() {
             </div>
           ) : (
             renderNode(tree, 1)
+          )}
+          {sshHosts.length > 0 && (
+            <>
+              <div className="tree-label sshcfg-label" onClick={() => setCollapsed((c) => ({ ...c, __ssh: !c.__ssh }))} data-tip={sshConfig?.userFile}>
+                {collapsed.__ssh && !q ? <ChevronRight /> : <ChevronDown />}
+                <FileCog /> {t('sshcfg.section')}
+                <span className="faint count">{sshHosts.length}</span>
+              </div>
+              {(!collapsed.__ssh || q) && sshHosts.map((h) => (
+                <SshHostRow key={h.alias} h={h} selected={sshSel === h.alias && !editing} onSelect={() => selectSshHost(h.alias)} onNewSite={() => siteFromSshHost(h.alias)} />
+              ))}
+            </>
           )}
         </div>
       </aside>
@@ -310,6 +357,8 @@ export function SitesView() {
             onDeleted={() => { setDraft(null); setSel(null) }}
             onCancel={() => setDraft(null)}
           />
+        ) : sshSelected ? (
+          <SshHostPanel key={sshSelected.alias} h={sshSelected} onNewSite={() => siteFromSshHost(sshSelected.alias)} />
         ) : (
           <Welcome onNew={() => newSite()} recent={recent} onSelect={(id) => setSel(id)} />
         )}
@@ -362,6 +411,7 @@ function SiteRow({ s, depth, selected, onSelect, onMenu, compact }: { s: SiteVie
 function Welcome({ onNew, recent, onSelect }: { onNew: () => void; recent: SiteView[]; onSelect: (id: string) => void }) {
   const [url, setUrl] = useState('')
   const info = useStore((s) => s.info)
+  const sshConfig = useStore((s) => s.sshConfig)
   return (
     <div className="welcome">
       <div className="welcome-hero">
@@ -378,7 +428,8 @@ function Welcome({ onNew, recent, onSelect }: { onNew: () => void; recent: SiteV
       >
         <div className="input-group grow">
           <Zap />
-          <input className="input lg" value={url} onChange={(e) => setUrl(e.target.value)} placeholder={t('sites.quickPlaceholder')} spellCheck={false} />
+          <input className="input lg" value={url} list="ssh-config-hosts" onChange={(e) => setUrl(e.target.value)} placeholder={t('sites.quickPlaceholder')} spellCheck={false} />
+          <datalist id="ssh-config-hosts">{(sshConfig?.enabled ? sshConfig.hosts : []).map((h) => <option key={h.alias} value={h.alias}>{h.user ? `${h.user}@` : ''}{h.hostName}</option>)}</datalist>
         </div>
         <button className="btn primary lg" type="submit" disabled={!url.trim()}><Plug /> {t('common.connect')}</button>
       </form>

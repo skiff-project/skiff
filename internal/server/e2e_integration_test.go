@@ -56,6 +56,8 @@ type e2e struct {
 	events  map[string]int // event types received on /api/events
 	changed []string       // "conn|dir" of the fs.changed events
 	stop    chan struct{}
+	// system-wide ssh_config read instead of /etc/ssh/ssh_config
+	systemSSHConfig string
 }
 
 func newE2E(t *testing.T) *e2e {
@@ -67,6 +69,8 @@ func newE2E(t *testing.T) *e2e {
 	t.Setenv("HOME", e.home)
 	t.Setenv("XDG_DATA_HOME", filepath.Join(e.home, ".local", "share"))
 	t.Setenv("SSH_AUTH_SOCK", "")
+	e.systemSSHConfig = filepath.Join(root, "ssh_config")
+	t.Setenv("SKIFF_SSH_SYSTEM_CONFIG", e.systemSSHConfig)
 	bin := filepath.Join(root, "bin")
 	os.MkdirAll(bin, 0o755)
 	e.opened = filepath.Join(root, "opened.txt")
@@ -448,6 +452,7 @@ func TestE2E(t *testing.T) {
 		{"proxies", testProxies},
 		{"keys", testKeys},
 		{"hostKeys", testHostKeys},
+		{"sshConfig", testSSHConfig},
 		{"tls", testTLS},
 		{"security", testSecurity},
 		{"connections", testConnections},

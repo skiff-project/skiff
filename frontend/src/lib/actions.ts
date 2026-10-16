@@ -3,7 +3,7 @@ import {
   get, getTab, newPane, set, toast, errorToast, uid, updatePane, updateTab, useStore,
   type EditorTab, type PaneState, type SessionTab, type Side, type Tab, type TerminalTab,
 } from './store'
-import type { AppInfo, ConnInfo, Entry, Job, Prefs, PromptEvent, SiteView, TabState } from './types'
+import type { AppInfo, ConnInfo, Entry, Job, Prefs, PromptEvent, SiteView, SshConfigInfo, TabState } from './types'
 import { setLang, t } from './i18n'
 import { basename, dirname, join, normalize, rel as relPath, tildify } from './paths'
 import { visibleEntries } from './listing'
@@ -55,6 +55,7 @@ export async function boot() {
     set({ online })
     if (online) resync()
   }
+  reloadSshConfig()
   // Re-attach tabs for connections that survived a UI reload.
   for (const c of conns) if (c.state !== 'closed') openSessionTab(c, { activate: false })
   if (info.startupUrl) connectUrl(info.startupUrl)
@@ -195,6 +196,7 @@ function onEvent(type: string, data: any) {
         set({ prefs: p })
         applyAppearance(p)
       })
+      reloadSshConfig()
       break
     case 'security.changed':
       call<AppInfo>('app.info').then((info) => set({ info }))
@@ -242,6 +244,22 @@ export async function savePrefs(patch: Partial<Prefs> | ((p: Prefs) => Partial<P
 export async function reloadSites() {
   const r = await call<{ folders: string[]; sites: SiteView[] }>('sites.list')
   set({ sites: r.sites, folders: r.folders })
+}
+
+/** Re-reads the OpenSSH configuration (files may change outside Skiff). */
+export async function reloadSshConfig() {
+  try {
+    const sshConfig = await call<SshConfigInfo>('sshconfig.info')
+    const cur = get().sshConfig
+    if (JSON.stringify(cur) !== JSON.stringify(sshConfig)) set({ sshConfig })
+  } catch {
+    /* keep the previous one */
+  }
+}
+
+/** Connects to a host of the OpenSSH configuration (resolved by the server). */
+export function connectSshHost(alias: string, opts: OpenOpts = {}) {
+  openConnection(alias, { site: { name: alias, protocol: 'sftp', host: alias, useAgent: true, kbdInteractive: true, resolveSymlinks: true, keepalive: 30, timeout: 15 } }, opts)
 }
 
 // ---------------------------------------------------------------------------
@@ -387,6 +405,8 @@ interface OpenOpts {
   remote?: string
   local?: string
   activate?: boolean
+  /** called once the session tab is open */
+  afterConnect?: (c: ConnInfo) => void
 }
 
 export function openSessionTab(c: ConnInfo, opts: OpenOpts = {}, tabId?: string) {
@@ -431,6 +451,7 @@ async function openConnection(title: string, params: any, opts: OpenOpts = {}) {
       return
     }
     openSessionTab(c, opts, placeholder.id)
+    opts.afterConnect?.(c)
   } catch (e: any) {
     if (getTab(placeholder.id)) {
       updateTab<SessionTab>(placeholder.id, () => ({ conn: '' }))

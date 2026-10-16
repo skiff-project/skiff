@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type {
-  AppInfo, ConnInfo, Entry, ExternalEdit, Job, LogLine, Prefs, PromptEvent, SiteView, TerminalInfo, TunnelInfo, WatchInfo,
+  AppInfo, ConnInfo, Entry, ExternalEdit, Job, LogLine, Prefs, PromptEvent, SiteView, SshConfigInfo, TerminalInfo, TunnelInfo, WatchInfo,
 } from './types'
 
 export type Side = 'left' | 'right'
@@ -95,6 +95,7 @@ export interface State {
   prefs: Prefs | null
   sites: SiteView[]
   folders: string[]
+  sshConfig: SshConfigInfo | null
   conns: Record<string, ConnInfo>
   tabs: Tab[]
   activeTab: string
@@ -120,6 +121,7 @@ export const useStore = create<State>(() => ({
   prefs: null,
   sites: [],
   folders: [],
+  sshConfig: null,
   conns: {},
   tabs: [{ id: 'sites', kind: 'sites', title: 'Sites' }],
   activeTab: 'sites',

@@ -12,6 +12,7 @@ import (
 	"skiff/internal/importer"
 	"skiff/internal/keys"
 	"skiff/internal/prompt"
+	"skiff/internal/sshconfig"
 	"skiff/internal/sshx"
 	"skiff/internal/transfer"
 	"skiff/internal/vfs"
@@ -242,6 +243,48 @@ func (s *Server) registerRPC() {
 		Line int `json:"line"`
 	}) (ok, error) {
 		return yes, c.HostKeys.Remove(p.Line)
+	})
+
+	// ---- OpenSSH configuration ----
+	type sshHost struct {
+		sshconfig.HostEntry
+		HostName string `json:"hostName"`
+		User     string `json:"user,omitempty"`
+		Port     int    `json:"port"`
+	}
+	type sshConfigInfo struct {
+		Enabled    bool             `json:"enabled"`
+		UserFile   string           `json:"userFile"`
+		SystemFile string           `json:"systemFile"`
+		Files      []sshconfig.File `json:"files"`
+		Hosts      []sshHost        `json:"hosts"`
+	}
+	method(s, "sshconfig.info", func(ctx context.Context, _ empty) (sshConfigInfo, error) {
+		cfg := c.SSHConfig()
+		out := sshConfigInfo{Enabled: cfg != nil, Hosts: []sshHost{}}
+		if cfg == nil {
+			// still tell where the files would be read from
+			cfg = sshconfig.Default()
+			if f := c.Store.Prefs().SSH.ConfigFile; f != "" {
+				cfg.UserFile = f
+			}
+		} else {
+			for _, e := range cfg.Hosts() {
+				h := cfg.Resolve(e.Alias, sshconfig.Query{})
+				sh := sshHost{HostEntry: e, HostName: h.HostName(), Port: h.Port()}
+				if h.Has("User") {
+					sh.User = h.User()
+				}
+				out.Hosts = append(out.Hosts, sh)
+			}
+		}
+		out.UserFile, out.SystemFile, out.Files = cfg.UserFile, cfg.SystemFile, cfg.Files()
+		return out, nil
+	})
+	method(s, "sshconfig.resolve", func(ctx context.Context, p struct {
+		Site config.Site `json:"site"`
+	}) (core.SSHConfigReport, error) {
+		return c.SSHConfigReport(p.Site), nil
 	})
 
 	// ---- connections ----

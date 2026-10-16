@@ -38,6 +38,16 @@ type Target struct {
 	KbdInteractive bool     `json:"kbdInteractive"`
 	// HostKey pins the expected host key fingerprint ("SHA256:..." or MD5 hex).
 	HostKey string `json:"hostKey,omitempty"`
+
+	// Settings that usually come from the OpenSSH configuration.
+	AgentPath      string   `json:"-"` // agent socket or Windows pipe ("" = the default one)
+	IdentitiesOnly bool     `json:"-"` // offer only the agent keys of KeyFiles
+	CertFiles      []string `json:"-"` // certificates for the keys (besides <key>-cert.pub)
+	NoPubkey       bool     `json:"-"`
+	NoPassword     bool     `json:"-"`
+	AuthOrder      []string `json:"-"` // PreferredAuthentications; methods not listed are not tried
+	HostKeyAlias   string   `json:"-"` // name looked up in known_hosts instead of the host
+	HostKeyPolicy  Policy   `json:"-"`
 }
 
 func (t Target) Addr() string {
@@ -48,12 +58,27 @@ func (t Target) Addr() string {
 	return net.JoinHostPort(t.Host, strconv.Itoa(port))
 }
 
+// keyAddr is the name of the host in known_hosts.
+func (t Target) keyAddr() string {
+	if t.HostKeyAlias == "" {
+		return t.Addr()
+	}
+	port := t.Port
+	if port == 0 {
+		port = 22
+	}
+	return net.JoinHostPort(t.HostKeyAlias, strconv.Itoa(port))
+}
+
 // Options configures a connection.
 type Options struct {
 	Target    Target
 	Jumps     []Target // dialled in order before Target
 	Dial      netx.Options
 	Keepalive time.Duration
+	// KeepaliveCount is the number of unanswered keepalives before the
+	// connection is closed (ServerAliveCountMax, default 3).
+	KeepaliveCount int
 
 	Ciphers      []string
 	KeyExchanges []string
@@ -73,19 +98,19 @@ type Options struct {
 
 // Info about an established connection, for the protocol info dialog.
 type Info struct {
-	ServerVersion string
-	ClientVersion string
-	HostKeyType   string
+	ServerVersion     string
+	ClientVersion     string
+	HostKeyType       string
 	FingerprintSHA256 string
 	FingerprintMD5    string
-	Kex     string
-	CipherCS string
-	CipherSC string
-	MACCS    string
-	MACSC    string
-	AuthMethod string
-	RemoteAddr string
-	Jumps      int
+	Kex               string
+	CipherCS          string
+	CipherSC          string
+	MACCS             string
+	MACSC             string
+	AuthMethod        string
+	RemoteAddr        string
+	Jumps             int
 }
 
 // Conn wraps a client together with the jump clients it depends on.
@@ -186,12 +211,16 @@ func Dial(ctx context.Context, opts Options) (*Conn, error) {
 		close(c.Dead)
 	}()
 	if opts.Keepalive > 0 {
-		go c.keepalive(opts.Keepalive, logf)
+		count := opts.KeepaliveCount
+		if count <= 0 {
+			count = 3
+		}
+		go c.keepalive(opts.Keepalive, count, logf)
 	}
 	return c, nil
 }
 
-func (c *Conn) keepalive(every time.Duration, logf func(string, ...any)) {
+func (c *Conn) keepalive(every time.Duration, count int, logf func(string, ...any)) {
 	t := time.NewTicker(every)
 	defer t.Stop()
 	for {
@@ -213,7 +242,7 @@ func (c *Conn) keepalive(every time.Duration, logf func(string, ...any)) {
 					c.Client.Close()
 					return
 				}
-			case <-time.After(every * 3):
+			case <-time.After(every * time.Duration(count)):
 				logf("Keepalive timed out, closing connection")
 				c.Client.Close()
 				return
@@ -260,7 +289,7 @@ func handshake(ctx context.Context, nc net.Conn, t Target, opts *Options, logf f
 		}
 	}
 	if opts.HostKeys != nil && len(cfg.HostKeyAlgorithms) == 0 {
-		cfg.HostKeyAlgorithms = opts.HostKeys.PreferredAlgos(t.Addr())
+		cfg.HostKeyAlgorithms = opts.HostKeys.PreferredAlgos(t.keyAddr(), t.HostKeyPolicy)
 	}
 
 	cfg.HostKeyCallback = func(hostname string, remote net.Addr, key ssh.PublicKey) error {
@@ -276,49 +305,21 @@ func handshake(ctx context.Context, nc net.Conn, t Target, opts *Options, logf f
 		if opts.HostKeys == nil {
 			return nil
 		}
-		return opts.HostKeys.Check(ctx, t.Addr(), remote, key, opts.Prompter)
+		return opts.HostKeys.CheckPolicy(ctx, t.keyAddr(), remote, key, opts.Prompter, t.HostKeyPolicy)
 	}
 
 	pr := opts.Prompter
-	var methods []ssh.AuthMethod
+	auth := map[string]ssh.AuthMethod{}
 
-	// Public keys: agent first, then key files.
-	var signers []ssh.Signer
-	if t.UseAgent {
-		if ag, err := agentSigners(); err == nil && len(ag) > 0 {
-			logf("Using %d key(s) from the SSH agent", len(ag))
-			signers = append(signers, ag...)
-		} else if err != nil {
-			logf("SSH agent unavailable: %v", err)
-		}
-	}
-	keyFiles := t.KeyFiles
-	for _, kf := range keyFiles {
-		if kf == "" {
-			continue
-		}
-		s, err := LoadSigner(ctx, expandHome(kf), nil, t.Passphrase, pr)
-		if err != nil {
-			if errors.Is(err, prompt.ErrCancelled) {
-				return nil, info, err
-			}
-			logf("Cannot load key %s: %v", kf, err)
-			continue
-		}
-		signers = append(signers, s)
-	}
-	if t.KeyPEM != "" {
-		if s, err := LoadSigner(ctx, "", []byte(t.KeyPEM), t.Passphrase, pr); err == nil {
-			signers = append(signers, s)
-		} else {
-			logf("Cannot load inline key: %v", err)
-		}
+	signers, err := publicKeys(ctx, t, pr, logf)
+	if err != nil {
+		return nil, info, err
 	}
 	if len(signers) > 0 {
-		methods = append(methods, ssh.PublicKeysCallback(func() ([]ssh.Signer, error) {
+		auth["publickey"] = ssh.PublicKeysCallback(func() ([]ssh.Signer, error) {
 			setAuth("publickey")
 			return signers, nil
-		}))
+		})
 	}
 
 	usedPassword := t.Password == ""
@@ -338,11 +339,11 @@ func handshake(ctx context.Context, nc net.Conn, t Target, opts *Options, logf f
 			return "", prompt.ErrNoUser
 		}
 		resp, err := pr.Prompt(ctx, prompt.Request{
-			Kind:    prompt.Password,
-			Title:   title,
-			Message: fmt.Sprintf("%s@%s", t.User, t.Host),
-			Fields:  []prompt.Field{{Label: "Password", Secret: true}},
-			Choices: []prompt.Choice{{ID: "ok", Label: "OK", Primary: true}, {ID: "cancel", Label: "Cancel"}},
+			Kind:     prompt.Password,
+			Title:    title,
+			Message:  fmt.Sprintf("%s@%s", t.User, t.Host),
+			Fields:   []prompt.Field{{Label: "Password", Secret: true}},
+			Choices:  []prompt.Choice{{ID: "ok", Label: "OK", Primary: true}, {ID: "cancel", Label: "Cancel"}},
 			Remember: true,
 		})
 		if err != nil {
@@ -355,7 +356,7 @@ func handshake(ctx context.Context, nc net.Conn, t Target, opts *Options, logf f
 	}
 
 	if t.KbdInteractive {
-		methods = append(methods, ssh.RetryableAuthMethod(ssh.KeyboardInteractive(
+		auth["keyboard-interactive"] = ssh.RetryableAuthMethod(ssh.KeyboardInteractive(
 			func(name, instruction string, questions []string, echos []bool) ([]string, error) {
 				setAuth("keyboard-interactive")
 				if len(questions) == 0 {
@@ -397,20 +398,31 @@ func handshake(ctx context.Context, nc net.Conn, t Target, opts *Options, logf f
 					lastPassword = ans[0]
 				}
 				return ans, nil
-			}), 3))
+			}), 3)
 	}
 
-	methods = append(methods, ssh.RetryableAuthMethod(ssh.PasswordCallback(func() (string, error) {
-		setAuth("password")
-		if pw, ok := takePassword(); ok {
+	if !t.NoPassword {
+		auth["password"] = ssh.RetryableAuthMethod(ssh.PasswordCallback(func() (string, error) {
+			setAuth("password")
+			if pw, ok := takePassword(); ok {
+				lastPassword = pw
+				return pw, nil
+			}
+			pw, err := askPassword("Password")
 			lastPassword = pw
-			return pw, nil
+			return pw, err
+		}), 3)
+	}
+	order := t.AuthOrder
+	if len(order) == 0 {
+		order = []string{"publickey", "keyboard-interactive", "password"}
+	}
+	for _, m := range order {
+		if a, ok := auth[m]; ok {
+			cfg.Auth = append(cfg.Auth, a)
+			delete(auth, m)
 		}
-		pw, err := askPassword("Password")
-		lastPassword = pw
-		return pw, err
-	}), 3))
-	cfg.Auth = methods
+	}
 
 	// Cancel the handshake when ctx is cancelled.
 	done := make(chan struct{})
@@ -446,6 +458,123 @@ func handshake(ctx context.Context, nc net.Conn, t Target, opts *Options, logf f
 	}
 	logf("Authenticated as %s using %s", t.User, info.AuthMethod)
 	return ssh.NewClient(sc, chans, reqs), info, nil
+}
+
+// publicKeys returns the keys to offer: the agent's first, then the key
+// files whose key the agent does not hold (so that their passphrase is not
+// asked for nothing), with their certificates.
+func publicKeys(ctx context.Context, t Target, pr prompt.Prompter, logf func(string, ...any)) ([]ssh.Signer, error) {
+	if t.NoPubkey {
+		return nil, nil
+	}
+	var agentKeys []ssh.Signer
+	if t.UseAgent {
+		if ag, err := agentSigners(t.AgentPath); err == nil {
+			agentKeys = ag
+		} else {
+			logf("SSH agent unavailable: %v", err)
+		}
+	}
+	inAgent := func(pub ssh.PublicKey) bool {
+		for _, a := range agentKeys {
+			if sameKey(a.PublicKey(), pub) {
+				return true
+			}
+		}
+		return false
+	}
+	var files []ssh.Signer
+	var filePubs []ssh.PublicKey
+	certFiles := append([]string(nil), t.CertFiles...)
+	for _, kf := range t.KeyFiles {
+		if kf == "" {
+			continue
+		}
+		path := expandHome(kf)
+		if pub := readPublicKey(path + ".pub"); pub != nil {
+			filePubs = append(filePubs, pub)
+			if inAgent(pub) {
+				if _, err := os.Stat(path + "-cert.pub"); err == nil {
+					certFiles = append(certFiles, path+"-cert.pub")
+				}
+				continue
+			}
+		}
+		s, err := LoadSigner(ctx, path, nil, t.Passphrase, pr)
+		if err != nil {
+			if errors.Is(err, prompt.ErrCancelled) {
+				return nil, err
+			}
+			logf("Cannot load key %s: %v", kf, err)
+			continue
+		}
+		filePubs = append(filePubs, s.PublicKey())
+		files = append(files, s)
+	}
+	if t.KeyPEM != "" {
+		if s, err := LoadSigner(ctx, "", []byte(t.KeyPEM), t.Passphrase, pr); err == nil {
+			filePubs = append(filePubs, s.PublicKey())
+			files = append(files, s)
+		} else {
+			logf("Cannot load inline key: %v", err)
+		}
+	}
+	if t.IdentitiesOnly {
+		var kept []ssh.Signer
+		for _, a := range agentKeys {
+			for _, p := range filePubs {
+				if sameKey(a.PublicKey(), p) {
+					kept = append(kept, a)
+					break
+				}
+			}
+		}
+		agentKeys = kept
+	}
+	if len(agentKeys) > 0 {
+		logf("Using %d key(s) from the SSH agent", len(agentKeys))
+	}
+	signers := append(agentKeys, files...)
+	// explicit certificates go before the plain keys they certify
+	var certs []ssh.Signer
+	for _, cf := range certFiles {
+		pub := readPublicKey(expandHome(cf))
+		cert, ok := pub.(*ssh.Certificate)
+		if !ok {
+			logf("Cannot load certificate %s", cf)
+			continue
+		}
+		for _, s := range signers {
+			if sameKey(s.PublicKey(), cert.Key) {
+				if cs, err := ssh.NewCertSigner(cert, s); err == nil {
+					certs = append(certs, cs)
+				}
+			}
+		}
+	}
+	return append(certs, signers...), nil
+}
+
+func readPublicKey(path string) ssh.PublicKey {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	pub, _, _, _, err := ssh.ParseAuthorizedKey(data)
+	if err != nil {
+		return nil
+	}
+	return pub
+}
+
+func sameKey(a, b ssh.PublicKey) bool {
+	if c, ok := a.(*ssh.Certificate); ok {
+		a = c.Key
+	}
+	if c, ok := b.(*ssh.Certificate); ok {
+		b = c.Key
+	}
+	return string(a.Marshal()) == string(b.Marshal())
 }
 
 func md5Fingerprint(key ssh.PublicKey) string {

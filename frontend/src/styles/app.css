@@ -462,3 +462,24 @@
 .tree-ic { width: 14px; height: 14px; flex: none; color: #f2b544; }
 .tree-ic.drive { color: var(--muted); }
 .crumb-home { width: 14px; height: 14px; vertical-align: -2px; }
+
+/* OpenSSH configuration (ssh_config) */
+.sshcfg-label { cursor: default; }
+.sshcfg-label:hover { color: var(--muted); }
+.sshcfg-label .count { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 500; }
+.se-name.static, .se-name.static:hover { background: transparent; flex: none; }
+.sshcfg-body { flex: 1; overflow: auto; padding: 18px 22px 40px; max-width: 860px; display: flex; flex-direction: column; gap: 14px; }
+.sshcfg-card { padding: 14px 16px; }
+.sshcfg-card h4 { margin: 0 0 10px; font-size: var(--fs-sm); }
+.sshcfg-effective dd { word-break: break-word; }
+.sshcfg-options { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.sshcfg-row { display: grid; grid-template-columns: minmax(150px, max-content) minmax(0, 1fr) max-content minmax(0, 220px); gap: 10px; align-items: center; padding: 6px 10px; font-size: var(--fs-sm); }
+.sshcfg-row + .sshcfg-row { border-top: 1px solid var(--border); }
+.sshcfg-row[data-status="ignored"] .sshcfg-key, .sshcfg-row[data-status="ignored"] .sshcfg-value { color: var(--faint); }
+.sshcfg-row[data-status="site"] .sshcfg-value { text-decoration: line-through; color: var(--muted); }
+.sshcfg-key { font-weight: 600; }
+.sshcfg-source { font-size: var(--fs-xs); text-align: right; }
+.sshcfg-detected { align-items: center; }
+.sshcfg-detected .mono { font-size: var(--fs-xs); margin-top: 2px; }
+.sshcfg-files { display: flex; flex-direction: column; gap: 6px; }
+.sshcfg-file { display: grid; grid-template-columns: 90px minmax(0, 1fr) max-content; gap: 10px; align-items: center; font-size: var(--fs-sm); }

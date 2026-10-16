@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -28,36 +29,80 @@ type HostKeyStore struct {
 
 func NewHostKeyStore(path string) *HostKeyStore {
 	s := &HostKeyStore{Path: path, session: map[string]string{}}
-	if h, err := os.UserHomeDir(); err == nil {
-		kh := filepath.Join(h, ".ssh", "known_hosts")
-		if _, err := os.Stat(kh); err == nil {
-			s.ReadOnly = append(s.ReadOnly, kh)
-		}
-	}
+	h, _ := os.UserHomeDir()
+	s.ReadOnly = OpenSSHKnownHosts(runtime.GOOS, h, os.Getenv)
 	return s
 }
 
-func (s *HostKeyStore) files() []string {
+// OpenSSHKnownHosts lists the known_hosts files ssh reads by default on an
+// OS: the user's, then the system-wide ones (%ProgramData%\ssh on Windows).
+func OpenSSHKnownHosts(goos, home string, getenv func(string) string) []string {
+	if goos == "windows" {
+		pd := getenv("ProgramData")
+		if pd == "" {
+			pd = `C:\ProgramData`
+		}
+		return []string{home + `\.ssh\known_hosts`, home + `\.ssh\known_hosts2`, pd + `\ssh\ssh_known_hosts`, pd + `\ssh\ssh_known_hosts2`}
+	}
+	return []string{home + "/.ssh/known_hosts", home + "/.ssh/known_hosts2", "/etc/ssh/ssh_known_hosts", "/etc/ssh/ssh_known_hosts2"}
+}
+
+// Policy adapts the check to the OpenSSH configuration of a host.
+type Policy struct {
+	// Strict is StrictHostKeyChecking: "" or "ask" asks the user about an
+	// unknown key, "yes" refuses it, "accept-new" (and "no") record it
+	// silently. A changed key is never accepted silently.
+	Strict string
+	// Files, when set (UserKnownHostsFile / GlobalKnownHostsFile), are read
+	// instead of the default OpenSSH known_hosts files.
+	Files    []string
+	FilesSet bool
+}
+
+func (s *HostKeyStore) files(pol Policy) []string {
 	var out []string
 	if _, err := os.Stat(s.Path); err == nil {
 		out = append(out, s.Path)
 	}
-	for _, f := range s.ReadOnly {
-		if _, err := os.Stat(f); err == nil {
+	extra := s.ReadOnly
+	if pol.FilesSet {
+		extra = pol.Files
+	}
+	for _, f := range extra {
+		if st, err := os.Stat(f); err == nil && !st.IsDir() {
 			out = append(out, f)
 		}
 	}
 	return out
 }
 
+// callback reads the known_hosts files, leaving out a file that cannot be
+// parsed rather than failing every connection.
+func callback(files []string) (ssh.HostKeyCallback, error) {
+	cb, err := knownhosts.New(files...)
+	if err == nil || len(files) < 2 {
+		return cb, err
+	}
+	var ok []string
+	for _, f := range files {
+		if _, err := knownhosts.New(f); err == nil {
+			ok = append(ok, f)
+		}
+	}
+	if len(ok) == 0 {
+		return nil, err
+	}
+	return knownhosts.New(ok...)
+}
+
 // PreferredAlgos returns host key algorithms ordered so that a key type we
 // already know for addr is negotiated first (avoids spurious "changed" warnings).
-func (s *HostKeyStore) PreferredAlgos(addr string) []string {
-	files := s.files()
+func (s *HostKeyStore) PreferredAlgos(addr string, pol Policy) []string {
+	files := s.files(pol)
 	if len(files) == 0 {
 		return nil
 	}
-	cb, err := knownhosts.New(files...)
+	cb, err := callback(files)
 	if err != nil {
 		return nil
 	}
@@ -115,6 +160,11 @@ func (dummyKey) Verify([]byte, *ssh.Signature) error { return errors.New("dummy"
 
 // Check verifies key for addr, prompting when unknown or changed.
 func (s *HostKeyStore) Check(ctx context.Context, addr string, remote net.Addr, key ssh.PublicKey, pr prompt.Prompter) error {
+	return s.CheckPolicy(ctx, addr, remote, key, pr, Policy{})
+}
+
+// CheckPolicy is Check following an OpenSSH host key policy.
+func (s *HostKeyStore) CheckPolicy(ctx context.Context, addr string, remote net.Addr, key ssh.PublicKey, pr prompt.Prompter, pol Policy) error {
 	fp := ssh.FingerprintSHA256(key)
 	s.mu.Lock()
 	if s.session[addr] == fp {
@@ -123,14 +173,14 @@ func (s *HostKeyStore) Check(ctx context.Context, addr string, remote net.Addr, 
 	}
 	s.mu.Unlock()
 
-	files := s.files()
+	files := s.files(pol)
 	var ke *knownhosts.KeyError
 	if _, _, err := net.SplitHostPort(remote.String()); err != nil {
 		// not a TCP address (ProxyCommand): check the host name only
 		remote = hostAddr(addr)
 	}
 	if len(files) > 0 {
-		cb, err := knownhosts.New(files...)
+		cb, err := callback(files)
 		if err != nil {
 			return fmt.Errorf("known_hosts: %w", err)
 		}
@@ -147,6 +197,16 @@ func (s *HostKeyStore) Check(ctx context.Context, addr string, remote net.Addr, 
 		}
 	}
 	changed := ke != nil && len(ke.Want) > 0
+	if !changed {
+		switch strings.ToLower(pol.Strict) {
+		case "yes", "true":
+			return fmt.Errorf("host key for %s is unknown (%s %s) and StrictHostKeyChecking is yes", addr, key.Type(), fp)
+		case "accept-new", "no", "off", "false":
+			return s.Add(addr, key, false)
+		}
+	} else if strings.EqualFold(pol.Strict, "yes") || strings.EqualFold(pol.Strict, "accept-new") {
+		return fmt.Errorf("WARNING: host key for %s has changed (now %s) and StrictHostKeyChecking is %s", addr, fp, pol.Strict)
+	}
 	if pr == nil {
 		if changed {
 			return fmt.Errorf("WARNING: host key for %s has changed (now %s)", addr, fp)

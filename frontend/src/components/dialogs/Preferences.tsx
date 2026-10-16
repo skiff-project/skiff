@@ -22,7 +22,7 @@ export function openPreferences(section?: string) {
 
 const ACCENTS = ['#4f7cff', '#7c5cff', '#d946ef', '#ec4899', '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#64748b']
 
-type Sec = 'appearance' | 'panels' | 'transfer' | 'queue' | 'editor' | 'terminal' | 'confirm' | 'security' | 'commands' | 'logging' | 'shortcuts' | 'about'
+type Sec = 'appearance' | 'panels' | 'transfer' | 'queue' | 'editor' | 'terminal' | 'ssh' | 'confirm' | 'security' | 'commands' | 'logging' | 'shortcuts' | 'about'
 
 function Preferences({ close, initial }: { close: () => void; initial?: string }) {
   const prefs = useStore((s) => s.prefs)!
@@ -37,6 +37,7 @@ function Preferences({ close, initial }: { close: () => void; initial?: string }
     { id: 'queue', label: t('prefs.queue'), icon: ListOrdered },
     { id: 'editor', label: t('prefs.editor'), icon: Code2 },
     { id: 'terminal', label: t('prefs.terminal'), icon: SquareTerminal },
+    { id: 'ssh', label: 'SSH', icon: FileCog },
     { id: 'confirm', label: t('prefs.confirmations'), icon: CheckSquare },
     { id: 'security', label: t('prefs.security'), icon: Shield },
     { id: 'commands', label: t('prefs.commands'), icon: Wand2 },
@@ -55,6 +56,7 @@ function Preferences({ close, initial }: { close: () => void; initial?: string }
           ))}
         </nav>
         <div className="prefs-body">
+          {sec === 'ssh' && <SshPrefs prefs={prefs} up={up} />}
           {sec === 'appearance' && (
             <div className="form">
               <div className="field">
@@ -371,3 +373,42 @@ function Shortcuts() {
 
 void get
 void FileCog
+
+const SCOPES: Record<string, string> = { user: 'sshcfg.scope.user', system: 'sshcfg.scope.system', include: 'sshcfg.scope.include' }
+
+function SshPrefs({ prefs, up }: { prefs: Prefs; up: (p: Partial<Prefs>) => void }) {
+  const sshConfig = useStore((s) => s.sshConfig)
+  const ssh = prefs.ssh || { ignoreConfig: false }
+  const [file, setFile] = useState(ssh.configFile || '')
+  const saveFile = () => {
+    if (file.trim() !== (ssh.configFile || '')) up({ ssh: { ...ssh, configFile: file.trim() || undefined } })
+  }
+  return (
+    <div className="form">
+      <div className="form-section">
+        <h4>{t('sshcfg.title')}</h4>
+        <label className="switch"><input type="checkbox" checked={!ssh.ignoreConfig} onChange={(e) => up({ ssh: { ...ssh, ignoreConfig: !e.target.checked } })} /> {t('sshcfg.read')}</label>
+        <span className="hint">{t('sshcfg.readHint')}</span>
+        <div className="field">
+          <label>{t('sshcfg.userFile')}</label>
+          <input className="input mono" value={file} placeholder={(!ssh.configFile && sshConfig?.files.find((f) => f.scope === 'user')?.path) || t('sshcfg.defaultFile')} onChange={(e) => setFile(e.target.value)} onBlur={saveFile} onKeyDown={(e) => { if (e.key === 'Enter') saveFile() }} spellCheck={false} />
+          <span className="hint">{t('sshcfg.userFileHint')}</span>
+        </div>
+      </div>
+      <div className="form-section">
+        <h4>{t('sshcfg.files')}</h4>
+        <div className="sshcfg-files">
+          {(sshConfig?.files || []).map((f) => (
+            <div key={f.path} className="sshcfg-file">
+              <span className="faint">{t(SCOPES[f.scope])}</span>
+              <span className="mono ellipsis selectable" title={f.path}>{f.path}</span>
+              {f.error ? <span className="badge danger" data-tip={f.error}>{t('sshcfg.fileError')}</span> : f.exists ? <span className="badge ok">{t('sshcfg.found')}</span> : <span className="badge">{t('sshcfg.missing')}</span>}
+            </div>
+          ))}
+        </div>
+        <span className="hint">{t('sshcfg.osHint')}</span>
+        {sshConfig?.enabled && <span className="hint">{t('sshcfg.hostsCount', { n: sshConfig.hosts.length })}</span>}
+      </div>
+    </div>
+  )
+}
