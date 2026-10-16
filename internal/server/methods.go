@@ -643,18 +643,25 @@ func (s *Server) registerRPC() {
 		Conn string `json:"conn"`
 		Cols int    `json:"cols"`
 		Rows int    `json:"rows"`
-		Cwd  string `json:"cwd"`
+		Cwd   string `json:"cwd"`
+		Shell string `json:"shell,omitempty"` // ID from term.shells
 	}) (core.Terminal, error) {
 		if p.Conn == core.LocalID && s.web() && !s.opts.AllowLocalTerminal {
 			return core.Terminal{}, errors.New("the local terminal is disabled in web mode")
 		}
-		t, err := c.OpenTerminal(p.Conn, p.Cols, p.Rows, p.Cwd)
+		t, err := c.OpenTerminal(p.Conn, p.Cols, p.Rows, p.Cwd, p.Shell)
 		if err != nil {
 			return core.Terminal{}, err
 		}
 		return core.Terminal{ID: t.ID, Conn: t.Conn, Title: t.Title, Created: t.Created}, nil
 	})
 	method(s, "term.close", func(ctx context.Context, p idp) (ok, error) { c.CloseTerminal(p.ID); return yes, nil })
+	method(s, "term.shells", func(ctx context.Context, p connReq) ([]core.Shell, error) {
+		if p.Conn == core.LocalID && !s.localExecAllowed() {
+			return []core.Shell{}, nil
+		}
+		return c.Shells(ctx, p.Conn)
+	})
 	method(s, "term.list", func(ctx context.Context, _ empty) ([]core.Terminal, error) { return c.Terminals(), nil })
 
 	// ---- tunnels ----

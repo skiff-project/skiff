@@ -9,10 +9,11 @@ import { call } from '../../lib/api'
 import { errorToast, get, toast, useStore } from '../../lib/store'
 import { displayPath, savePrefs } from '../../lib/actions'
 import { commandName, languages, snippetName, t } from '../../lib/i18n'
-import type { CustomCommand, DevSyncConfig, DevSyncView, KeychainKey, KeyFile, KnownHost, Prefs, Snippet } from '../../lib/types'
+import type { CustomCommand, DevSyncConfig, DevSyncView, KeychainKey, KeyFile, KnownHost, Prefs, Shell, Snippet } from '../../lib/types'
 import { TransferOptionsForm } from './TransferDialog'
 import { formatDate, formatSize } from '../../lib/format'
 import { masterPasswordDialog, PasswordMeter } from './MasterPassword'
+import { loadShells } from '../../lib/actions'
 import { devSyncSummary } from '../../lib/summaries'
 import { openConvertKey, openKeygen } from './KeygenDialog'
 import { openKeychainAdd } from './KeychainDialog'
@@ -212,6 +213,22 @@ function Preferences({ close, initial }: { close: () => void; initial?: string }
               <div className="field"><label>TERM</label><input className="input mono" style={{ width: 200 }} value={prefs.terminal.term} onChange={(e) => up({ terminal: { ...prefs.terminal, term: e.target.value } })} /></div>
               <label className="switch"><input type="checkbox" checked={prefs.terminal.cursorBlink} onChange={(e) => up({ terminal: { ...prefs.terminal, cursorBlink: e.target.checked } })} /> {t('prefs.cursorBlink')}</label>
               <label className="switch"><input type="checkbox" checked={prefs.terminal.copyOnSelect} onChange={(e) => up({ terminal: { ...prefs.terminal, copyOnSelect: e.target.checked } })} /> {t('prefs.copyOnSelect')}</label>
+              <div className="field">
+                <label>{t('prefs.copyKeys')}</label>
+                <div className="segmented">
+                  <button className={prefs.terminal.copyKeys !== 'ctrlShift' ? 'on' : ''} onClick={() => up({ terminal: { ...prefs.terminal, copyKeys: 'ctrl' } })}>{t('prefs.copyKeys.ctrl')}</button>
+                  <button className={prefs.terminal.copyKeys === 'ctrlShift' ? 'on' : ''} onClick={() => up({ terminal: { ...prefs.terminal, copyKeys: 'ctrlShift' } })}>{t('prefs.copyKeys.ctrlShift')}</button>
+                </div>
+                <span className="hint">{t('prefs.copyKeysHint')}</span>
+              </div>
+              <div className="field">
+                <label>{t('prefs.rightClick')}</label>
+                <div className="segmented">
+                  <button className={prefs.terminal.rightClick !== 'menu' ? 'on' : ''} onClick={() => up({ terminal: { ...prefs.terminal, rightClick: 'copyPaste' } })}>{t('prefs.rightClick.copyPaste')}</button>
+                  <button className={prefs.terminal.rightClick === 'menu' ? 'on' : ''} onClick={() => up({ terminal: { ...prefs.terminal, rightClick: 'menu' } })}>{t('prefs.rightClick.menu')}</button>
+                </div>
+              </div>
+              <LocalShellField value={prefs.terminal.localShell || ''} onChange={(v) => up({ terminal: { ...prefs.terminal, localShell: v || undefined } })} />
               <div className="form-section">
                 <h4>{t('term.snippets')}</h4>
                 <p className="muted" style={{ margin: 0 }}>{t('prefs.snippetsHint')}</p>
@@ -589,6 +606,27 @@ function DevicesSection() {
         )}
         {st.lastStatus === 'failed' && st.lastError && <div className="alert danger"><Laptop /><span className="selectable">{st.lastError}</span></div>}
       </div>
+    </div>
+  )
+}
+
+/** The shell of local terminals, among those installed on this computer. */
+function LocalShellField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const info = useStore((s) => s.info)
+  const [list, setList] = useState<Shell[]>([])
+  useEffect(() => {
+    if (info?.localTerminal) loadShells('local').then(setList)
+  }, [info?.localTerminal])
+  if (!info?.localTerminal) return null
+  const def = list.find((s) => s.default)
+  return (
+    <div className="field">
+      <label>{t('prefs.localShell')}</label>
+      <select className="select" style={{ width: 320 }} value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">{def ? t('prefs.localShellAuto', { name: def.name }) : t('term.defaultShell')}</option>
+        {list.map((s) => <option key={s.id} value={s.id}>{s.name}{s.kind === 'repl' ? ` (${t('term.repl')})` : ''}</option>)}
+      </select>
+      <span className="hint">{t('prefs.localShellHint')}</span>
     </div>
   )
 }

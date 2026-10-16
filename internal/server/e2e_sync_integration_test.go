@@ -14,6 +14,7 @@ import (
 
 	"github.com/coder/websocket"
 
+	"skiff/internal/config"
 	"skiff/internal/core"
 	"skiff/internal/transfer"
 )
@@ -565,6 +566,102 @@ func testTerminals(t *testing.T, e *e2e) {
 	t.Run("ftpHasNoTerminal", func(t *testing.T) {
 		ci := e.connect(t, "ftp")
 		e.mustFail(t, "term.open", map[string]any{"conn": ci.ID, "cols": 80, "rows": 24})
+		e.mustFail(t, "term.shells", map[string]string{"conn": ci.ID})
+	})
+	t.Run("shells", func(t *testing.T) { testShells(t, e) })
+}
+
+// shellOf finds a detected shell or interpreter, and checks that exactly
+// one of the list is the default.
+func shellOf(t *testing.T, list []core.Shell, id string) (core.Shell, bool) {
+	t.Helper()
+	defaults := 0
+	var found core.Shell
+	ok := false
+	for _, s := range list {
+		if s.Default {
+			defaults++
+		}
+		if s.ID == id {
+			found, ok = s, true
+		}
+	}
+	if defaults != 1 {
+		t.Errorf("%d default shells in %+v", defaults, list)
+	}
+	return found, ok
+}
+
+func testShells(t *testing.T, e *e2e) {
+	t.Run("local", func(t *testing.T) {
+		var list []core.Shell
+		e.must(t, "term.shells", map[string]string{"conn": "local"}, &list)
+		if _, ok := shellOf(t, list, "sh"); !ok {
+			t.Fatalf("sh not found on this computer: %+v", list)
+		}
+		// an interpreter: Python when it is installed
+		if py, ok := shellOf(t, list, "python"); ok {
+			if py.Kind != "repl" {
+				t.Errorf("python kind %q", py.Kind)
+			}
+			var term termInfo
+			e.must(t, "term.open", map[string]any{"conn": "local", "cols": 100, "rows": 30, "shell": "python"}, &term)
+			send, wait, done := e.termSession(t, term.ID)
+			wait(">>>")
+			send("print('SKIFF_%d' % (6*7))\r")
+			wait("SKIFF_42")
+			done()
+			e.must(t, "term.close", map[string]string{"id": term.ID}, nil)
+			if term.Title != "Python" {
+				t.Errorf("title %q", term.Title)
+			}
+		}
+		// the default shell of local terminals comes from the preferences
+		var p config.Prefs
+		e.must(t, "prefs.get", nil, &p)
+		saved := p.Terminal.LocalShell
+		p.Terminal.LocalShell = "sh"
+		e.must(t, "prefs.set", p, nil)
+		var term termInfo
+		e.must(t, "term.open", map[string]any{"conn": "local", "cols": 100, "rows": 30, "cwd": e.home}, &term)
+		send, wait, done := e.termSession(t, term.ID)
+		send("echo SKIFF_$((6*7)) $0; pwd\n")
+		if out := wait("SKIFF_42"); !strings.Contains(out, e.home) {
+			t.Errorf("sh not in %s:\n%s", e.home, out)
+		}
+		done()
+		e.must(t, "term.close", map[string]string{"id": term.ID}, nil)
+		if term.Title != "sh" {
+			t.Errorf("default local shell from the preferences: title %q", term.Title)
+		}
+		p.Terminal.LocalShell = saved
+		e.must(t, "prefs.set", p, nil)
+	})
+	t.Run("sftp", func(t *testing.T) {
+		ci := e.connect(t, "sftp")
+		var list []core.Shell
+		e.must(t, "term.shells", map[string]string{"conn": ci.ID}, &list)
+		sh, ok := shellOf(t, list, "sh")
+		if !ok || !strings.HasPrefix(sh.Path, "/") {
+			t.Fatalf("sh not found on the server: %+v", list)
+		}
+		cwd := e.remoteRoot(t, ci)
+		var term termInfo
+		e.must(t, "term.open", map[string]any{"conn": ci.ID, "cols": 100, "rows": 30, "cwd": cwd, "shell": "sh"}, &term)
+		send, wait, done := e.termSession(t, term.ID)
+		send("echo SKIFF_$((6*7)); pwd\n")
+		if out := wait("SKIFF_42"); !strings.Contains(out, cwd) {
+			t.Errorf("sh not in %s:\n%s", cwd, out)
+		}
+		done()
+		e.must(t, "term.close", map[string]string{"id": term.ID}, nil)
+		if !sh.Default && !strings.HasSuffix(term.Title, " · sh") {
+			t.Errorf("title %q", term.Title)
+		}
+		// a program the server does not have
+		if err := e.mustFail(t, "term.open", map[string]any{"conn": ci.ID, "cols": 80, "rows": 24, "shell": "no-such-shell"}); !strings.Contains(err.Error(), "not installed") {
+			t.Errorf("unknown shell: %v", err)
+		}
 	})
 }
 

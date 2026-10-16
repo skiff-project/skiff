@@ -96,6 +96,11 @@ export function CommandPalette() {
     cmd('log', t('toolbar.log'), ScrollText, () => setBottom(true, 'log'))
     cmd('tasks', t('tasks.title'), CalendarClock, () => openTasks())
     cmd('localterm', `${t('term.title')} (${t('common.local')})`, SquareTerminal, () => openTerminal('local'), undefined, !get().info?.localTerminal)
+    if (get().info?.localTerminal) {
+      for (const sh of get().shells.local || []) {
+        out.push({ id: 'shell:' + sh.id, group: t('term.title'), label: t('term.localWith', { name: sh.name }), icon: SquareTerminal, run: () => openTerminal('local', undefined, sh.id) })
+      }
+    }
     if (s) {
       cmd('copy', t('fkey.copy'), Copy, () => copyOrMove(s.id, side, false), 'F5')
       cmd('move', t('fkey.move'), ArrowRightLeft, () => copyOrMove(s.id, side, true), 'F6')

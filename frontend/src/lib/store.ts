@@ -58,6 +58,7 @@ export interface TermPaneState {
   conn: string
   title: string
   cwd?: string // folder it was opened in
+  shell?: string // shell or interpreter it runs ("" = the default one)
 }
 
 export interface TerminalTab {
@@ -142,6 +143,8 @@ export interface State {
   siteDraft: import('./types').Site | null
   tasks: import('./types').TaskView[] | null
   devsync: import('./types').DevSyncView | null
+  /** shells and interpreters found per connection ("local" too) */
+  shells: Record<string, import('./types').Shell[]>
   /** a task to open in the task editor */
   taskDraft: Partial<import('./types').Task> | null
   previewOpen: boolean
@@ -173,6 +176,7 @@ export const useStore = create<State>(() => ({
   siteDraft: null,
   tasks: null,
   devsync: null,
+  shells: {},
   taskDraft: null,
   previewOpen: false,
 }))

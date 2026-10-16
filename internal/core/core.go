@@ -42,6 +42,7 @@ type Core struct {
 	localWatch localWatch
 	monitor    monitorState
 	onShutdown []func()
+	shells     shellCache
 	finds      sync.Map // id -> context.CancelFunc
 }
 

@@ -549,3 +549,9 @@
 .task-run-head svg { width: 14px; height: 14px; color: var(--faint); flex: none; }
 .task-run[data-status="failed"] .task-run-head .grow { color: var(--danger); }
 .task-log { margin: 0; padding: 10px 12px; max-height: 260px; overflow: auto; font-size: 11.5px; background: var(--surface); border-top: 1px solid var(--border); white-space: pre-wrap; }
+
+/* Terminal button with its shell menu */
+.tb-split { display: inline-flex; align-items: center; }
+.tb-split .tb-btn:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; padding-right: 6px; }
+.tb-chevron { padding: 0 3px !important; border-top-left-radius: 0 !important; border-bottom-left-radius: 0 !important; }
+.tb-chevron svg { width: 13px !important; height: 13px !important; }

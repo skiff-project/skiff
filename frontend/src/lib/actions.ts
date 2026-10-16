@@ -56,6 +56,7 @@ export async function boot() {
     if (online) resync()
   }
   reloadSshConfig()
+  if (info.localTerminal) loadShells('local') // for the command palette
   // Re-attach tabs for connections that survived a UI reload.
   for (const c of conns) if (c.state !== 'closed') openSessionTab(c, { activate: false })
   if (info.startupUrl) connectUrl(info.startupUrl)
@@ -796,10 +797,10 @@ export function terminalPanes(tab: TerminalTab): TermPaneState[] {
 }
 
 /** Adds a terminal on conn to a terminal tab, beside or below the others. */
-export async function splitTerminal(tabId: string, conn: string, dir: 'columns' | 'rows', cwd?: string) {
+export async function splitTerminal(tabId: string, conn: string, dir: 'columns' | 'rows', cwd?: string, shell?: string) {
   try {
-    const term = await call<{ id: string; title: string }>('term.open', { conn, cols: 80, rows: 24, cwd: cwd || '' })
-    updateTab<TerminalTab>(tabId, (tb) => ({ panes: [...terminalPanes(tb), { termId: term.id, conn, title: term.title, cwd }], split: dir }))
+    const term = await call<{ id: string; title: string }>('term.open', { conn, cols: 80, rows: 24, cwd: cwd || '', shell: shell || '' })
+    updateTab<TerminalTab>(tabId, (tb) => ({ panes: [...terminalPanes(tb), { termId: term.id, conn, title: term.title, cwd, shell }], split: dir }))
   } catch (e) {
     errorToast(t('term.title'), e)
   }
@@ -847,10 +848,23 @@ export function revealTerminalCwd(conn: string, path: string) {
   if (c) openSessionTab(c, { remote: path })
 }
 
-export async function openTerminal(conn: string, cwd?: string) {
+/** The shells and interpreters a terminal can run on a connection. */
+export async function loadShells(conn: string): Promise<import('./types').Shell[]> {
+  const cached = get().shells[conn]
+  if (cached) return cached
   try {
-    const term = await call<{ id: string; title: string }>('term.open', { conn, cols: 120, rows: 32, cwd: cwd || '' })
-    const tab: TerminalTab = { id: uid('x'), kind: 'terminal', title: term.title, termId: term.id, conn, panes: [{ termId: term.id, conn, title: term.title, cwd }] }
+    const list = await call<import('./types').Shell[]>('term.shells', { conn })
+    set((s) => ({ shells: { ...s.shells, [conn]: list } }))
+    return list
+  } catch {
+    return []
+  }
+}
+
+export async function openTerminal(conn: string, cwd?: string, shell?: string) {
+  try {
+    const term = await call<{ id: string; title: string }>('term.open', { conn, cols: 120, rows: 32, cwd: cwd || '', shell: shell || '' })
+    const tab: TerminalTab = { id: uid('x'), kind: 'terminal', title: term.title, termId: term.id, conn, panes: [{ termId: term.id, conn, title: term.title, cwd, shell }] }
     addTab(tab)
   } catch (e) {
     errorToast(t('term.title'), e)

@@ -570,7 +570,7 @@ export function diffWithOther(tabId: string, side: Side) {
   else openDiff(left, right)
 }
 
-export function terminalHere(tabId: string, side: Side) {
+export function terminalHere(tabId: string, side: Side, shell?: string) {
   const tab = sessionTab(tabId)
   if (!tab) return
   const p = tab.panes[side]
@@ -579,7 +579,7 @@ export function terminalHere(tabId: string, side: Side) {
     toast('warn', t('term.title'), t('term.notSupported'))
     return
   }
-  openTerminal(conn, p.path)
+  openTerminal(conn, p.path, shell)
 }
 
 // ---------------------------------------------------------------------------

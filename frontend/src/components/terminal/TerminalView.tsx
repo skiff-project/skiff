@@ -5,13 +5,14 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import { SearchAddon } from '@xterm/addon-search'
 import '@xterm/xterm/css/xterm.css'
 import {
-  ClipboardPaste, Columns2, Copy, FolderOpen, FolderSync, Minus, Plus, Radio, Rows2, RotateCw, Search, Settings2, SquareCode, X,
+  ClipboardPaste, Columns2, Copy, FolderOpen, FolderSync, Laptop, Minus, Plus, Radio, Rows2, RotateCw, Search, Server, Settings2, SquareCode, X,
 } from 'lucide-react'
 import { termSocketUrl } from '../../lib/api'
-import { get, useStore, type TerminalTab, type TermPaneState, updateTab } from '../../lib/store'
-import { closeTermPane, followTerminalCwd, openTerminal, closeTab, revealTerminalCwd, splitTerminal, terminalPanes } from '../../lib/actions'
+import { get, toast, useStore, type TerminalTab, type TermPaneState, updateTab } from '../../lib/store'
+import { closeTermPane, followTerminalCwd, loadShells, openTerminal, closeTab, revealTerminalCwd, splitTerminal, terminalPanes } from '../../lib/actions'
+import { shellItems } from '../../lib/shellmenu'
 import { snippetName, t } from '../../lib/i18n'
-import { showMenuAt, type MenuItem } from '../ui/Menu'
+import { showMenu, showMenuAt, type MenuItem } from '../ui/Menu'
 import { openPreferences } from '../dialogs/Preferences'
 
 function cssVar(name: string) {
@@ -55,6 +56,26 @@ export function parseOsc7(data: string): string | null {
   }
 }
 
+/** Copies the selection of a terminal (the browser's own copy as fallback). */
+function copySelection(xt: Terminal): boolean {
+  const text = xt.getSelection()
+  if (!text) return false
+  if (navigator.clipboard?.writeText && window.isSecureContext) {
+    navigator.clipboard.writeText(text).catch(() => {})
+  } else {
+    document.execCommand('copy')
+  }
+  xt.clearSelection()
+  return true
+}
+
+/** Pastes the clipboard into a terminal; false when the page may not read it. */
+function pasteInto(xt: Terminal): boolean {
+  if (!navigator.clipboard?.readText || !window.isSecureContext) return false
+  navigator.clipboard.readText().then((txt) => txt && xt.paste(txt)).catch(() => toast('warn', t('term.pasteDenied')))
+  return true
+}
+
 interface PaneHandle {
   send: (data: string) => void
   xt: Terminal
@@ -73,9 +94,10 @@ class PaneRegistry {
   }
 }
 
-function TermPane({ pane, tabId, reg, fontSize, focused, many, cwd, onFocus, onCwd, onFind }: {
+function TermPane({ pane, tabId, reg, fontSize, focused, many, cwd, onFocus, onCwd, onFind, onMenu }: {
   pane: TermPaneState; tabId: string; reg: PaneRegistry; fontSize: number; focused: boolean; many: boolean
   cwd?: string; onFocus: () => void; onCwd: (path: string) => void; onFind: () => void
+  onMenu: (e: React.MouseEvent, xt: Terminal) => void
 }) {
   const host = useRef<HTMLDivElement>(null)
   const term = useRef<Terminal | null>(null)
@@ -96,7 +118,7 @@ function TermPane({ pane, tabId, reg, fontSize, focused, many, cwd, onFocus, onC
       allowProposedApi: true,
       theme: themeFor(dark),
       macOptionIsMeta: true,
-      rightClickSelectsWord: true,
+      rightClickSelectsWord: tp?.rightClick === 'menu',
     })
     const f = new FitAddon()
     const search = new SearchAddon()
@@ -153,12 +175,18 @@ function TermPane({ pane, tabId, reg, fontSize, focused, many, cwd, onFocus, onC
     xt.attachCustomKeyEventHandler((e) => {
       if (e.type !== 'keydown') return true
       const mod = e.ctrlKey || e.metaKey
-      if (mod && e.shiftKey && e.key.toLowerCase() === 'c') {
-        navigator.clipboard?.writeText(xt.getSelection())
+      const key = e.key.toLowerCase()
+      const ctrlKeys = get().prefs?.terminal.copyKeys !== 'ctrlShift'
+      // Ctrl+Shift+C / Ctrl+Shift+V always; Ctrl+C (with a selection) and
+      // Ctrl+V like Windows Terminal unless turned off. Without a selection
+      // Ctrl+C still interrupts the program.
+      if (mod && !e.altKey && key === 'c' && (e.shiftKey || (ctrlKeys && xt.hasSelection()))) {
+        if (copySelection(xt)) e.preventDefault()
         return false
       }
-      if (mod && e.shiftKey && e.key.toLowerCase() === 'v') {
-        navigator.clipboard?.readText().then((txt) => reg.input(pane.termId, txt))
+      if (mod && !e.altKey && key === 'v' && (e.shiftKey || ctrlKeys)) {
+        // the browser pastes by itself when the page may not read the clipboard
+        if (pasteInto(xt)) e.preventDefault()
         return false
       }
       if (mod && e.shiftKey && e.key.toLowerCase() === 'f') {
@@ -207,7 +235,7 @@ function TermPane({ pane, tabId, reg, fontSize, focused, many, cwd, onFocus, onC
           <button className="icon-btn sm" data-tip={t('term.closePane')} onClick={(e) => { e.stopPropagation(); closeTermPane(tabId, pane.termId) }}><X /></button>
         </div>
       )}
-      <div className="term-host" ref={host} onContextMenu={(e) => e.stopPropagation()} />
+      <div className="term-host" ref={host} onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); if (term.current) onMenu(e, term.current) }} />
     </div>
   )
 }
@@ -224,6 +252,7 @@ export function TerminalView({ tab, visible }: { tab: TerminalTab; visible: bool
   const [findOpen, setFindOpen] = useState(false)
   const [q, setQ] = useState('')
   const [fontSize, setFontSize] = useState(prefs?.terminal.fontSize || 13)
+  const ctrlKeys = prefs?.terminal.copyKeys !== 'ctrlShift'
   reg.broadcast = !!tab.broadcast
   const focused = panes.find((p) => p.termId === focusId) || panes[0]
   const followRef = useRef(tab.follow)
@@ -272,14 +301,51 @@ export function TerminalView({ tab, visible }: { tab: TerminalTab; visible: bool
     if (cur) followTerminalCwd(focused.conn, cur)
   }
 
-  const splitMenu = (el: HTMLElement, dir: 'columns' | 'rows') => {
-    const sshConns = Object.values(conns).filter((c) => c.state === 'connected' && c.caps.shell)
-    const items: MenuItem[] = [
-      { header: t('term.splitWith') },
-      ...sshConns.map((c) => ({ label: c.id === focused.conn ? `${c.title} (${t('term.sameServer')})` : c.title, onClick: () => splitTerminal(tab.id, c.id, dir, c.id === focused.conn ? cwds[focused.termId] || focused.cwd : undefined) })),
-      { label: t('common.local'), hidden: !info?.localTerminal, onClick: () => splitTerminal(tab.id, 'local', dir) },
-    ]
+  const splitMenu = async (el: HTMLElement, dir: 'columns' | 'rows') => {
+    const targets = Object.values(conns).filter((c) => c.state === 'connected' && c.caps.shell).map((c) => ({ id: c.id, title: c.title }))
+    if (info?.localTerminal) targets.push({ id: 'local', title: t('common.local') })
+    const lists = await Promise.all(targets.map((x) => loadShells(x.id)))
+    const items: MenuItem[] = [{ header: t('term.splitWith') }]
+    targets.forEach((x, i) => {
+      const same = x.id === focused.conn
+      const cwd = same ? cwds[focused.termId] || focused.cwd : undefined
+      const label = same ? `${x.title} (${t('term.sameServer')})` : x.title
+      items.push({
+        label,
+        icon: x.id === 'local' ? <Laptop /> : <Server />,
+        // a click opens the shell of the current pane, the submenu another one
+        onClick: () => splitTerminal(tab.id, x.id, dir, cwd, same ? focused.shell : undefined),
+        submenu: [
+          { label: t('term.defaultShell'), onClick: () => splitTerminal(tab.id, x.id, dir, cwd) },
+          { separator: true },
+          ...shellItems(lists[i], (s) => splitTerminal(tab.id, x.id, dir, cwd, s.id)),
+        ],
+      })
+    })
     showMenuAt(el, items)
+  }
+
+  // right-click: copy the selection or paste (like the Windows console),
+  // or a menu
+  const paneMenu = (e: React.MouseEvent, xt: Terminal, p: TermPaneState) => {
+    setFocusId(p.termId)
+    if (get().prefs?.terminal.rightClick !== 'menu') {
+      if (!copySelection(xt) && !pasteInto(xt)) toast('warn', t('term.pasteDenied'))
+      xt.focus()
+      return
+    }
+    // the keyboard stays in the terminal after a choice
+    const then = (f: () => void) => () => { f(); xt.focus() }
+    showMenu(e.clientX, e.clientY, [
+      { label: t('common.copy'), icon: <Copy />, shortcut: ctrlKeys ? 'Ctrl+C' : 'Ctrl+Shift+C', disabled: !xt.hasSelection(), onClick: then(() => copySelection(xt)) },
+      { label: t('common.paste'), icon: <ClipboardPaste />, shortcut: ctrlKeys ? 'Ctrl+V' : 'Ctrl+Shift+V', onClick: then(() => { if (!pasteInto(xt)) toast('warn', t('term.pasteDenied')) }) },
+      { label: t('term.selectAll'), onClick: then(() => xt.selectAll()) },
+      { label: t('term.clear'), onClick: then(() => xt.clear()) },
+      { separator: true },
+      { label: t('common.search'), icon: <Search />, shortcut: 'Ctrl+Shift+F', onClick: () => setFindOpen(true) },
+      { label: t('term.splitRight'), icon: <Columns2 />, onClick: () => splitTerminal(tab.id, p.conn, 'columns', cwds[p.termId] || p.cwd, p.shell) },
+      { label: t('term.splitDown'), icon: <Rows2 />, onClick: () => splitTerminal(tab.id, p.conn, 'rows', cwds[p.termId] || p.cwd, p.shell) },
+    ])
   }
 
   const snippetsMenu = (el: HTMLElement) => {
@@ -332,12 +398,12 @@ export function TerminalView({ tab, visible }: { tab: TerminalTab; visible: bool
         <button className="icon-btn sm" data-tip={t('term.reveal')} disabled={!cwds[focused.termId]} onClick={() => revealTerminalCwd(focused.conn, cwds[focused.termId])}><FolderOpen /></button>
         <div className="vdivider" />
         <button className="icon-btn sm" data-tip={t('common.search')} data-kbd="Ctrl+Shift+F" onClick={() => setFindOpen(!findOpen)}><Search /></button>
-        <button className="icon-btn sm" data-tip={t('common.copy')} data-kbd="Ctrl+Shift+C" onClick={() => navigator.clipboard?.writeText(reg.panes.get(focused.termId)?.xt.getSelection() || '')}><Copy /></button>
-        <button className="icon-btn sm" data-tip={t('common.paste')} data-kbd="Ctrl+Shift+V" onClick={() => navigator.clipboard?.readText().then((txt) => insert(txt))}><ClipboardPaste /></button>
+        <button className="icon-btn sm" data-tip={t('common.copy')} data-kbd={ctrlKeys ? 'Ctrl+C' : 'Ctrl+Shift+C'} onClick={() => { const xt = reg.panes.get(focused.termId)?.xt; if (xt) copySelection(xt); refocus() }}><Copy /></button>
+        <button className="icon-btn sm" data-tip={t('common.paste')} data-kbd={ctrlKeys ? 'Ctrl+V' : 'Ctrl+Shift+V'} onClick={() => { const xt = reg.panes.get(focused.termId)?.xt; if (xt && !pasteInto(xt)) toast('warn', t('term.pasteDenied')); refocus() }}><ClipboardPaste /></button>
         <button className="icon-btn sm" data-tip={t('term.fontSmaller')} onClick={() => setFontSize((n) => Math.max(9, n - 1))}><Minus /></button>
         <button className="icon-btn sm" data-tip={t('term.fontLarger')} onClick={() => setFontSize((n) => Math.min(28, n + 1))}><Plus /></button>
         {exited && panes.length === 1 && (
-          <button className="btn sm primary" onClick={() => { closeTab(tab.id); openTerminal(tab.conn) }}><RotateCw /> {t('term.reopen')}</button>
+          <button className="btn sm primary" onClick={() => { closeTab(tab.id); openTerminal(tab.conn, panes[0].cwd, panes[0].shell) }}><RotateCw /> {t('term.reopen')}</button>
         )}
       </div>
       <div className={`term-panes ${grid}`} style={grid === 'columns' ? { gridTemplateColumns: `repeat(${panes.length}, minmax(0, 1fr))` } : grid === 'rows' ? { gridTemplateRows: `repeat(${panes.length}, minmax(0, 1fr))` } : undefined}>
@@ -354,6 +420,7 @@ export function TerminalView({ tab, visible }: { tab: TerminalTab; visible: bool
             onFocus={() => setFocusId(p.termId)}
             onCwd={onCwd(p)}
             onFind={() => setFindOpen(true)}
+            onMenu={(e, xt) => paneMenu(e, xt, p)}
           />
         ))}
       </div>

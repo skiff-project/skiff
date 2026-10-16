@@ -61,6 +61,14 @@ type TerminalPrefs struct {
 	Term         string `json:"term"`
 	// Snippets are saved commands typed into a terminal from its toolbar.
 	Snippets []Snippet `json:"snippets"`
+	// LocalShell is the shell of the local terminals ("" = the default one).
+	LocalShell string `json:"localShell,omitempty"`
+	// CopyKeys: "" or "ctrl" (Ctrl+C copies a selection, Ctrl+V pastes) or
+	// "ctrlShift" (only Ctrl+Shift+C / Ctrl+Shift+V).
+	CopyKeys string `json:"copyKeys,omitempty"`
+	// RightClick: "" or "copyPaste" (copies the selection, else pastes, like
+	// the Windows console) or "menu".
+	RightClick string `json:"rightClick,omitempty"`
 }
 
 // Snippet is a saved terminal command; Run also presses Enter.

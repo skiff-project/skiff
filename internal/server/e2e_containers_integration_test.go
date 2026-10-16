@@ -83,6 +83,20 @@ func testContainers(t *testing.T, e *e2e) {
 		}
 		done()
 		e.must(t, "term.close", map[string]string{"id": term.ID}, nil)
+		// the shells of the container
+		var shells []core.Shell
+		e.must(t, "term.shells", map[string]string{"conn": ci.ID}, &shells)
+		if _, ok := shellOf(t, shells, "sh"); !ok {
+			t.Errorf("shells of the container %+v", shells)
+		}
+		e.must(t, "term.open", map[string]any{"conn": ci.ID, "cols": 100, "rows": 30, "cwd": dir, "shell": "sh"}, &term)
+		send, wait, done = e.termSession(t, term.ID)
+		send("echo sh-$((40+2)) $0; pwd\n")
+		if out := wait("sh-42"); !strings.Contains(out, dir) {
+			t.Errorf("sh not in %s:\n%s", dir, out)
+		}
+		done()
+		e.must(t, "term.close", map[string]string{"id": term.ID}, nil)
 		var m core.MonitorSample
 		e.must(t, "monitor.sample", map[string]string{"conn": ci.ID, "key": "ctr"}, &m)
 		if m.ProcCount == 0 || m.MemTotal == 0 {

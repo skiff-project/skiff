@@ -131,7 +131,8 @@ function MenuList({ x, y, items, root, minWidth, onLeave }: { x: number; y: numb
               } else setSub(null)
             }}
             onClick={() => {
-              if (it.submenu || it.disabled) return
+              // an item with a submenu may also have its own action
+              if ((it.submenu && !it.onClick) || it.disabled) return
               closeMenu()
               it.onClick?.()
             }}

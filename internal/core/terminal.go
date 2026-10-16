@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -60,7 +61,9 @@ func newTerminals(c *Core) *terminals { return &terminals{core: c, m: map[string
 const replayMax = 256 * 1024
 
 // OpenTerminal starts a shell on a connection ("local" for this computer).
-func (c *Core) OpenTerminal(conn string, cols, rows int, cwd string) (*Terminal, error) {
+// shell is the ID of a detected shell or interpreter (see Shells); empty
+// means the default one.
+func (c *Core) OpenTerminal(conn string, cols, rows int, cwd, shell string) (*Terminal, error) {
 	if cols <= 0 {
 		cols = 120
 	}
@@ -74,12 +77,24 @@ func (c *Core) OpenTerminal(conn string, cols, rows int, cwd string) (*Terminal,
 	var be ptyBackend
 	var stderr io.Reader
 	title := "Local"
+	if conn == LocalID && c.Local.Root != "" {
+		// a shell cannot be confined to the --root folder
+		return nil, errors.New("the local terminal is not available when the local panel is restricted (--root)")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	sh, err := c.shellFor(ctx, conn, shell)
+	if err != nil {
+		return nil, err
+	}
 	if conn == LocalID {
-		if c.Local.Root != "" {
-			// a shell cannot be confined to the --root folder
-			return nil, errors.New("the local terminal is not available when the local panel is restricted (--root)")
+		var lp ptyBackend
+		if sh != nil {
+			lp, err = startLocalPtyCmd(cols, rows, cwd, term, append([]string{sh.Path}, sh.Args...))
+			title = sh.Name
+		} else {
+			lp, err = startLocalPty(cols, rows, cwd, term)
 		}
-		lp, err := startLocalPty(cols, rows, cwd, term)
 		if err != nil {
 			return nil, err
 		}
@@ -92,11 +107,14 @@ func (c *Core) OpenTerminal(conn string, cols, rows int, cwd string) (*Terminal,
 		s := cn.SSH()
 		if s == nil && cn.container != nil {
 			// a shell inside the container
-			shell := "command -v bash >/dev/null 2>&1 && exec bash || exec sh"
+			line := "command -v bash >/dev/null 2>&1 && exec bash || exec sh"
 			if cwd != "" {
-				shell = "cd " + vfs.ShellQuote(cwd) + " 2>/dev/null; " + shell
+				line = "cd " + vfs.ShellQuote(cwd) + " 2>/dev/null; " + line
 			}
-			argv := append(execArgv(cn.site, true), "sh", "-c", shell)
+			if sh != nil {
+				line = sh.commandLine(cwd)
+			}
+			argv := append(execArgv(cn.site, true), "sh", "-c", line)
 			if h := cn.container; h.ssh != nil {
 				s = h.ssh
 				title = cn.Title
@@ -122,6 +140,9 @@ func (c *Core) OpenTerminal(conn string, cols, rows int, cwd string) (*Terminal,
 					return nil, err
 				}
 				be, title = lp, cn.Title
+			}
+			if sh != nil && !sh.Default {
+				title = cn.Title + " · " + sh.Name
 			}
 			return c.addTerminal(conn, title, be, nil), nil
 		}
@@ -158,9 +179,15 @@ func (c *Core) OpenTerminal(conn string, cols, rows int, cwd string) (*Terminal,
 		}
 		errp, _ := sess.StderrPipe()
 		sess.Setenv("LANG", "en_US.UTF-8")
-		if cwd != "" {
+		switch {
+		case sh != nil:
+			err = sess.Start(sh.commandLine(cwd))
+			if !sh.Default {
+				title = cn.Title + " · " + sh.Name
+			}
+		case cwd != "":
 			err = sess.Start("cd " + vfs.ShellQuote(cwd) + " 2>/dev/null; exec \"${SHELL:-/bin/sh}\" -l")
-		} else {
+		default:
 			err = sess.Shell()
 		}
 		if err != nil {

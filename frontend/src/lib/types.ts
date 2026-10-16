@@ -335,7 +335,8 @@ export interface Prefs {
   }
   queue: { maxParallel: number; background: boolean; autoPopup: boolean; retryCount: number; retryDelay: number; continueOnError: boolean; segmentSize: number; segments: number }
   editor: { default: 'internal' | 'external'; externalCmd: string; tabSize: number; wordWrap: boolean; fontSize: number; maxSizeMB: number; encoding: string; autoReload: boolean; associations: { mask: string; command: string }[] }
-  terminal: { fontSize: number; fontFamily: string; scrollback: number; cursorBlink: boolean; copyOnSelect: boolean; term: string; snippets: Snippet[] }
+  terminal: { fontSize: number; fontFamily: string; scrollback: number; cursorBlink: boolean; copyOnSelect: boolean; term: string; snippets: Snippet[]
+    localShell?: string; copyKeys?: '' | 'ctrl' | 'ctrlShift'; rightClick?: '' | 'copyPaste' | 'menu' }
   logging: { toFile: boolean; level: string; keepDays: number }
   restoreTabs: boolean
   autoReconnect: boolean
@@ -385,6 +386,7 @@ export interface TaskRun {
 }
 export interface TaskView extends Task { next?: string; last?: TaskRun; running: boolean }
 export interface ContainerInfo { name: string; image?: string; status?: string; running: boolean; namespace?: string; containers?: string[] }
+export interface Shell { id: string; name: string; kind: 'shell' | 'repl'; path: string; args?: string[]; default?: boolean }
 export interface Snippet { id: string; name: string; command: string; run: boolean }
 export interface KeychainKey { id: string; name: string; type: string; fingerprint: string; publicKey: string; added: string }
 export interface KnownHost { hosts: string; keyType: string; fingerprint: string; line: number }

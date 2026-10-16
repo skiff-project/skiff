@@ -1,10 +1,12 @@
 import {
   ArrowLeftRight, Columns2, Eye, EyeOff, FileSearch, GitCompareArrows, Info, Link2, Network, PanelRight, Power, RefreshCcwDot,
-  ScrollText, SquareTerminal, TerminalSquare, Zap, FolderTree, Activity, Box,
+  ScrollText, SquareTerminal, TerminalSquare, Zap, FolderTree, Activity, Box, ChevronDown,
 } from 'lucide-react'
 import { get, set, useStore, type SessionTab } from '../lib/store'
 import { closeTab, editNewSite, openMonitor, savePrefs, setBottom, toggleSyncBrowsing, updateLayout } from '../lib/actions'
 import { openContainers } from './dialogs/ContainersDialog'
+import { showMenuAt } from './ui/Menu'
+import { shellMenu } from '../lib/shellmenu'
 import { compareDirs, terminalHere, runCommandDialog } from '../lib/fileops'
 import { t } from '../lib/i18n'
 import { openSyncDialog } from './dialogs/SyncDialog'
@@ -45,9 +47,14 @@ export function SessionToolbar({ tab }: { tab: SessionTab }) {
         <Link2 />
       </button>
       <div className="vdivider" />
-      <button className="tb-btn" disabled={!caps?.shell && tab.panes[side].conn !== 'local'} onClick={() => terminalHere(tab.id, side)} data-tip={t('toolbar.terminal')} data-kbd="Ctrl+T">
-        <SquareTerminal /> <span>{t('term.title')}</span>
-      </button>
+      <div className="tb-split">
+        <button className="tb-btn" disabled={!caps?.shell && tab.panes[side].conn !== 'local'} onClick={() => terminalHere(tab.id, side)} data-tip={t('toolbar.terminal')} data-kbd="Ctrl+T">
+          <SquareTerminal /> <span>{t('term.title')}</span>
+        </button>
+        <button className="tb-btn icon-only tb-chevron" disabled={!caps?.shell && tab.panes[side].conn !== 'local'} data-tip={t('term.choose')} onClick={async (e) => { const el = e.currentTarget; showMenuAt(el, await shellMenu(tab.panes[side].conn, (s) => terminalHere(tab.id, side, s.id))) }}>
+          <ChevronDown />
+        </button>
+      </div>
       <button className="tb-btn icon-only" disabled={!caps?.exec} onClick={() => runCommandDialog(tab.id, side)} data-tip={t('cmd.run')} data-kbd="Ctrl+Shift+X">
         <TerminalSquare />
       </button>
