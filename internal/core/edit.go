@@ -41,31 +41,54 @@ type externalEdits struct {
 	m    map[string]*ExternalEdit
 }
 
-func newExternalEdits(c *Core) *externalEdits { return &externalEdits{core: c, m: map[string]*ExternalEdit{}} }
+func newExternalEdits(c *Core) *externalEdits {
+	return &externalEdits{core: c, m: map[string]*ExternalEdit{}}
+}
 
 func editTempDir() string {
 	return filepath.Join(os.TempDir(), "skiff-edit")
 }
 
-// splitCommand splits a command line honouring double quotes.
+// splitCommand splits an editor command line. Double and single quotes
+// group words ("C:\Program Files\Editor\editor.exe" !.!, sh -c 'cmd "$0"');
+// backslashes stay literal (Windows paths), except \" inside double quotes.
 func splitCommand(s string) []string {
 	var out []string
 	var cur strings.Builder
-	inq := false
-	for _, r := range s {
+	has := false
+	var quote rune
+	rs := []rune(s)
+	for i := 0; i < len(rs); i++ {
+		r := rs[i]
 		switch {
-		case r == '"':
-			inq = !inq
-		case (r == ' ' || r == '\t') && !inq:
-			if cur.Len() > 0 {
+		case quote == '\'':
+			if r == '\'' {
+				quote = 0
+			} else {
+				cur.WriteRune(r)
+			}
+		case quote == '"':
+			if r == '\\' && i+1 < len(rs) && rs[i+1] == '"' {
+				cur.WriteRune('"')
+				i++
+			} else if r == '"' {
+				quote = 0
+			} else {
+				cur.WriteRune(r)
+			}
+		case r == '"' || r == '\'':
+			quote, has = r, true
+		case r == ' ' || r == '\t':
+			if cur.Len() > 0 || has {
 				out = append(out, cur.String())
 				cur.Reset()
+				has = false
 			}
 		default:
 			cur.WriteRune(r)
 		}
 	}
-	if cur.Len() > 0 {
+	if cur.Len() > 0 || has {
 		out = append(out, cur.String())
 	}
 	return out

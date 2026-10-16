@@ -54,3 +54,16 @@ func TestMask(t *testing.T) {
 		}
 	}
 }
+
+func TestMatchName(t *testing.T) {
+	m, _ := Parse("c* | cache/")
+	now := time.Now()
+	for name, want := range map[string]bool{"css": true, "doc": false, "cache": false} {
+		if got := m.MatchName(name, name, true, 0, now); got != want {
+			t.Errorf("%s: %v", name, got)
+		}
+	}
+	if !m.Match("doc", "doc", true, 0, now) {
+		t.Error("Match must still traverse directories")
+	}
+}

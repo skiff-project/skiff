@@ -48,7 +48,7 @@ export function PreviewPane({ tab }: { tab: SessionTab }) {
       <div className="preview-head">
         <span className="strong">{t('toolbar.preview')}</span>
         <div className="spacer" />
-        <button className="icon-btn sm" onClick={() => set({ previewOpen: false })}><X /></button>
+        <button className="icon-btn sm" data-tip={t('common.close')} onClick={() => set({ previewOpen: false })}><X /></button>
       </div>
       {!entry ? (
         <div className="empty"><p>{t('common.file')}…</p></div>

@@ -34,14 +34,14 @@ type TunnelInfo struct {
 }
 
 type tunnel struct {
-	info     TunnelInfo
-	ln       net.Listener
-	active   atomic.Int64
-	total    atomic.Int64
-	in, out  atomic.Int64
-	mu       sync.Mutex
-	conns    map[net.Conn]bool
-	closed   bool
+	info    TunnelInfo
+	ln      net.Listener
+	active  atomic.Int64
+	total   atomic.Int64
+	in, out atomic.Int64
+	mu      sync.Mutex
+	conns   map[net.Conn]bool
+	closed  bool
 }
 
 type tunnels struct {
@@ -176,25 +176,26 @@ func (c *Core) StartTunnel(connID string, f config.Forward) (TunnelInfo, error) 
 				}
 				go func() {
 					target := dest
+					var socksVersion byte
 					if f.Type == "dynamic" {
-						tg, err := socksHandshake(lc)
+						tg, v, err := socksHandshake(lc)
 						if err != nil {
 							lc.Close()
 							return
 						}
-						target = tg
+						target, socksVersion = tg, v
 					}
 					rc, err := s.Client.Dial("tcp", target)
 					if err != nil {
 						if f.Type == "dynamic" {
-							lc.Write([]byte{5, 4, 0, 1, 0, 0, 0, 0, 0, 0})
+							socksReply(lc, socksVersion, false)
 						}
 						cn.log.Warnf("Tunnel %s → %s: %v", t.info.Bind, target, err)
 						lc.Close()
 						return
 					}
 					if f.Type == "dynamic" {
-						lc.Write([]byte{5, 0, 0, 1, 0, 0, 0, 0, 0, 0})
+						socksReply(lc, socksVersion, true)
 					}
 					t.pipe(lc, rc)
 				}()
@@ -236,18 +237,19 @@ func (c *Core) StartTunnel(connID string, f config.Forward) (TunnelInfo, error) 
 }
 
 // socksHandshake implements a minimal SOCKS4/4a/5 server (no auth) and
-// returns the requested destination.
-func socksHandshake(c net.Conn) (string, error) {
+// returns the requested destination and the protocol version (4 or 5). The
+// caller answers with socksReply once the destination is reached.
+func socksHandshake(c net.Conn) (string, byte, error) {
 	c.SetDeadline(time.Now().Add(15 * time.Second))
 	defer c.SetDeadline(time.Time{})
 	hdr := make([]byte, 2)
 	if _, err := io.ReadFull(c, hdr); err != nil {
-		return "", err
+		return "", 0, err
 	}
 	if hdr[0] == 4 {
 		rest := make([]byte, 6)
 		if _, err := io.ReadFull(c, rest); err != nil {
-			return "", err
+			return "", 0, err
 		}
 		port := binary.BigEndian.Uint16(rest[0:2])
 		ip := net.IP(rest[2:6])
@@ -266,67 +268,80 @@ func socksHandshake(c net.Conn) (string, error) {
 			return string(b), nil
 		}
 		if _, err := readZ(); err != nil {
-			return "", err
+			return "", 0, err
 		}
 		host := ip.String()
 		if ip[0] == 0 && ip[1] == 0 && ip[2] == 0 && ip[3] != 0 {
 			h, err := readZ()
 			if err != nil {
-				return "", err
+				return "", 0, err
 			}
 			host = h
 		}
-		c.Write([]byte{0, 0x5a, 0, 0, 0, 0, 0, 0})
-		return net.JoinHostPort(host, strconv.Itoa(int(port))), nil
+		return net.JoinHostPort(host, strconv.Itoa(int(port))), 4, nil
 	}
 	if hdr[0] != 5 {
-		return "", errors.New("unsupported SOCKS version")
+		return "", 0, errors.New("unsupported SOCKS version")
 	}
 	methods := make([]byte, hdr[1])
 	if _, err := io.ReadFull(c, methods); err != nil {
-		return "", err
+		return "", 0, err
 	}
 	c.Write([]byte{5, 0})
 	req := make([]byte, 4)
 	if _, err := io.ReadFull(c, req); err != nil {
-		return "", err
+		return "", 0, err
 	}
 	if req[1] != 1 {
 		c.Write([]byte{5, 7, 0, 1, 0, 0, 0, 0, 0, 0})
-		return "", errors.New("only CONNECT is supported")
+		return "", 0, errors.New("only CONNECT is supported")
 	}
 	var host string
 	switch req[3] {
 	case 1:
 		b := make([]byte, 4)
 		if _, err := io.ReadFull(c, b); err != nil {
-			return "", err
+			return "", 0, err
 		}
 		host = net.IP(b).String()
 	case 4:
 		b := make([]byte, 16)
 		if _, err := io.ReadFull(c, b); err != nil {
-			return "", err
+			return "", 0, err
 		}
 		host = net.IP(b).String()
 	case 3:
 		l := make([]byte, 1)
 		if _, err := io.ReadFull(c, l); err != nil {
-			return "", err
+			return "", 0, err
 		}
 		b := make([]byte, l[0])
 		if _, err := io.ReadFull(c, b); err != nil {
-			return "", err
+			return "", 0, err
 		}
 		host = string(b)
 	default:
-		return "", errors.New("bad address type")
+		return "", 0, errors.New("bad address type")
 	}
 	pb := make([]byte, 2)
 	if _, err := io.ReadFull(c, pb); err != nil {
-		return "", err
+		return "", 0, err
 	}
-	return net.JoinHostPort(host, strconv.Itoa(int(binary.BigEndian.Uint16(pb)))), nil
+	return net.JoinHostPort(host, strconv.Itoa(int(binary.BigEndian.Uint16(pb)))), 5, nil
+}
+
+// socksReply tells a SOCKS client whether the destination was reached.
+func socksReply(c net.Conn, version byte, ok bool) {
+	switch {
+	case version == 4 && ok:
+		c.Write([]byte{0, 0x5a, 0, 0, 0, 0, 0, 0})
+	case version == 4:
+		c.Write([]byte{0, 0x5b, 0, 0, 0, 0, 0, 0})
+	case ok:
+		c.Write([]byte{5, 0, 0, 1, 0, 0, 0, 0, 0, 0})
+	default:
+		c.Write([]byte{5, 4, 0, 1, 0, 0, 0, 0, 0, 0}) // host unreachable
+	}
 }
 
 func (c *Core) StopTunnel(id string) {

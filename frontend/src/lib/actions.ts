@@ -1,6 +1,6 @@
 import { call, EventStream, setUnauthorizedHandler } from './api'
 import {
-  get, getTab, newPane, set, toast, errorToast, uid, updatePane, updateTab,
+  get, getTab, newPane, set, toast, errorToast, uid, updatePane, updateTab, useStore,
   type EditorTab, type PaneState, type SessionTab, type Side, type Tab, type TerminalTab,
 } from './store'
 import type { AppInfo, ConnInfo, Entry, Job, Prefs, PromptEvent, SiteView, TabState } from './types'
@@ -178,7 +178,13 @@ function onEvent(type: string, data: any) {
     }
     case 'find.hits': {
       const f = s.find
-      if (f && f.id === data.id) set({ find: { ...f, hits: [...f.hits, ...(data.hits || [])], done: data.done, scanned: data.scanned, error: data.error || undefined } })
+      if (f && f.id === data.id) applyFindHits(data)
+      else {
+        // the search may finish before fs.find returns its id: keep the
+        // events until startFind() knows it
+        earlyFindHits.set(data.id, [...(earlyFindHits.get(data.id) || []), data])
+        if (earlyFindHits.size > 20) earlyFindHits.delete(earlyFindHits.keys().next().value!)
+      }
       break
     }
     case 'sites.changed':
@@ -739,3 +745,41 @@ type State = ReturnType<typeof get>
 export function updateLayout(tabId: string) {
   updateTab<SessionTab>(tabId, (tb) => ({ layout: tb.layout === 'commander' ? 'explorer' : 'commander', active: 'right' }))
 }
+
+const earlyFindHits = new Map<string, any[]>()
+
+function applyFindHits(data: any) {
+  const f = get().find
+  if (!f || f.id !== data.id) return
+  set({ find: { ...f, hits: [...f.hits, ...(data.hits || [])], done: data.done, scanned: data.scanned, error: data.error || undefined } })
+}
+
+// startFind shows a search started with fs.find, including the results
+// that arrived before its id was known.
+export function startFind(find: NonNullable<State['find']>) {
+  set({ find })
+  const early = earlyFindHits.get(find.id) || []
+  earlyFindHits.delete(find.id)
+  for (const data of early) applyFindHits(data)
+}
+
+// The local folders shown in the panels are watched by Skiff, so that
+// changes made outside of it (downloads, other applications) refresh them
+// (the server answers with fs.changed events).
+let watchedLocal = ''
+useStore.subscribe((s) => {
+  const dirs = new Set<string>()
+  for (const tab of s.tabs) {
+    if (tab.kind !== 'session') continue
+    for (const side of ['left', 'right'] as Side[]) {
+      const p = tab.panes[side]
+      if (p.conn === 'local' && p.path) dirs.add(p.path)
+    }
+  }
+  const key = [...dirs].sort().join('\n')
+  if (key === watchedLocal) return
+  watchedLocal = key
+  call('fs.watchLocal', { dirs: [...dirs] }).catch(() => {
+    watchedLocal = '' // retry on the next change (e.g. not signed in yet)
+  })
+})

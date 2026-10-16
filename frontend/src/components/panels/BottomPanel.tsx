@@ -35,7 +35,7 @@ export function BottomPanel() {
           </button>
         ))}
         <div className="spacer" />
-        <button className="icon-btn sm" onClick={() => setBottom(false)}>
+        <button className="icon-btn sm" data-tip={t('panel.collapse')} data-kbd="Ctrl+Shift+Q" onClick={() => setBottom(false)}>
           <ChevronDown />
         </button>
       </div>

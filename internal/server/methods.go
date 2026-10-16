@@ -49,7 +49,7 @@ func (s *Server) registerRPC() {
 			"hasMaster":     c.Store.Secrets.HasMaster(),
 			"localRoot":     c.Local.Root,
 			"agent":         sshx.AgentAvailable(),
-			"localTerminal": !s.web() || s.opts.AllowLocalTerminal,
+			"localTerminal": (!s.web() || s.opts.AllowLocalTerminal) && c.Local.Root == "",
 			"startupUrl":    s.takeStartupURL(),
 		}, nil
 	})
@@ -416,6 +416,11 @@ func (s *Server) registerRPC() {
 	method(s, "fs.findCancel", func(ctx context.Context, p idp) (ok, error) {
 		c.CancelFind(p.ID)
 		return yes, nil
+	})
+	method(s, "fs.watchLocal", func(ctx context.Context, p struct {
+		Dirs []string `json:"dirs"`
+	}) (ok, error) {
+		return yes, c.WatchLocalDirs(p.Dirs)
 	})
 	method(s, "fs.readText", func(ctx context.Context, p struct {
 		Conn     string `json:"conn"`

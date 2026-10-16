@@ -18,18 +18,18 @@ import (
 
 // SyncRequest mirrors WinSCP's "Synchronize" dialog.
 type SyncRequest struct {
-	LocalConn     string `json:"localConn"` // usually "local"
-	LocalDir      string `json:"localDir"`
-	RemoteConn    string `json:"remoteConn"`
-	RemoteDir     string `json:"remoteDir"`
-	Direction     string `json:"direction"` // remote (upload), local (download), both
-	Mode          string `json:"mode"`      // standard, mirror, timestamps
-	Criteria      string `json:"criteria"`  // time, size, either, checksum, none
-	Delete        bool   `json:"delete"`
-	ExistingOnly  bool   `json:"existingOnly"`
-	FileMask      string `json:"fileMask,omitempty"`
-	ExcludeHidden bool   `json:"excludeHidden,omitempty"`
-	CaseInsensitive bool `json:"caseInsensitive,omitempty"`
+	LocalConn       string `json:"localConn"` // usually "local"
+	LocalDir        string `json:"localDir"`
+	RemoteConn      string `json:"remoteConn"`
+	RemoteDir       string `json:"remoteDir"`
+	Direction       string `json:"direction"` // remote (upload), local (download), both
+	Mode            string `json:"mode"`      // standard, mirror, timestamps
+	Criteria        string `json:"criteria"`  // time, size, either, checksum, none
+	Delete          bool   `json:"delete"`
+	ExistingOnly    bool   `json:"existingOnly"`
+	FileMask        string `json:"fileMask,omitempty"`
+	ExcludeHidden   bool   `json:"excludeHidden,omitempty"`
+	CaseInsensitive bool   `json:"caseInsensitive,omitempty"`
 }
 
 type SyncAction struct {
@@ -218,11 +218,13 @@ func (c *Core) SyncCompare(ctx context.Context, r SyncRequest) (*SyncPlan, error
 			return errors.New("directory structure too deep")
 		}
 		les, err := c.listAdjusted(ctx, lf, r.LocalConn, ldir)
-		if err != nil {
+		// a destination folder that does not exist yet is empty: it is
+		// created by the transfers (first synchronisation to a new folder)
+		if err != nil && !(depth == 0 && vfs.IsNotExist(err) && r.Direction == "local") {
 			return err
 		}
 		res, err := c.listAdjusted(ctx, rf, r.RemoteConn, rdir)
-		if err != nil {
+		if err != nil && !(depth == 0 && vfs.IsNotExist(err) && r.Direction == "remote") {
 			return err
 		}
 		lmap := map[string]vfs.Entry{}

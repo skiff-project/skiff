@@ -87,7 +87,7 @@ export function EditorView({ tab, visible }: { tab: EditorTab; visible: boolean 
     const content = v.state.doc.toString()
     try {
       const e = await call<{ mtime: string; size: number }>('fs.writeText', {
-        conn: tab.conn, path: tab.path, content, encoding: meta.encoding, bom: meta.bom, eol: meta.eol, expectMtime: meta.mtime, force,
+        conn: tab.conn, path: tab.path, content, encoding: meta.encoding, bom: meta.bom, eol: meta.eol, expectMtime: meta.mtime, expectSize: meta.size, force,
       })
       savedDoc.current = content
       setMeta({ ...meta, mtime: e.mtime, size: e.size })

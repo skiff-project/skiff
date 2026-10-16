@@ -7,7 +7,9 @@ import { typeLabel } from './fileicons'
 // WinSCP-like mask: "*.txt; *.log | *.bak; cache/", with optional size and
 // time conditions ("*.jpg>100K", "*>1D", "*<2026-01-01"). Without wildcards
 // or conditions, the text is used as a case-insensitive substring filter.
-export function compileMask(src: string): (e: Entry) => boolean {
+// Directories always pass (to keep navigating) unless a directory mask is
+// given; with dirsByName (selection by mask), they must match like files.
+export function compileMask(src: string, opts: { dirsByName?: boolean } = {}): (e: Entry) => boolean {
   src = src.trim()
   if (!src) return () => true
   if (!/[*?|;<>=]/.test(src)) {
@@ -38,6 +40,7 @@ export function compileMask(src: string): (e: Entry) => boolean {
   const fileIncs = incs.filter((x) => !x.dir)
   return (e) => {
     for (const x of excs) if ((!x.dir || e.isDir) && x.test(e)) return false
+    if (e.isDir && opts.dirsByName) return !incs.length || incs.some((x) => x.re.test(e.name) || x.re.source === '^.*\\..*$')
     if (e.isDir) return !dirIncs.length || dirIncs.some((x) => x.re.test(e.name))
     return !fileIncs.length || fileIncs.some((x) => x.test(e))
   }

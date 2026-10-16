@@ -48,7 +48,7 @@ export function TunnelsPanel() {
           {tunnels.map((tu) => (
             <tr key={tu.id}>
               <td><span className="badge accent">{tu.type === 'local' ? 'L' : tu.type === 'remote' ? 'R' : 'SOCKS'}</span> {tu.label}</td>
-              <td className="mono">{tu.bind} <button className="icon-btn sm" onClick={() => copyToClipboard(tu.bind)}><Copy /></button></td>
+              <td className="mono">{tu.bind} <button className="icon-btn sm" data-tip={t('common.copy')} onClick={() => copyToClipboard(tu.bind)}><Copy /></button></td>
               <td><ArrowRight className="faint" style={{ width: 14 }} /></td>
               <td className="mono">{tu.dest || (tu.type === 'dynamic' ? 'SOCKS4/5 proxy' : '')}</td>
               <td className="muted">{tu.connTitle} · {t('tunnel.connections', { n: tu.active })} <span className="faint">({tu.total})</span></td>

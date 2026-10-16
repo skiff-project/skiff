@@ -230,7 +230,7 @@ export function SitesView() {
             <input ref={searchRef} className="input" placeholder={t('sites.search')} value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
           </div>
           <button className="icon-btn" data-tip={t('sites.newSite')} onClick={() => newSite()}><Plus /></button>
-          <button className="icon-btn" onClick={(e) => showMenuAt(e.currentTarget, [
+          <button className="icon-btn" data-tip={t('common.more')} onClick={(e) => showMenuAt(e.currentTarget, [
             { label: t('sites.newFolder'), icon: <FolderPlus />, onClick: () => newFolder() },
             { label: t('sites.import'), icon: <Import />, onClick: () => openImportDialog() },
             { label: t('sites.export'), icon: <Upload />, onClick: () => openExportDialog() },

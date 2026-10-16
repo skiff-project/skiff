@@ -12,9 +12,9 @@ import (
 	"github.com/fsnotify/fsnotify"
 
 	"skiff/internal/mask"
-	"skiff/internal/vfs/localfs"
 	"skiff/internal/transfer"
 	"skiff/internal/vfs"
+	"skiff/internal/vfs/localfs"
 )
 
 // WatchRequest configures "Keep remote directory up to date".
@@ -163,6 +163,14 @@ func (c *Core) StartWatch(r WatchRequest) (WatchInfo, error) {
 				if ev.Op&fsnotify.Create != 0 && r.Recursive {
 					if st, err := os.Stat(ev.Name); err == nil && st.IsDir() {
 						addTree(ev.Name)
+						// files created in the new folder before it was
+						// watched (a folder copied or extracted at once)
+						filepath.WalkDir(ev.Name, func(p string, d os.DirEntry, err error) error {
+							if err == nil {
+								pending[p] = true
+							}
+							return nil
+						})
 					}
 				}
 				pending[ev.Name] = true

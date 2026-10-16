@@ -697,6 +697,10 @@ const en: Dict = {
   'editor.eol': 'Line endings',
   'editor.plainText': 'Plain text',
   'diff.changes': '{n} change(s)',
+  'panel.collapse': 'Hide the panel',
+  'queue.details': 'Details',
+  'term.fontSmaller': 'Smaller font',
+  'term.fontLarger': 'Larger font',
   'queue.count': '{n} job(s)',
   'upload.done': '{n} file(s) uploaded',
   'upload.failed': '{n} failed',
@@ -831,6 +835,7 @@ const en: Dict = {
 }
 
 const fr: Dict = {
+  'app.name': 'Skiff',
   'time.justNow': "à l'instant",
   'common.ok': 'OK',
   'common.cancel': 'Annuler',
@@ -1524,6 +1529,10 @@ const fr: Dict = {
   'editor.eol': 'Fins de ligne',
   'editor.plainText': 'Texte brut',
   'diff.changes': '{n} modification(s)',
+  'panel.collapse': 'Masquer le panneau',
+  'queue.details': 'Détails',
+  'term.fontSmaller': 'Réduire la police',
+  'term.fontLarger': 'Agrandir la police',
   'queue.count': '{n} tâche(s)',
   'upload.done': '{n} fichier(s) envoyé(s)',
   'upload.failed': '{n} en échec',

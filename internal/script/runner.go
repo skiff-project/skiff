@@ -102,7 +102,7 @@ func Tokenize(line string) []string {
 }
 
 var (
-	envRe = regexp.MustCompile(`%([A-Za-z_][A-Za-z0-9_]*)%`)
+	envRe = regexp.MustCompile(`%([A-Za-z_][A-Za-z0-9_]*|[0-9]+)%`) // %VAR%, and %1% for /parameter
 	tsRe  = regexp.MustCompile(`%TIMESTAMP(?:([+-])(\d+)([YMDHNS]))?#([^%]*)%`)
 )
 
@@ -357,7 +357,14 @@ func (r *Runner) Exec(ctx context.Context, line string) error {
 		sw, rest := splitSwitches(args)
 		return r.simple(ctx, rest, 2, func(s *session, a []string) error {
 			_, sym := sw["symbolic"]
-			return r.c.Link(ctx, s.conn.ID, a[0], r.rpath(s, a[1]), !sym && cmd == "ln" && len(sw) > 0)
+			hard := !sym && cmd == "ln" && len(sw) > 0
+			target := a[0]
+			if hard {
+				// a hard link names an existing file: resolve it like any path
+				// (a symbolic link target is stored as written)
+				target = r.rpath(s, target)
+			}
+			return r.c.Link(ctx, s.conn.ID, target, r.rpath(s, a[1]), hard)
 		})
 	case "stat":
 		return r.simple(ctx, args, 1, func(s *session, a []string) error {

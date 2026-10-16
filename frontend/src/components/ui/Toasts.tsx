@@ -1,5 +1,6 @@
 import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react'
 import { dismissToast, useStore } from '../../lib/store'
+import { t as tr } from '../../lib/i18n'
 
 export function Toasts() {
   const toasts = useStore((s) => s.toasts)
@@ -19,7 +20,7 @@ export function Toasts() {
               </button>
             )}
           </div>
-          <button className="icon-btn sm" onClick={() => dismissToast(t.id)}>
+          <button className="icon-btn sm" data-tip={tr('common.close')} onClick={() => dismissToast(t.id)}>
             <X />
           </button>
         </div>

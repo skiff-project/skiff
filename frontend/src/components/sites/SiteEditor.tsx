@@ -475,7 +475,7 @@ function JumpRow({ j, index, sites, hasPassword, onChange, onPassword, onRemove 
           {sites.map((s) => <option key={s.id} value={s.id}>{t('site.useSite')}: {s.name || s.host}</option>)}
         </select>
         <div className="spacer" />
-        <button className="icon-btn sm" onClick={onRemove}><Trash2 /></button>
+        <button className="icon-btn sm" data-tip={t('common.delete')} onClick={onRemove}><Trash2 /></button>
       </div>
       {!j.siteId && (
         <div className="form" style={{ gap: 10 }}>
@@ -512,7 +512,7 @@ function ForwardRow({ f, onChange, onRemove }: { f: Forward; onChange: (f: Forwa
         </>
       )}
       <label className="check" data-tip={t('site.fwdAutoStart')}><input type="checkbox" checked={!!f.autoStart} onChange={(e) => onChange({ ...f, autoStart: e.target.checked })} /> Auto</label>
-      <button className="icon-btn sm" onClick={onRemove}><Trash2 /></button>
+      <button className="icon-btn sm" data-tip={t('common.delete')} onClick={onRemove}><Trash2 /></button>
     </div>
   )
 }

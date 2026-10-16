@@ -100,11 +100,18 @@ func contains(list []string, s string) bool {
 	return false
 }
 
+// hostAddr is a host:port used as the remote address when the connection
+// has none (local proxy command).
+type hostAddr string
+
+func (a hostAddr) Network() string { return "tcp" }
+func (a hostAddr) String() string  { return string(a) }
+
 type dummyKey struct{}
 
-func (dummyKey) Type() string                           { return "skiff-dummy" }
-func (dummyKey) Marshal() []byte                        { return []byte("skiff-dummy") }
-func (dummyKey) Verify([]byte, *ssh.Signature) error    { return errors.New("dummy") }
+func (dummyKey) Type() string                        { return "skiff-dummy" }
+func (dummyKey) Marshal() []byte                     { return []byte("skiff-dummy") }
+func (dummyKey) Verify([]byte, *ssh.Signature) error { return errors.New("dummy") }
 
 // Check verifies key for addr, prompting when unknown or changed.
 func (s *HostKeyStore) Check(ctx context.Context, addr string, remote net.Addr, key ssh.PublicKey, pr prompt.Prompter) error {
@@ -118,6 +125,10 @@ func (s *HostKeyStore) Check(ctx context.Context, addr string, remote net.Addr, 
 
 	files := s.files()
 	var ke *knownhosts.KeyError
+	if _, _, err := net.SplitHostPort(remote.String()); err != nil {
+		// not a TCP address (ProxyCommand): check the host name only
+		remote = hostAddr(addr)
+	}
 	if len(files) > 0 {
 		cb, err := knownhosts.New(files...)
 		if err != nil {

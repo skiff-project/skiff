@@ -604,10 +604,10 @@ func (c *client) quit() {
 // and releases the control connection lock.
 type dataStream struct {
 	net.Conn
-	c        *client
-	unlock   func()
-	once     sync.Once
-	err      error
+	c         *client
+	unlock    func()
+	once      sync.Once
+	err       error
 	abortRead bool
 }
 
@@ -618,13 +618,20 @@ func (d *dataStream) Close() error {
 		}
 		d.Conn.Close()
 		if d.abortRead {
-			// Download closed early: abort and drain replies.
+			// Download closed early: abort and drain every reply. The
+			// server may already have sent the RETR completion (226) before
+			// the ABOR reply (225/226), or a 426 before it: an unread reply
+			// would shift all the following ones.
 			d.c.conn.SetDeadline(time.Now().Add(10 * time.Second))
 			d.c.text.PrintfLine("ABOR")
-			for i := 0; i < 2; i++ {
-				r, err := d.c.readResponse()
-				if err != nil || r.Code == 226 || r.Code == 225 {
-					break
+			r, err := d.c.readResponse()
+			if err == nil {
+				if r.Code >= 400 {
+					d.c.readResponse() // 426/451 then the ABOR reply
+				} else {
+					// maybe the RETR completion: wait briefly for the ABOR reply
+					d.c.conn.SetDeadline(time.Now().Add(time.Second))
+					d.c.readResponse()
 				}
 			}
 			d.c.conn.SetDeadline(time.Time{})
@@ -650,6 +657,23 @@ func (r *readStream) Read(p []byte) (int, error) {
 }
 
 func (r *readStream) Close() error {
+	if !r.eof {
+		// The caller may have read exactly the file size without seeing
+		// EOF: check briefly whether the data is exhausted before aborting.
+		r.dataStream.Conn.SetReadDeadline(time.Now().Add(300 * time.Millisecond))
+		var buf [4096]byte
+		for {
+			_, err := r.dataStream.Conn.Read(buf[:])
+			if err == io.EOF {
+				r.eof = true
+				break
+			}
+			if err != nil {
+				break
+			}
+		}
+		r.dataStream.Conn.SetReadDeadline(time.Time{})
+	}
 	if !r.eof {
 		r.abortRead = true
 	}

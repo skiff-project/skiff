@@ -38,7 +38,9 @@ type Core struct {
 	tunnels  *tunnels
 	watchers *watchers
 	edits    *externalEdits
-	finds    sync.Map // id -> context.CancelFunc
+
+	localWatch localWatch
+	finds      sync.Map // id -> context.CancelFunc
 }
 
 // Options for New.
@@ -82,44 +84,44 @@ type Conn struct {
 	core *Core
 	site config.Site // resolved, secrets in plain text (memory only)
 
-	mu       sync.Mutex
-	fs       vfs.FS
-	ssh      *sshx.Conn
-	tunnel   *sshx.Conn
-	caps     vfs.Caps
-	home     string
-	state    string
-	err      string
-	log      *Log
-	idle     []vfs.FS
-	forks    int // extra connections (channels) opened by acquire, in use or idle
-	gen      int
-	created  time.Time
-	info     []vfs.InfoItem
+	mu           sync.Mutex
+	fs           vfs.FS
+	ssh          *sshx.Conn
+	tunnel       *sshx.Conn
+	caps         vfs.Caps
+	home         string
+	state        string
+	err          string
+	log          *Log
+	idle         []vfs.FS
+	forks        int // extra connections (channels) opened by acquire, in use or idle
+	gen          int
+	created      time.Time
+	info         []vfs.InfoItem
 	reconnecting bool
 }
 
 // ConnInfo is the UI view of a connection.
 type ConnInfo struct {
-	ID        string   `json:"id"`
-	SiteID    string   `json:"siteId,omitempty"`
-	Title     string   `json:"title"`
-	Protocol  string   `json:"protocol"`
-	Host      string   `json:"host"`
-	Port      int      `json:"port"`
-	User      string   `json:"user"`
-	State     string   `json:"state"`
-	Error     string   `json:"error,omitempty"`
-	Caps      vfs.Caps `json:"caps"`
-	Home      string   `json:"home"`
-	RemoteDir string   `json:"remoteDir,omitempty"`
-	LocalDir  string   `json:"localDir,omitempty"`
-	Color     string   `json:"color,omitempty"`
-	SyncBrowsing bool  `json:"syncBrowsing,omitempty"`
-	URL       string   `json:"url"`
-	Created   time.Time `json:"created"`
-	RecycleBin string  `json:"recycleBin,omitempty"`
-	EOL       string   `json:"eol,omitempty"`
+	ID           string    `json:"id"`
+	SiteID       string    `json:"siteId,omitempty"`
+	Title        string    `json:"title"`
+	Protocol     string    `json:"protocol"`
+	Host         string    `json:"host"`
+	Port         int       `json:"port"`
+	User         string    `json:"user"`
+	State        string    `json:"state"`
+	Error        string    `json:"error,omitempty"`
+	Caps         vfs.Caps  `json:"caps"`
+	Home         string    `json:"home"`
+	RemoteDir    string    `json:"remoteDir,omitempty"`
+	LocalDir     string    `json:"localDir,omitempty"`
+	Color        string    `json:"color,omitempty"`
+	SyncBrowsing bool      `json:"syncBrowsing,omitempty"`
+	URL          string    `json:"url"`
+	Created      time.Time `json:"created"`
+	RecycleBin   string    `json:"recycleBin,omitempty"`
+	EOL          string    `json:"eol,omitempty"`
 }
 
 func (c *Conn) Info() ConnInfo {
@@ -529,6 +531,7 @@ func (c *Core) EOL(id string) string {
 // Shutdown closes everything.
 func (c *Core) Shutdown() {
 	c.Transfers.Close()
+	c.closeLocalWatch()
 	c.mu.Lock()
 	list := make([]*Conn, 0, len(c.conns))
 	for _, conn := range c.conns {

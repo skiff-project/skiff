@@ -3,8 +3,8 @@ import { FileSearch } from 'lucide-react'
 import { Dialog } from '../ui/Dialog'
 import { openDialog } from '../../lib/dialogs'
 import { call } from '../../lib/api'
-import { errorToast, get, set, type Side } from '../../lib/store'
-import { displayPath, setBottom } from '../../lib/actions'
+import { errorToast, get, type Side } from '../../lib/store'
+import { displayPath, setBottom, startFind } from '../../lib/actions'
 import { sessionTab } from '../../lib/fileops'
 import { t } from '../../lib/i18n'
 
@@ -37,7 +37,7 @@ function FindDialog({ conn, dir, close }: { conn: string; dir: string; close: ()
           newerThan: newer ? new Date(newer).toISOString() : undefined,
         },
       })
-      set({ find: { id, conn, dir: d, hits: [], done: false, scanned: 0 } })
+      startFind({ id, conn, dir: d, hits: [], done: false, scanned: 0 })
       setBottom(true, 'find')
       close()
     } catch (e) {

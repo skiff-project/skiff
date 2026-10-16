@@ -141,10 +141,10 @@ func (s *Store) Site(id string) (Site, bool) {
 
 // SecretInput carries secret updates: nil = keep, "" = clear, value = set.
 type SecretInput struct {
-	Password       *string `json:"password,omitempty"`
-	Passphrase     *string `json:"passphrase,omitempty"`
-	ProxyPassword  *string `json:"proxyPassword,omitempty"`
-	S3SessionToken *string `json:"s3SessionToken,omitempty"`
+	Password       *string         `json:"password,omitempty"`
+	Passphrase     *string         `json:"passphrase,omitempty"`
+	ProxyPassword  *string         `json:"proxyPassword,omitempty"`
+	S3SessionToken *string         `json:"s3SessionToken,omitempty"`
 	JumpPasswords  map[int]*string `json:"jumpPasswords,omitempty"`
 }
 

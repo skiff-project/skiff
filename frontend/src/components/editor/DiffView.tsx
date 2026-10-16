@@ -59,7 +59,7 @@ export function DiffView({ tab }: { tab: DiffTab }) {
   const saveRight = async () => {
     if (!mv.current || !files) return
     try {
-      await call('fs.writeText', { conn: tab.right.conn, path: tab.right.path, content: mv.current.b.state.doc.toString(), encoding: files[1].encoding, bom: files[1].bom, eol: files[1].eol, expectMtime: files[1].mtime })
+      await call('fs.writeText', { conn: tab.right.conn, path: tab.right.path, content: mv.current.b.state.doc.toString(), encoding: files[1].encoding, bom: files[1].bom, eol: files[1].eol, expectMtime: files[1].mtime, expectSize: files[1].size })
       setDirty(false)
       toast('ok', t('editor.saved'), tab.right.path)
     } catch (e) {
@@ -73,7 +73,7 @@ export function DiffView({ tab }: { tab: DiffTab }) {
         <div className="diff-side">
           <span className="badge">{title(tab.left.conn)}</span>
           <span className="mono ellipsis">{displayPath(tab.left.conn, tab.left.path)}</span>
-          <button className="icon-btn sm" onClick={() => openEditor(tab.left.conn, tab.left.path)}><Edit3 /></button>
+          <button className="icon-btn sm" data-tip={t('ctx.edit')} onClick={() => openEditor(tab.left.conn, tab.left.path)}><Edit3 /></button>
         </div>
         <ArrowLeftRight className="faint" style={{ width: 16, flex: 'none' }} />
         <div className="diff-side">

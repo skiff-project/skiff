@@ -511,14 +511,14 @@ func (c *Core) ServerInfo(conn string) ([]vfs.InfoItem, error) {
 // ---- find ----
 
 type FindOptions struct {
-	Mask       string `json:"mask"`
-	Contains   string `json:"contains,omitempty"`
-	MinSize    int64  `json:"minSize,omitempty"`
-	MaxSize    int64  `json:"maxSize,omitempty"`
-	NewerThan  *time.Time `json:"newerThan,omitempty"`
-	OlderThan  *time.Time `json:"olderThan,omitempty"`
-	IncludeDirs bool  `json:"includeDirs,omitempty"`
-	MaxResults int    `json:"maxResults,omitempty"`
+	Mask        string     `json:"mask"`
+	Contains    string     `json:"contains,omitempty"`
+	MinSize     int64      `json:"minSize,omitempty"`
+	MaxSize     int64      `json:"maxSize,omitempty"`
+	NewerThan   *time.Time `json:"newerThan,omitempty"`
+	OlderThan   *time.Time `json:"olderThan,omitempty"`
+	IncludeDirs bool       `json:"includeDirs,omitempty"`
+	MaxResults  int        `json:"maxResults,omitempty"`
 }
 
 type FindHit struct {
@@ -571,7 +571,7 @@ func (c *Core) Find(conn, dir string, o FindOptions) (string, error) {
 			if e.IsDir && !o.IncludeDirs {
 				return nil
 			}
-			if !m.Match(e.Name, rel, e.IsDir, e.Size, e.ModTime) {
+			if !m.MatchName(e.Name, rel, e.IsDir, e.Size, e.ModTime) {
 				return nil
 			}
 			if o.MinSize > 0 && e.Size < o.MinSize || o.MaxSize > 0 && e.Size > o.MaxSize {
@@ -741,7 +741,10 @@ type WriteText struct {
 	BOM      bool       `json:"bom"`
 	EOL      string     `json:"eol"`
 	Expect   *time.Time `json:"expectMtime,omitempty"`
-	Force    bool       `json:"force,omitempty"`
+	// ExpectSize catches changes made within the same second (the date
+	// alone has a one-second tolerance for protocols without sub-seconds).
+	ExpectSize *int64 `json:"expectSize,omitempty"`
+	Force      bool   `json:"force,omitempty"`
 }
 
 var ErrConflict = errors.New("the file was modified on the server since it was opened")
@@ -752,9 +755,14 @@ func (c *Core) WriteText(ctx context.Context, w WriteText) (vfs.Entry, error) {
 	if err != nil {
 		return vfs.Entry{}, err
 	}
-	if w.Expect != nil && !w.Force {
-		if e, err := f.Stat(ctx, w.Path); err == nil && !e.ModTime.IsZero() && e.ModTime.Sub(*w.Expect).Abs() > time.Second {
-			return e, ErrConflict
+	if (w.Expect != nil || w.ExpectSize != nil) && !w.Force {
+		if e, err := f.Stat(ctx, w.Path); err == nil {
+			if w.Expect != nil && !e.ModTime.IsZero() && e.ModTime.Sub(*w.Expect).Abs() > time.Second {
+				return e, ErrConflict
+			}
+			if w.ExpectSize != nil && e.Size != *w.ExpectSize {
+				return e, ErrConflict
+			}
 		}
 	}
 	text := w.Content

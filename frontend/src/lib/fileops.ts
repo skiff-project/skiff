@@ -438,7 +438,7 @@ export function copyPaths(tabId: string, side: Side, kind: 'path' | 'name' | 'ur
 export async function selectByMask(tabId: string, side: Side, select: boolean) {
   const mask = await prompt({ title: select ? t('pane.selectMask') : t('pane.unselectMask'), label: t('dialog.selectMask'), value: '*.*', mono: true })
   if (!mask) return
-  const m = compileMask(mask === '*.*' ? '*' : mask)
+  const m = compileMask(mask === '*.*' ? '*' : mask, { dirsByName: true })
   const tab = sessionTab(tabId)
   if (!tab) return
   const vis = visibleEntries(tab.panes[side], get().prefs)

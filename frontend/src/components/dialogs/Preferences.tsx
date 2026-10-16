@@ -178,7 +178,7 @@ function Preferences({ close, initial }: { close: () => void; initial?: string }
                   <div key={i} className="row">
                     <input className="input mono" style={{ width: 160 }} value={a.mask} placeholder="*.psd" onChange={(e) => up({ editor: { ...prefs.editor, associations: prefs.editor.associations.map((x, k) => (k === i ? { ...x, mask: e.target.value } : x)) } })} />
                     <input className="input mono" value={a.command} placeholder="internal | gimp !.!" onChange={(e) => up({ editor: { ...prefs.editor, associations: prefs.editor.associations.map((x, k) => (k === i ? { ...x, command: e.target.value } : x)) } })} />
-                    <button className="icon-btn sm" onClick={() => up({ editor: { ...prefs.editor, associations: prefs.editor.associations.filter((_, k) => k !== i) } })}><Trash2 /></button>
+                    <button className="icon-btn sm" data-tip={t('common.delete')} onClick={() => up({ editor: { ...prefs.editor, associations: prefs.editor.associations.filter((_, k) => k !== i) } })}><Trash2 /></button>
                   </div>
                 ))}
                 <div><button className="btn sm" onClick={() => up({ editor: { ...prefs.editor, associations: [...(prefs.editor.associations || []), { mask: '', command: '' }] } })}><Plus /> {t('common.add')}</button></div>
@@ -302,7 +302,7 @@ function SecuritySection() {
                   <td><Fingerprint style={{ width: 14 }} /> <span className="mono">{h.hosts}</span></td>
                   <td className="muted">{h.keyType}</td>
                   <td className="mono faint" style={{ fontSize: 11 }}>{h.fingerprint}</td>
-                  <td><button className="icon-btn sm" onClick={async () => { if (await ask({ title: t('common.delete'), message: h.hosts, danger: true })) { await call('hostkeys.remove', { line: h.line }); load() } }}><Trash2 /></button></td>
+                  <td><button className="icon-btn sm" data-tip={t('common.delete')} onClick={async () => { if (await ask({ title: t('common.delete'), message: h.hosts, danger: true })) { await call('hostkeys.remove', { line: h.line }); load() } }}><Trash2 /></button></td>
                 </tr>
               ))}
             </tbody>
@@ -327,7 +327,7 @@ function CommandsSection() {
           <div className="row" style={{ marginBottom: 8 }}>
             <input className="input" style={{ width: 220 }} value={commandName(c)} onChange={(e) => set(cmds.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))} />
             <div className="spacer" />
-            <button className="icon-btn sm" onClick={() => set(cmds.filter((_, k) => k !== i))}><Trash2 /></button>
+            <button className="icon-btn sm" data-tip={t('common.delete')} onClick={() => set(cmds.filter((_, k) => k !== i))}><Trash2 /></button>
           </div>
           <input className="input mono" value={c.command} onChange={(e) => set(cmds.map((x, k) => (k === i ? { ...x, command: e.target.value } : x)))} />
           <div className="row" style={{ marginTop: 8, gap: 16, flexWrap: 'wrap' }}>

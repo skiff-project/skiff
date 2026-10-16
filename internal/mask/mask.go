@@ -276,6 +276,28 @@ func globDeep(pat, s string) bool {
 
 // Match reports whether a file passes the mask. relPath is the path relative
 // to the transfer root, using forward slashes.
+// MatchName is Match for listings (searches): a directory matches when its
+// name matches a mask, instead of being traversed by default.
+func (m *Mask) MatchName(name, relPath string, isDir bool, size int64, mtime time.Time) bool {
+	if m == nil || !isDir {
+		return m.Match(name, relPath, isDir, size, mtime)
+	}
+	for _, e := range m.excludes {
+		if e.match(name, relPath, true, size, mtime) {
+			return false
+		}
+	}
+	if len(m.includes) == 0 {
+		return true
+	}
+	for _, in := range m.includes {
+		if in.match(name, relPath, true, size, mtime) {
+			return true
+		}
+	}
+	return false
+}
+
 func (m *Mask) Match(name, relPath string, isDir bool, size int64, mtime time.Time) bool {
 	if m == nil {
 		return true

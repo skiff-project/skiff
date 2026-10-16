@@ -29,9 +29,9 @@ type sshPty struct {
 
 func (s *sshPty) Read(p []byte) (int, error)  { return s.out.Read(p) }
 func (s *sshPty) Write(p []byte) (int, error) { return s.in.Write(p) }
-func (s *sshPty) Resize(cols, rows int) error  { return s.sess.WindowChange(rows, cols) }
-func (s *sshPty) Close() error                 { s.in.Close(); return s.sess.Close() }
-func (s *sshPty) Wait() error                  { return s.sess.Wait() }
+func (s *sshPty) Resize(cols, rows int) error { return s.sess.WindowChange(rows, cols) }
+func (s *sshPty) Close() error                { s.in.Close(); return s.sess.Close() }
+func (s *sshPty) Wait() error                 { return s.sess.Wait() }
 
 // Terminal is one interactive shell.
 type Terminal struct {
@@ -76,7 +76,8 @@ func (c *Core) OpenTerminal(conn string, cols, rows int, cwd string) (*Terminal,
 	title := "Local"
 	if conn == LocalID {
 		if c.Local.Root != "" {
-			return nil, errors.New("the local terminal is disabled in web mode")
+			// a shell cannot be confined to the --root folder
+			return nil, errors.New("the local terminal is not available when the local panel is restricted (--root)")
 		}
 		lp, err := startLocalPty(cols, rows, cwd, term)
 		if err != nil {

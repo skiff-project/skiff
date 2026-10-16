@@ -305,8 +305,9 @@ func parseFTPTime(v string) time.Time {
 }
 
 // parseDOS parses IIS/DOS style listings:
-//   01-02-24  03:04PM       <DIR>          name
-//   01-02-2024  15:04            12345 name
+//
+//	01-02-24  03:04PM       <DIR>          name
+//	01-02-2024  15:04            12345 name
 func parseDOS(ln string) (vfs.Entry, bool) {
 	fs := strings.Fields(ln)
 	if len(fs) < 4 {
@@ -607,4 +608,3 @@ func (f *FS) Close() error {
 	f.c.quit()
 	return nil
 }
-

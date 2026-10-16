@@ -77,7 +77,7 @@ function JobRow({ job: j, first, last, fmt }: { job: Job; first: boolean; last: 
   return (
     <div className={`job ${j.status}`} onContextMenu={menu}>
       <div className="job-main">
-        <button className="icon-btn sm" onClick={() => setOpen(!open)} disabled={!errors && !j.active.length && !j.error}>
+        <button className="icon-btn sm" data-tip={t('queue.details')} onClick={() => setOpen(!open)} disabled={!errors && !j.active.length && !j.error}>
           {open ? <ChevronDown /> : <ChevronRight />}
         </button>
         <span className="job-status"><StatusIcon s={j.status} /></span>

@@ -20,6 +20,10 @@ func TestExpand(t *testing.T) {
 	if got := expand("x %SKIFF_TEST_VAR% %UNKNOWN_SKIFF%"); got != "x abc %UNKNOWN_SKIFF%" {
 		t.Errorf("got %q", got)
 	}
+	t.Setenv("1", "premier")
+	if got := expand("put %1% /depot/"); got != "put premier /depot/" {
+		t.Errorf("/parameter: got %q", got)
+	}
 	got := expand("backup-%TIMESTAMP#yyyy-mm-dd%.tgz")
 	if !strings.HasPrefix(got, "backup-"+time.Now().Format("2006-01-02")) {
 		t.Errorf("got %q", got)

@@ -187,7 +187,7 @@ export function PathBar({ tabId, side, pane }: { tabId: string; side: Side; pane
               }
             }}
           />
-          <button className="icon-btn sm" onClick={() => { updatePane(tabId, side, () => ({ filter: '' })); setFilterOpen(false) }}><X /></button>
+          <button className="icon-btn sm" data-tip={t('common.clear')} onClick={() => { updatePane(tabId, side, () => ({ filter: '' })); setFilterOpen(false) }}><X /></button>
         </div>
       )}
       <div className="nav-btns">
