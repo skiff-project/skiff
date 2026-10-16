@@ -227,6 +227,15 @@ skiff task run -q "Publier le site"    # n'affiche que le résultat, pas le jour
 
 `run` affiche le journal au fil de l'exécution puis une ligne `OK: …`, `FAILED: …` ou `CANCELLED: …` avec la durée. Le code de retour est 0 en cas de succès, 1 sinon (tâche inconnue comprise). L'exécution est ajoutée à l'historique de la tâche, avec le déclencheur « ligne de commande ».
 
+## 13.10 `skiff desktop-entry`
+
+Sous Linux et BSD, installe (ou met à jour) l'entrée de Skiff dans le menu des applications et son icône, pour l'utilisateur ; la fenêtre le fait d'elle-même à son premier lancement ([§ 1.3](01-installation.md#13-lancer-skiff)).
+
+```bash
+skiff desktop-entry           # ~/.local/share/applications/skiff.desktop et l'icône
+skiff desktop-entry -remove   # les retire
+```
+
 ---
 
 [← Préférences](12-preferences.md) · [Sommaire](README.md) · [Mode web distant →](14-mode-web.md)

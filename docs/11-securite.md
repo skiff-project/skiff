@@ -142,6 +142,8 @@ Les clés du trousseau sont **proposées à tous les serveurs SSH**, avant celle
 
 **Transfert d'agent** : avec **Transférer l'agent au serveur (ForwardAgent)** (section **SSH** du site), ou `ForwardAgent yes` dans [`~/.ssh/config`](03-sites.md#34-configuration-openssh-ssh_config), les terminaux SSH de ce site reçoivent un agent : `git pull`, `ssh` vers un autre serveur ou `scp` y utilisent les clés du trousseau puis celles de l'agent du système, sans qu'elles quittent votre ordinateur (`ssh-add -l` les liste). Le serveur peut demander des signatures, jamais ajouter ni retirer de clés. N'activez le transfert que vers des serveurs de confiance : pendant la connexion, leur administrateur peut utiliser vos clés.
 
+À travers des [hôtes de rebond](09-terminal-tunnels.md#94-hôtes-de-rebond), l'agent n'est transféré qu'au **serveur final**, comme `ssh -A -J` : chaque rebond s'authentifie avec le trousseau et l'agent (s'il l'autorise dans son site), mais ne reçoit pas l'agent. Le journal indique `Connecting to … through jump host …` puis `SSH agent forwarded to the server`.
+
 ## 11.8 Sécurité de l'application
 
 - **Fenêtre de bureau** : l'interface communique avec le moteur de Skiff par un serveur HTTP qui n'écoute que sur `127.0.0.1`, protégé par un jeton aléatoire à chaque lancement, un contrôle de l'en-tête `Host` (contre le *DNS rebinding*) et un en-tête anti-CSRF obligatoire.

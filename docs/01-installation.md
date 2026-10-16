@@ -46,7 +46,9 @@ Au premier lancement, aucun site n'est enregistré. L'écran d'accueil propose d
 
 ![Premier lancement : aucun site enregistré](images/accueil-premier-lancement.png)
 
-La suite est décrite au chapitre [Premiers pas](02-premiers-pas.md). Les autres commandes (`serve`, `run`, `shell`, `keygen`, `import`, `version`) sont décrites au chapitre [Scripts et ligne de commande](13-scripts-cli.md).
+**Sous Linux**, au premier lancement de la fenêtre, Skiff ajoute son entrée au menu des applications et son icône, pour votre utilisateur : `~/.local/share/applications/skiff.desktop` et `~/.local/share/icons/hicolor/512x512/apps/skiff.png`. Sans elles, GNOME et KDE (sous Wayland surtout) affichent une icône générique dans le dock et le sélecteur de fenêtres. L'entrée suit le binaire s'il change de place ; une entrée `skiff.desktop` écrite à la main n'est jamais modifiée. Rien n'est ajouté en [mode portable](#15-mode-portable). Sous Windows et macOS, l'icône fait partie du programme.
+
+La suite est décrite au chapitre [Premiers pas](02-premiers-pas.md). Les autres commandes (`serve`, `run`, `shell`, `keygen`, `import`, `task`, `desktop-entry`, `version`) sont décrites au chapitre [Scripts et ligne de commande](13-scripts-cli.md).
 
 ## 1.4 Dossier de configuration
 
@@ -92,12 +94,13 @@ Le bas de la fenêtre des préférences indique alors « (mode portable) ».
 | `SKIFF_HOME` | Force le dossier de configuration (prioritaire sur tout le reste) |
 | `SSH_AUTH_SOCK` | Socket de l'agent SSH à utiliser (Linux, macOS) |
 | `LANG`, `LC_ALL` | Langue du système, utilisée par l'interface quand la préférence **Langue** est sur **Auto** |
+| `SKIFF_BROWSER` | Navigateur qui ouvre les pages web des [ports du serveur](09-terminal-tunnels.md#99-ports-du-serveur) (`firefox`, `chromium`…) ; par défaut, celui du système |
 
 En option `/ini=<dossier>`, la syntaxe de `winscp.com` permet aussi de choisir le dossier de configuration (voir [Scripts](13-scripts-cli.md#135-compatibilité-winscpcom)).
 
 ## 1.7 Mise à jour et désinstallation
 
-Pour mettre à jour, remplacez le binaire : la configuration est conservée. Pour désinstaller, supprimez le binaire puis, si vous le souhaitez, le dossier de configuration.
+Pour mettre à jour, remplacez le binaire : la configuration est conservée. Pour désinstaller, lancez `skiff desktop-entry -remove` sous Linux (retire l'entrée du menu et l'icône), supprimez le binaire puis, si vous le souhaitez, le dossier de configuration.
 
 ---
 
