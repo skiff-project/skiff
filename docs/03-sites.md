@@ -94,10 +94,14 @@ Les sections du formulaire s'adaptent au protocole choisi :
 | **Protocole** | SFTP, SCP, FTP, WebDAV, S3 ou **Conteneur** (Docker, Podman, Kubernetes, voir [§ 15.7](15-protocoles.md#157-conteneurs-docker-podman-kubernetes)). Le port par défaut suit le protocole (22, 21, 80/443, 443). |
 | **Nom d'hôte** et **Port** | Adresse du serveur (nom DNS, IPv4 ou IPv6) |
 | **Nom d'utilisateur** et **Mot de passe** | Un mot de passe enregistré n'est jamais renvoyé à l'interface : le champ affiche « Enregistré — tapez pour remplacer », et la croix l'oublie. |
-| **Fichier de clé privée** | Clé OpenSSH ou PuTTY `.ppk` (SSH seulement). Les clés par défaut de `~/.ssh` sont essayées automatiquement. |
+| **Fichier de clé privée** | Clé OpenSSH ou PuTTY `.ppk` (SSH seulement), à taper ou à choisir avec **Choisir** (voir ci-dessous). Vide, les clés par défaut de `~/.ssh` (`id_ed25519`, `id_ecdsa`, `id_rsa`) sont essayées automatiquement. |
 | **Dossier** | Dossier de rangement du site dans la liste (`Clients/Acme` pour un sous-dossier) |
 | **Couleur** | Couleur du site dans la liste, les onglets et les récents |
 | **Dossier distant**, **Dossier local** | Dossiers ouverts à la connexion (raccourci de la section Dossiers) |
+
+**Choisir**, à droite du champ **Fichier de clé privée**, liste les clés de `~/.ssh` avec leur type (un cadenas marque celles protégées par une phrase secrète) ; la clé du site est cochée. Le menu propose aussi **Générer une paire de clés…**, dont la nouvelle clé est aussitôt choisie, et **Aucune : essayer les clés habituelles**, qui vide le champ. Les clés du [trousseau Skiff](11-securite.md#117-trousseau-skiff-et-transfert-dagent) n'ont pas à être choisies : elles sont essayées avec tous les serveurs. Le même bouton existe dans la section **SSH** et pour chaque hôte de rebond.
+
+![Choisir la clé privée parmi celles de ~/.ssh](images/site-choisir-cle.png)
 
 Pour **FTP**, la section Général contient en plus le **Chiffrement** (**Pas de chiffrement**, **TLS/SSL explicite**, **TLS/SSL implicite**) et **Connexion anonyme** :
 

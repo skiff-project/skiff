@@ -252,6 +252,10 @@ scene('sites', async () => {
   await (await site('Site vitrine (SFTP)')).click()
   await shot('site-general-sftp')
   const se = page.locator('.site-editor')
+  await se.locator('[data-tip="Choisir une clé de ~/.ssh"]').first().click()
+  await page.locator('.menu-label', { hasText: '~/.ssh' }).waitFor()
+  await shot('site-choisir-cle')
+  await page.keyboard.press('Escape')
   for (const [label, file] of [['Dossiers', 'site-dossiers'], ['Environnement', 'site-environnement'], ['Connexion', 'site-connexion'], ['SSH', 'site-ssh'], ['Notes', 'site-notes']]) {
     await se.locator('nav.vtabs').getByRole('button', { name: label, exact: true }).click()
     await shot(file, { el: se, pad: 0 })
