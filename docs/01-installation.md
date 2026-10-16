@@ -68,10 +68,13 @@ Le chemin exact est affiché en bas de la fenêtre **Préférences** et dans **P
 | `master.json` | Paramètres de dérivation du mot de passe maître (sel, coût Argon2id), sans le mot de passe |
 | `known_hosts` | Clés d'hôte SSH acceptées (format OpenSSH) |
 | `trusted_certs.json` | Certificats TLS auxquels vous avez fait confiance |
+| `keychain.json` | [Trousseau Skiff](11-securite.md#117-trousseau-skiff-et-transfert-dagent) : clés privées chiffrées comme les mots de passe |
+| `tasks.json`, `task-runs.json` | [Tâches planifiées](07-synchronisation.md#74-tâches-planifiées) et leur historique |
+| `devices.json`, `sync-tombstones.json` | Réglages de la [synchronisation entre appareils](12-preferences.md#128-appareils) (phrase secrète chiffrée) et suppressions à propager |
 | `logs/` | Journaux de session, si l'option est activée |
 | `web-cert.pem`, `web-key.pem` | Certificat auto-signé du mode web |
 
-`sites.json` peut être copié ou synchronisé entre machines sans exposer les mots de passe : sans `secret.key` (ou sans le mot de passe maître), ils restent illisibles. Voir [Sécurité](11-securite.md).
+`sites.json` peut être copié entre machines sans exposer les mots de passe : sans `secret.key` (ou sans le mot de passe maître), ils restent illisibles. Pour partager sites, mots de passe et préférences entre vos ordinateurs, utilisez plutôt [Préférences → Appareils](12-preferences.md#128-appareils). Voir [Sécurité](11-securite.md).
 
 ## 1.5 Mode portable
 

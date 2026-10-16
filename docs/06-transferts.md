@@ -130,7 +130,17 @@ Les fichiers ignorés en erreur restent listés dans la tâche : **Réessayer le
 - Si le transfert est interrompu (coupure, annulation, fermeture), le `.filepart` est conservé. Le relancer reprend à la fin du fichier partiel.
 - La politique **Reprendre / compléter** reprend aussi les fichiers existants plus petits que la source.
 
-## 6.8 De serveur à serveur
+## 6.8 Gros fichiers en parties parallèles (SFTP)
+
+Un gros fichier est copié en **plusieurs parties à la fois**, chacune sur son propre canal SFTP de la même connexion (sans nouvelle authentification). Chaque canal SSH a sa propre fenêtre de contrôle de flux : vers un serveur lointain (forte latence), un seul canal plafonne le débit, quatre canaux le multiplient presque par quatre. Sur un réseau local, le gain est faible.
+
+- Activé par défaut pour les fichiers d'au moins **100 Mio**, en **4 parties** (de 2 à 8, et au moins 1 Mio par partie) : **Préférences → File d'attente → Gros fichiers SFTP** ([§ 12.4](12-preferences.md#124-file-dattente)).
+- S'applique aux téléchargements depuis un serveur SFTP, aux envois vers un serveur SFTP et aux copies entre deux serveurs SFTP. Pas en mode texte, ni quand un fichier est repris ou complété.
+- Dans le détail d'une tâche de la file, un fichier copié ainsi porte le badge **4 parties**, et le [journal de session](10-recherche-journal.md#102-journal-de-session) indique `4 parts copied in parallel`.
+- Les parties s'écrivent dans le `.filepart`, renommé une fois toutes terminées. Un fichier copié en parties ne se reprend jamais : en cas d'interruption, le fichier partiel est supprimé et le prochain essai repart du début.
+- La limite de vitesse et la pause s'appliquent à l'ensemble des parties.
+
+## 6.9 De serveur à serveur
 
 Affichez deux connexions face à face ([§ 4.4](04-interface.md#44-les-panneaux-de-fichiers)) : `F5` copie directement d'un serveur à l'autre, par exemple d'un serveur SFTP vers un stockage S3.
 

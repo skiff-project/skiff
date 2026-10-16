@@ -16,13 +16,13 @@ Cette documentation décrit chaque fonctionnalité, écran par écran. Les captu
 | 4 | [Interface et navigation](04-interface.md) | Onglets, barre d'outils, panneaux, fil d'Ariane, favoris, historique, arborescence, filtre, sélection, aperçu, comparaison de dossiers, navigation synchronisée |
 | 5 | [Opérations sur les fichiers](05-fichiers.md) | Menus contextuels, renommer, créer, supprimer, corbeille, liens, propriétés et droits, sommes de contrôle, presse-papiers, glisser-déposer, commandes |
 | 6 | [Transferts](06-transferts.md) | Copier et déplacer, options de transfert, file d'attente, écrasement, reprise, erreurs, transferts serveur à serveur |
-| 7 | [Synchronisation](07-synchronisation.md) | Synchroniser, aperçu des changements, garder le dossier distant à jour |
+| 7 | [Synchronisation](07-synchronisation.md) | Synchroniser, aperçu des changements, garder le dossier distant à jour, tâches planifiées |
 | 8 | [Édition, diff et aperçu](08-edition.md) | Éditeur intégré, conflits, recherche, éditeur externe, diff visuel |
-| 9 | [Terminal, tunnels, proxys et rebonds](09-terminal-tunnels.md) | Terminal SSH et local, redirections de ports, SOCKS, hôtes de rebond, proxys |
+| 9 | [Terminal, tunnels, proxys et rebonds](09-terminal-tunnels.md) | Terminal SSH et local, redirections de ports, SOCKS, hôtes de rebond, proxys, moniteur du serveur |
 | 10 | [Recherche, journal et palette](10-recherche-journal.md) | Recherche de fichiers, journal de session, informations serveur, palette de commandes |
 | 11 | [Sécurité](11-securite.md) | Clés d'hôte, certificats TLS, mots de passe enregistrés, mot de passe maître, verrouillage, générateur de clés SSH |
-| 12 | [Préférences](12-preferences.md) | Les treize sections des préférences, thèmes, densité, langue, configuration OpenSSH |
-| 13 | [Scripts et ligne de commande](13-scripts-cli.md) | CLI, scripts compatibles WinSCP, console interactive, `keygen`, `import` |
+| 12 | [Préférences](12-preferences.md) | Les quatorze sections des préférences, thèmes, densité, langue, configuration OpenSSH, synchronisation entre appareils |
+| 13 | [Scripts et ligne de commande](13-scripts-cli.md) | CLI, scripts compatibles WinSCP, console interactive, `keygen`, `import`, `task` |
 | 14 | [Mode web distant](14-mode-web.md) | `skiff serve`, authentification, TLS, confinement, déploiement |
 | 15 | [Protocoles](15-protocoles.md) | Particularités de SFTP, SCP, FTP/FTPS, WebDAV et S3, URL de session |
 | 16 | [Raccourcis clavier](16-raccourcis.md) | Tous les raccourcis |

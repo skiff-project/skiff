@@ -42,7 +42,7 @@ davs://alex@cloud.example.com/remote.php/dav/files/alex/
 s3://AKIAEXEMPLE@s3.eu-west-3.amazonaws.com/mon-bucket/
 ```
 
-Le chemin éventuel devient le dossier distant d'ouverture. Le détail des URL acceptées est au chapitre [Protocoles](15-protocoles.md#157-url-de-session). Une connexion rapide peut ensuite être enregistrée comme site.
+Le chemin éventuel devient le dossier distant d'ouverture. Le détail des URL acceptées est au chapitre [Protocoles](15-protocoles.md#158-url-de-session). Une connexion rapide peut ensuite être enregistrée comme site.
 
 ## 2.3 Première connexion à un serveur SSH
 

@@ -6,21 +6,22 @@ Skiff présente tous les protocoles de la même façon : mêmes panneaux, mêmes
 
 ## 15.1 Ce que permet chaque protocole
 
-| Fonction | Local | SFTP | SCP | FTP/FTPS | WebDAV | S3 |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|
-| Droits Unix (affichage, `chmod`) | Unix | ✓ | ✓ | ✓¹ | | |
-| Propriétaire et groupe (`chown`) | Unix | ✓ | ✓ | affichage | | |
-| Liens symboliques | ✓ | ✓ | ✓ | | | |
-| Liens physiques | ✓ | ✓² | ✓ | | | |
-| Modifier la date | ✓ | ✓ | ✓ | ✓³ | Nextcloud/ownCloud | |
-| Copie côté serveur | ✓ | ✓ | ✓ | | ✓ | ✓ |
-| Sommes de contrôle sans téléchargement | ✓ | ✓ | ✓ | ✓⁴ | | MD5 |
-| Espace libre | ✓ | ✓² | ✓ | | ✓ | |
-| Reprise des téléchargements | ✓ | ✓ | ✓ | ✓⁵ | ✓ | ✓ |
-| Reprise des envois | ✓ | ✓ | | ✓ | | |
-| Terminal, commandes shell | ✓ | ✓ | ✓ | commandes FTP brutes | | |
-| Tunnels (redirection de ports) | | ✓ | ✓ | | | |
-| Précision des dates | ns | s | s | s ou min | s | s |
+| Fonction | Local | SFTP | SCP | FTP/FTPS | WebDAV | S3 | Conteneur |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| Droits Unix (affichage, `chmod`) | Unix | ✓ | ✓ | ✓¹ | | | ✓ |
+| Propriétaire et groupe (`chown`) | Unix | ✓ | ✓ | affichage | | | ✓ |
+| Liens symboliques | ✓ | ✓ | ✓ | | | | ✓ |
+| Liens physiques | ✓ | ✓² | ✓ | | | | ✓ |
+| Modifier la date | ✓ | ✓ | ✓ | ✓³ | Nextcloud/ownCloud | | ✓ |
+| Copie côté serveur | ✓ | ✓ | ✓ | | ✓ | ✓ | ✓ |
+| Sommes de contrôle sans téléchargement | ✓ | ✓ | ✓ | ✓⁴ | | MD5 | ✓ |
+| Espace libre | ✓ | ✓² | ✓ | | ✓ | | ✓ |
+| Reprise des téléchargements | ✓ | ✓ | ✓ | ✓⁵ | ✓ | ✓ | ✓ |
+| Reprise des envois | ✓ | ✓ | | ✓ | | | |
+| Terminal, commandes shell | ✓ | ✓ | ✓ | commandes FTP brutes | | | ✓ |
+| Moniteur | | ✓ | ✓ | | | | ✓ |
+| Tunnels (redirection de ports) | | ✓ | ✓ | | | | |
+| Précision des dates | ns | s | s | s ou min | s | s | s |
 
 ¹ selon le serveur (`SITE CHMOD`). ² si le serveur propose l'extension (`hardlink@openssh.com`, `statvfs@openssh.com`). ³ avec `MFMT` ou `MDTM`. ⁴ avec `HASH`, `XSHA256`, `XSHA1` ou `XMD5`. ⁵ avec `REST`.
 
@@ -81,7 +82,33 @@ Amazon S3 et les stockages compatibles : MinIO, Wasabi, Cloudflare R2, Backblaze
 - Adressage virtuel (`bucket.hôte`) ou par chemin (`hôte/bucket`), région, jeton de session STS.
 - Pas de droits Unix, pas de modification de date (la date est celle de l'envoi), somme de contrôle MD5 par l'ETag (fichiers envoyés en une seule partie).
 
-## 15.7 URL de session
+## 15.7 Conteneurs (Docker, Podman, Kubernetes)
+
+Un conteneur Docker ou Podman, ou un pod Kubernetes, s'ouvre comme un serveur : ses fichiers dans un panneau, un terminal dedans, le moniteur de ses processus. Skiff utilise la commande `exec` du moteur — `docker exec`, `podman exec`, `kubectl exec` — et n'installe rien dans le conteneur : un shell POSIX et les outils habituels suffisent (busybox, comme dans les images Alpine, convient). La lecture passe par `cat` (et `tail -c` pour une reprise), l'écriture par `cat >`, le reste par `ls`/`find`, `mkdir`, `mv`, `chmod`, `sha256sum`…
+
+**Où tourne le moteur** :
+
+- **cet ordinateur** : la commande `docker`, `podman` ou `kubectl` installée ici (avec ses réglages : contexte Docker, `~/.kube/config`) ;
+- **un serveur SSH** : la commande est lancée sur le serveur, par la connexion SSH — les conteneurs d'un serveur distant s'ouvrent sans exposer le démon Docker ni l'API Kubernetes sur le réseau.
+
+**Trouver un conteneur** :
+
+- dans une session SFTP ou SCP, le bouton **Conteneurs de ce serveur** (icône de boîte dans la barre d'outils) liste les conteneurs du serveur ;
+- **⋯ → Conteneurs de cet ordinateur** dans la liste des sites, pour ceux de l'ordinateur.
+
+![Conteneurs de cet ordinateur](images/conteneurs.png)
+
+La liste montre l'état (pastille verte quand il tourne), l'image et le statut, pour Docker, Podman ou Kubernetes (avec le contexte et l'espace de noms ; vide : tous). **Fichiers** ouvre une session sur le conteneur, l'icône de terminal ouvre en plus un shell dedans (`bash` s'il existe, sinon `sh`), **+** prépare un site pour le retrouver.
+
+**Un site de type Conteneur** (protocole **Conteneur** dans l'éditeur de site) garde : le **moteur**, **S'exécute sur** (cet ordinateur ou un site SSH enregistré), le nom du **conteneur** ou du **pod** (**Choisir…** les liste, pour cet ordinateur), l'**utilisateur** des commandes (Docker, Podman), le **contexte**, l'**espace de noms** et le **conteneur du pod** (Kubernetes), et la **commande** du moteur si elle n'est pas dans le `PATH`.
+
+![Un site de type Conteneur](images/site-conteneur.png)
+
+Les URL `docker://conteneur/chemin`, `podman://conteneur/chemin` et `kubectl://pod/chemin?namespace=demo&context=prod&container=web` ouvrent un conteneur de cet ordinateur ([§ 15.8](#158-url-de-session)).
+
+Limites : pas de reprise des envois ni de tunnels ; le moniteur montre les processus du conteneur, mais la mémoire et les disques de la machine hôte. En [mode web](14-mode-web.md), les conteneurs de la machine qui exécute Skiff sont désactivés comme le terminal local ; ceux des serveurs SSH restent disponibles.
+
+## 15.8 URL de session
 
 Les URL servent à la connexion rapide, à la palette `Ctrl+K`, à la ligne de commande (`skiff <url>`) et aux scripts (`open <url>`).
 
@@ -100,6 +127,8 @@ protocole://[utilisateur[:mot-de-passe]@]hôte[:port][/chemin]
 | `davs://`, `webdavs://`, `https://` | WebDAV en HTTPS |
 | `s3://` | S3 en HTTPS (hôte par défaut : `s3.amazonaws.com`) |
 | `s3plain://` | S3 en HTTP (MinIO local…) |
+| `docker://`, `podman://` | Conteneur Docker ou Podman de cet ordinateur ([§ 15.7](#157-conteneurs-docker-podman-kubernetes)) |
+| `kubectl://` | Pod Kubernetes (`?namespace=`, `&context=`, `&container=`) |
 
 - Sans schéma, `sftp://` est supposé : `alex@serveur` suffit.
 - Le chemin devient le dossier distant d'ouverture. En S3, il commence par le bucket : `s3://CLÉ@s3.eu-west-3.amazonaws.com/mon-bucket/archives/`.

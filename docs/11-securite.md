@@ -99,7 +99,25 @@ Indiquez la phrase secrète actuelle (si la clé est chiffrée), la phrase secr�
 
 Skiff lit directement les deux formats pour se connecter : la conversion ne sert qu'à échanger des clés avec d'autres logiciels (PuTTY, WinSCP, OpenSSH).
 
-## 11.7 Sécurité de l'application
+## 11.7 Trousseau Skiff et transfert d'agent
+
+Le **trousseau Skiff** garde vos clés privées dans Skiff lui-même, chiffrées comme les mots de passe enregistrés : par le mot de passe maître s'il y en a un ([§ 11.4](#114-mot-de-passe-maître)), sinon par la clé locale de l'ordinateur. Pas besoin d'agent SSH sur l'ordinateur, ni de laisser une clé non chiffrée sur le disque.
+
+![Le trousseau dans Préférences → Sécurité](images/prefs-securite.png)
+
+Pour y mettre une clé, dans **Préférences → Sécurité** :
+
+- **Au trousseau**, sur une clé de la liste **Clés SSH** (`~/.ssh`) : la phrase secrète est demandée si la clé en a une ;
+- **Ajouter une clé…** : collez une clé OpenSSH, PEM ou PuTTY `.ppk`, avec son nom et sa phrase secrète ;
+- dans le [générateur de clés](#115-générateur-de-clés-ssh), la case **L'ajouter aussi au trousseau Skiff**.
+
+Une clé protégée par une phrase secrète est déchiffrée une seule fois, à l'ajout, puis gardée chiffrée par Skiff : la phrase secrète n'est plus jamais demandée. Chaque clé du trousseau se **renomme**, se **retire** (le fichier d'origine, s'il existe, n'est pas touché) et sa clé publique se **copie** (pour la coller dans un `authorized_keys`, ou l'installer avec le générateur). Le fichier `keychain.json` du dossier de configuration ne contient que des clés chiffrées.
+
+Les clés du trousseau sont **proposées à tous les serveurs SSH**, avant celles de l'agent du système, dès que **Utiliser le trousseau Skiff et l'agent SSH / Pageant** est coché dans le site (c'est le cas par défaut), hôtes de rebond compris. Le journal de session indique `Using 1 key(s) from the Skiff keychain`. Tant que le mot de passe maître est verrouillé, le trousseau n'est pas utilisé.
+
+**Transfert d'agent** : avec **Transférer l'agent au serveur (ForwardAgent)** (section **SSH** du site), ou `ForwardAgent yes` dans [`~/.ssh/config`](03-sites.md#34-configuration-openssh-ssh_config), les terminaux SSH de ce site reçoivent un agent : `git pull`, `ssh` vers un autre serveur ou `scp` y utilisent les clés du trousseau puis celles de l'agent du système, sans qu'elles quittent votre ordinateur (`ssh-add -l` les liste). Le serveur peut demander des signatures, jamais ajouter ni retirer de clés. N'activez le transfert que vers des serveurs de confiance : pendant la connexion, leur administrateur peut utiliser vos clés.
+
+## 11.8 Sécurité de l'application
 
 - **Fenêtre de bureau** : l'interface communique avec le moteur de Skiff par un serveur HTTP qui n'écoute que sur `127.0.0.1`, protégé par un jeton aléatoire à chaque lancement, un contrôle de l'en-tête `Host` (contre le *DNS rebinding*) et un en-tête anti-CSRF obligatoire.
 - Les fichiers HTML et SVG prévisualisés ne sont jamais exécutés dans le contexte de l'application.

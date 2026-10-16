@@ -91,7 +91,7 @@ Les sections du formulaire s'adaptent au protocole choisi :
 
 | Champ | Description |
 |---|---|
-| **Protocole** | SFTP, SCP, FTP, WebDAV ou S3. Le port par défaut suit le protocole (22, 21, 80/443, 443). |
+| **Protocole** | SFTP, SCP, FTP, WebDAV, S3 ou **Conteneur** (Docker, Podman, Kubernetes, voir [§ 15.7](15-protocoles.md#157-conteneurs-docker-podman-kubernetes)). Le port par défaut suit le protocole (22, 21, 80/443, 443). |
 | **Nom d'hôte** et **Port** | Adresse du serveur (nom DNS, IPv4 ou IPv6) |
 | **Nom d'utilisateur** et **Mot de passe** | Un mot de passe enregistré n'est jamais renvoyé à l'interface : le champ affiche « Enregistré — tapez pour remplacer », et la croix l'oublie. |
 | **Fichier de clé privée** | Clé OpenSSH ou PuTTY `.ppk` (SSH seulement). Les clés par défaut de `~/.ssh` sont essayées automatiquement. |
@@ -182,7 +182,8 @@ Les tunnels définis ici sont rattachés au site. Chaque ligne indique le type (
 |---|---|
 | **Fichier de clé privée** | Clé OpenSSH (`id_ed25519`, `id_rsa`…), PuTTY `.ppk` v2/v3 ; un certificat `-cert.pub` posé à côté est utilisé automatiquement |
 | **Phrase secrète de la clé** | Enregistrée chiffrée. Si elle est absente, Skiff la demande. |
-| **Utiliser l'agent SSH / Pageant** | Essaie les clés de l'agent (`ssh-agent`, agent OpenSSH de Windows, Pageant) |
+| **Utiliser le trousseau Skiff et l'agent SSH / Pageant** | Essaie les clés du [trousseau Skiff](11-securite.md#117-trousseau-skiff-et-transfert-dagent), puis celles de l'agent (`ssh-agent`, agent OpenSSH de Windows, Pageant) |
+| **Transférer l'agent au serveur (ForwardAgent)** | Les terminaux SSH du site reçoivent un agent : `git`, `ssh`, `scp` sur le serveur utilisent vos clés sans les copier. Seulement vers des serveurs de confiance. |
 | **Authentification clavier-interactive** | Autorise les questions du serveur (OTP, 2FA, changement de mot de passe) |
 | **Empreinte attendue de la clé d'hôte** | `SHA256:…` : épingle la clé du serveur. Une autre clé est refusée sans question. |
 | **Commande du serveur SFTP** | Lance un autre serveur SFTP, par exemple `sudo /usr/lib/openssh/sftp-server` pour naviguer en root |
@@ -278,7 +279,7 @@ La section **Config OpenSSH**, sous vos sites, liste les hôtes déclarés dans 
 |---|---|
 | **Connexion** | Hôte et port réels, utilisateur, clés essayées (et l'agent SSH), hôtes de rebond, commande proxy, tunnels ouverts à la connexion |
 | Avertissements | Par exemple un `IdentityFile` qui n'existe pas |
-| **Paramètres détectés** | Chaque valeur obtenue, avec le fichier et la ligne d'où elle vient, et son statut : **appliqué**, **site** (remplacé par le réglage du site, valeur barrée) ou **ignoré** (fonction que Skiff n'a pas, par exemple `ForwardAgent` ou `ControlMaster`) |
+| **Paramètres détectés** | Chaque valeur obtenue, avec le fichier et la ligne d'où elle vient, et son statut : **appliqué**, **site** (remplacé par le réglage du site, valeur barrée) ou **ignoré** (fonction que Skiff n'a pas, par exemple `ControlMaster` ou `Compression`) |
 
 Un double-clic, `Entrée` ou **Connexion** ouvre la session ; **Ouvrir dans un terminal** ouvre aussi un terminal SSH. **Créer un site** prépare un site dont l'hôte est l'alias : la configuration continue de s'appliquer et vous n'ajoutez que ce qui est propre à Skiff (couleur, dossiers d'ouverture, mot de passe enregistré…). Le clic droit propose les mêmes actions et **Copier le nom** :
 
@@ -298,6 +299,7 @@ Comme les options de la ligne de commande de `ssh`, **un réglage fait dans Skif
 | `IdentityFile` | Clés essayées, à la place des clés par défaut de `~/.ssh` | le champ **Fichier de clé privée** est rempli |
 | `IdentitiesOnly` | N'offre que les clés de l'agent qui correspondent à ces fichiers | — |
 | `CertificateFile` | Certificats OpenSSH associés aux clés | — |
+| `ForwardAgent` | Transfert d'agent vers les terminaux SSH ([§ 11.7](11-securite.md#117-trousseau-skiff-et-transfert-dagent)) | **Transférer l'agent au serveur** est coché |
 | `IdentityAgent` | Socket de l'agent (ou tube nommé sous Windows, par exemple `\\.\pipe\openssh-ssh-agent`) ; `none` désactive l'agent | **Utiliser l'agent SSH** est décoché |
 | `PubkeyAuthentication`, `PasswordAuthentication`, `KbdInteractiveAuthentication`, `PreferredAuthentications` | Méthodes d'authentification autorisées et leur ordre | une clé est donnée dans le site / **clavier-interactif** est décoché |
 | `ProxyJump` | Chaîne de rebonds ; chaque rebond est lui-même résolu par la configuration (le premier peut avoir son propre `ProxyJump` ou `ProxyCommand`) | le site a des **Hôtes de rebond** ou un **Proxy** |

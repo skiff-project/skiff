@@ -13,8 +13,30 @@ Pour les sessions SFTP et SCP, **Terminal** (`Ctrl+T`) ouvre un terminal SSH com
 - Option **Copier à la sélection** (Préférences → Terminal) : sélectionner du texte le copie.
 - Le terminal continue de tourner quand vous changez d'onglet. Quand l'interface se recharge (par exemple en mode web), les 256 derniers Kio affichés sont restitués.
 - Quand le shell se termine, le terminal affiche « La session est terminée » et un bouton **Rouvrir**.
+- Avec le **transfert d'agent** activé dans le site, `git`, `ssh` et `scp` lancés dans le terminal utilisent vos clés (trousseau Skiff et agent), sans les copier sur le serveur (voir [§ 11.7](11-securite.md#117-trousseau-skiff-et-transfert-dagent)).
 
 Le shell est le shell de connexion de l'utilisateur (`$SHELL -l`). La police, sa taille, le nombre de lignes conservées, le curseur et la variable `TERM` se règlent dans **Préférences → Terminal**. Un terminal s'ouvre aussi depuis la liste des sites (**Ouvrir dans un terminal**), qui se connecte et ouvre le terminal en une seule étape.
+
+### Plusieurs terminaux dans un onglet
+
+**Diviser à droite** et **Diviser en bas** (barre du terminal) ajoutent un terminal à l'onglet, sur le même serveur (dans le même dossier) ou sur une autre connexion ouverte, voire l'ordinateur local. Deux terminaux se partagent l'onglet côte à côte ou l'un au-dessus de l'autre, trois ou quatre en grille. Chacun a son en-tête (connexion, dossier courant, **Fermer ce terminal**) ; celui qui a le clavier est entouré de la couleur d'accent.
+
+![Deux terminaux côte à côte, saisie diffusée](images/terminal-divise.png)
+
+### Diffuser la saisie
+
+**Diffuser la saisie** (icône d'antenne, dès deux terminaux) envoie chaque frappe à **tous les terminaux de l'onglet** : la même commande s'exécute sur plusieurs serveurs à la fois (mise à jour, redémarrage d'un service, vérification). Les terminaux sont alors entourés d'orange et la barre indique « Saisie envoyée à N terminaux ». Un nouveau clic arrête la diffusion. Le collage et les commandes enregistrées sont diffusés de la même façon.
+
+### Commandes enregistrées
+
+Le bouton **Commandes enregistrées** propose des commandes prêtes à taper : **Espace disque** (`df -h`), **Mémoire** (`free -h`), **Plus gros fichiers ici**, **Derniers journaux système**, et les vôtres. Une commande marquée **Exécuter** est validée aussitôt ; sinon elle est seulement tapée, pour la compléter. **Gérer les commandes enregistrées…** ouvre **Préférences → Terminal** ([§ 12.6](12-preferences.md#126-terminal)).
+
+### Suivre le dossier courant
+
+Le terminal connaît le dossier courant du shell quand celui-ci l'annonce (séquence standard OSC 7) : il s'affiche dans la barre et dans l'en-tête de chaque terminal.
+
+- **Afficher le dossier courant dans le panneau de fichiers** ouvre ce dossier dans le panneau de la même connexion (ou un nouvel onglet de session).
+- **Le panneau de fichiers suit le dossier courant** : chaque `cd` dans le terminal change le dossier du panneau. À l'activation, Skiff installe dans les shells bash et zsh qui n'annoncent pas encore leur dossier une petite fonction pour le faire (le terminal est effacé une fois) ; fish et les configurations qui envoient déjà OSC 7 n'en ont pas besoin. L'installation dure jusqu'à la fin du shell et ne modifie aucun fichier du serveur.
 
 ## 9.2 Terminal local
 
@@ -86,6 +108,26 @@ Dans le site, section **Proxy** :
 | **Commande locale (ProxyCommand)** | Lance une commande dont l'entrée et la sortie servent de connexion, avec les variables `%host`, `%port`, `%user`, `%pass`, `%proxyhost`, `%proxyport`. Exemples : `ssh -W %host:%port passerelle`, `nc -X 5 -x proxy:1080 %host %port`, `cloudflared access ssh --hostname %host` |
 
 Le proxy s'applique à la première connexion réseau : directement au serveur, ou au premier hôte de rebond s'il y en a.
+
+## 9.6 Moniteur du serveur
+
+Pour une session SFTP ou SCP vers un serveur Linux, le bouton **Moniteur du serveur** (icône d'activité dans la barre d'outils de la session, ou la palette) ouvre un onglet qui montre l'état du serveur en direct. Rien n'est installé sur le serveur : Skiff lit `/proc` par la connexion déjà ouverte, une commande par mesure.
+
+![Moniteur du serveur](images/moniteur.png)
+
+| Zone | Contenu |
+|---|---|
+| En-tête | Nom du serveur, noyau, nombre de processeurs, durée depuis le démarrage, nombre de processus |
+| **Processeur** | Occupation de tous les processeurs depuis la mesure précédente, et sa courbe sur les 60 dernières mesures |
+| **Mémoire** | Mémoire utilisée (hors cache) sur le total, la swap, et la courbe |
+| **Charge moyenne** | Sur 1, 5 et 15 minutes |
+| **Réseau** | Débit reçu ↓ et envoyé ↑ de toutes les interfaces (sauf `lo`) |
+| **Disques** | Chaque système de fichiers monté (sans les systèmes virtuels ni les doublons de montage), avec son taux d'occupation : la barre passe à l'orange au-delà de 75 %, au rouge au-delà de 90 % |
+| **Processus** | Les 40 processus les plus actifs : PID, utilisateur, commande, % CPU (part d'un processeur, comme `top`) et mémoire résidente. Un clic sur un en-tête trie la colonne ; le champ **Filtrer** cherche dans le nom, l'utilisateur et le PID. |
+
+Les boutons d'une ligne de processus envoient **TERM** (**Arrêter**, le processus peut se terminer proprement) ou **KILL** (**Forcer l'arrêt**), après confirmation. Ils agissent avec les droits de l'utilisateur de la session.
+
+La fréquence se règle de 1 à 10 secondes ; **Pause** fige l'affichage. Les mesures s'arrêtent quand l'onglet n'est pas affiché et reprennent après une reconnexion. Un serveur sans `/proc` (macOS, BSD) affiche « the monitor needs a Linux server ».
 
 ---
 

@@ -38,6 +38,7 @@ Skiff reprend les fonctionnalités de WinSCP (interface Commander à deux pannea
 | **FTP / FTPS** | Client maison : TLS explicite et implicite (avec réutilisation de session TLS), modes **passif et actif** (PORT/EPRT), MLSD/MLST ou LIST (Unix et DOS/IIS), `SITE CHMOD`, MFMT/MDTM, REST/APPE, HASH/XSHA256/XMD5, encodages hérités (Windows-1252, Latin-1…), keepalive, reconnexion transparente |
 | **WebDAV** | HTTP/HTTPS, authentification Basic et Digest, PROPFIND, MOVE/COPY côté serveur, quotas, `Range` pour la reprise, `X-OC-Mtime` (Nextcloud/ownCloud) |
 | **S3** | AWS et compatibles (MinIO, Wasabi, R2, B2, Ceph, SeaweedFS…), adressage par chemin ou virtuel, région, jeton de session, upload multipart, copie côté serveur (> 5 Go via compose), dossiers virtuels |
+| **Conteneurs** | Docker, Podman et pods Kubernetes, sur cet ordinateur ou sur un serveur SSH, par `docker exec` / `kubectl exec` : fichiers, transferts, terminal et moniteur, sans rien installer dans le conteneur |
 
 ### Connexion
 - Authentification SSH : mot de passe, clavier-interactif (OTP, changement de mot de passe), **clés OpenSSH et PuTTY `.ppk` v2/v3**, certificats OpenSSH (`-cert.pub`), **agent SSH / Pageant / agent OpenSSH Windows**, clés par défaut de `~/.ssh`
@@ -81,7 +82,12 @@ Skiff reprend les fonctionnalités de WinSCP (interface Commander à deux pannea
 - Informations serveur et protocole, journal de session (consultable, filtrable, exportable, écrit sur disque en option)
 
 ### Fonctions en plus de WinSCP
-- **Terminal SSH intégré** (xterm.js) avec reprise de l'historique, recherche et copier/coller, plus un **terminal local**
+- **Terminal SSH intégré** (xterm.js) avec reprise de l'historique, recherche et copier/coller, plus un **terminal local** ; plusieurs terminaux par onglet (côte à côte, empilés, en grille), **saisie diffusée** à plusieurs serveurs, **commandes enregistrées**, et le panneau de fichiers qui **suit le dossier courant** (OSC 7)
+- **Moniteur du serveur** : processeur, mémoire, charge, réseau, disques et processus (avec arrêt), lus dans `/proc` sans rien installer
+- **Trousseau Skiff** : vos clés privées gardées chiffrées par Skiff, proposées à tous les serveurs, et **transfert d'agent** (`ForwardAgent`) vers les terminaux SSH
+- **Tâches planifiées** : synchronisations et scripts lancés chaque nuit, toutes les heures ou selon une expression cron, avec historique et journal ; `skiff task run` pour le planificateur du système
+- **Synchronisation entre appareils** : sites, mots de passe, trousseau, préférences et clés d'hôte partagés entre vos ordinateurs par un fichier chiffré sur votre propre serveur
+- **Gros fichiers SFTP en parties parallèles**, chacune sur son canal : bien plus rapide vers un serveur lointain
 - **Gestionnaire de tunnels** : redirections locales (`-L`), distantes (`-R`) et **SOCKS dynamique** (`-D`), statistiques en direct, démarrage automatique par site
 - **Éditeur intégré** CodeMirror 6 : coloration de 100+ langages, recherche et remplacement, encodages, BOM, fins de ligne, **détection des conflits** à l'enregistrement
 - **Diff visuel** local ↔ distant ou serveur ↔ serveur, fusion par blocs

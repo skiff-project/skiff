@@ -144,6 +144,12 @@ Host *
     AddKeysToAgent yes
 EOF
 
+# ---- demo containers (Containers dialog) ---------------------------------
+for c in boutique-web boutique-redis; do
+  docker rm -f "$c" >/dev/null 2>&1 || true
+  docker run -d --name "$c" --entrypoint sleep rclone/rclone:latest 604800 >/dev/null
+done
+
 # varied timestamps
 touch -d "2026-09-28 10:12" "$SITE/a-propos.html" "$SITE/robots.txt" "$SITE/.htaccess"
 touch -d "2026-10-02 18:40" "$SITE/css/style.css" "$SITE/js/app.js" "$SITE/images/"*

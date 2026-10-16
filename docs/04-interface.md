@@ -58,7 +58,7 @@ Chaque panneau peut afficher **n'importe quelle connexion** : le disque local ou
 
 ![Choix de la connexion affichée dans un panneau](images/panneau-choix-connexion.png)
 
-Afficher deux serveurs face à face permet les **transferts directs de serveur à serveur** (voir [Transferts](06-transferts.md#68-de-serveur-à-serveur)).
+Afficher deux serveurs face à face permet les **transferts directs de serveur à serveur** (voir [Transferts](06-transferts.md#69-de-serveur-à-serveur)).
 
 La barre de navigation du panneau contient, de gauche à droite :
 
