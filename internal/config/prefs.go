@@ -29,7 +29,6 @@ type QueuePrefs struct {
 	RetryCount      int   `json:"retryCount"`
 	RetryDelay      int   `json:"retryDelay"` // seconds
 	ContinueOnError bool  `json:"continueOnError"`
-	Notify          bool  `json:"notify"`
 	SegmentSize     int64 `json:"segmentSize"` // parallel chunks for big SFTP files (bytes); 0 = off
 }
 
@@ -104,7 +103,6 @@ type SSHPrefs struct {
 type WebPrefs struct {
 	User         string `json:"user,omitempty"`
 	PasswordHash string `json:"passwordHash,omitempty"`
-	TOTPSecret   string `json:"totpSecret,omitempty"`
 }
 
 type Prefs struct {

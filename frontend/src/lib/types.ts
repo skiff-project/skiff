@@ -324,7 +324,7 @@ export interface Prefs {
     addXToDirs: boolean; overwrite: string; resumeThreshold: number; fileMask: string; speedLimit: number; caseMode: string
     verify: boolean; excludeHidden: boolean; replaceInvalid: boolean; ignorePermErrors: boolean; clearArchive: boolean
   }
-  queue: { maxParallel: number; background: boolean; autoPopup: boolean; retryCount: number; retryDelay: number; continueOnError: boolean; notify: boolean; segmentSize: number }
+  queue: { maxParallel: number; background: boolean; autoPopup: boolean; retryCount: number; retryDelay: number; continueOnError: boolean; segmentSize: number }
   editor: { default: 'internal' | 'external'; externalCmd: string; tabSize: number; wordWrap: boolean; fontSize: number; maxSizeMB: number; encoding: string; autoReload: boolean; associations: { mask: string; command: string }[] }
   terminal: { fontSize: number; fontFamily: string; scrollback: number; cursorBlink: boolean; copyOnSelect: boolean; term: string }
   logging: { toFile: boolean; level: string; keepDays: number }

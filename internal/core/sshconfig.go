@@ -203,7 +203,7 @@ func applyTarget(t *sshx.Target, h *sshconfig.Host, explicitKeys bool, st map[st
 		if !explicitKeys {
 			configKeys = true
 			for _, f := range h.IdentityFiles() {
-				if _, err := os.Stat(f); err == nil {
+				if exists(f) || exists(f+".pub") { // the private key may be in the agent only
 					t.KeyFiles = append(t.KeyFiles, f)
 				} else {
 					h.Warnings = append(h.Warnings, fmt.Sprintf("IdentityFile %s: file not found", h.Display(f)))
@@ -271,6 +271,11 @@ func applyTarget(t *sshx.Target, h *sshconfig.Host, explicitKeys bool, st map[st
 		mark("Tag", true) // used by "Match tagged"
 	}
 	return configKeys
+}
+
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 // finishTarget fills what neither the site nor ssh_config gave.

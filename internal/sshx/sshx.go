@@ -491,12 +491,25 @@ func publicKeys(ctx context.Context, t Target, pr prompt.Prompter, logf func(str
 			continue
 		}
 		path := expandHome(kf)
-		if pub := readPublicKey(path + ".pub"); pub != nil {
+		// as with ssh, the file may be the public key, the private key
+		// being in the agent only (hardware token, password manager)
+		pub := readPublicKey(path)
+		pubOnly := pub != nil
+		if pubOnly {
+			path = strings.TrimSuffix(path, ".pub")
+		} else {
+			pub = readPublicKey(path + ".pub")
+		}
+		if pub != nil {
 			filePubs = append(filePubs, pub)
 			if inAgent(pub) {
 				if _, err := os.Stat(path + "-cert.pub"); err == nil {
 					certFiles = append(certFiles, path+"-cert.pub")
 				}
+				continue
+			}
+			if pubOnly {
+				logf("Key %s is not in the SSH agent", kf)
 				continue
 			}
 		}

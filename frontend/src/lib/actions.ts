@@ -349,7 +349,7 @@ function persistTabs() {
         local: tab.panes[localSide].conn === 'local' ? tab.panes[localSide].path : undefined,
       })
     }
-    savePrefs({ lastTabs })
+    if (JSON.stringify(lastTabs) !== JSON.stringify(s.prefs.lastTabs || [])) savePrefs({ lastTabs })
   }, 1500)
 }
 
@@ -382,8 +382,9 @@ export function openWorkspace(name: string) {
   if (!ws) return
   let first = true
   for (const st of ws.tabs) {
-    if (st.siteId && get().sites.some((x) => x.id === st.siteId)) connectSite(st.siteId, { remote: st.remote, local: st.local, activate: first })
-    else if (st.url) connectUrl(st.url)
+    const opts = { remote: st.remote, local: st.local, activate: first }
+    if (st.siteId && get().sites.some((x) => x.id === st.siteId)) connectSite(st.siteId, opts)
+    else if (st.url) connectUrl(st.url, undefined, opts)
     first = false
   }
 }
@@ -394,7 +395,9 @@ export function deleteWorkspace(name: string) {
 
 async function restoreTabs(list: TabState[]) {
   for (const st of list) {
-    if (st.siteId && get().sites.some((x) => x.id === st.siteId)) connectSite(st.siteId, { remote: st.remote, local: st.local, activate: false })
+    const opts = { remote: st.remote, local: st.local, activate: false }
+    if (st.siteId && get().sites.some((x) => x.id === st.siteId)) connectSite(st.siteId, opts)
+    else if (st.url) connectUrl(st.url, undefined, opts) // quick connection: the password is asked again
   }
 }
 
@@ -506,7 +509,7 @@ export function connectSite(siteId: string, opts: OpenOpts = {}) {
   openConnection(site.name || `${site.user ? site.user + '@' : ''}${site.host}`, { siteId }, opts)
 }
 
-export function connectUrl(url: string, password?: string) {
+export function connectUrl(url: string, password?: string, opts: OpenOpts = {}) {
   let title = url
   try {
     const u = new URL(url.includes('://') ? url : 'sftp://' + url)
@@ -514,7 +517,7 @@ export function connectUrl(url: string, password?: string) {
   } catch {
     /* keep */
   }
-  openConnection(title, { url, password })
+  openConnection(title, { url, password }, opts)
 }
 
 export function connectAdhoc(site: any, password?: string) {
@@ -617,6 +620,7 @@ export async function loadDir(tabId: string, side: Side, path: string, opts: Loa
       if (focus && !names.has(focus)) focus = undefined
       return { path: r.path, entries: r.entries, loading: false, error: undefined, selected, focus, loadedAt: Date.now() }
     })
+    if (r.path !== prevPath) persistTabs() // the tabs reopen in their last folders
   } catch (e: any) {
     if (loadSeq[key] !== seq) return
     updatePane(tabId, side, () => ({ loading: false, error: e?.message || String(e), entries: navigating ? [] : getTab<SessionTab>(tabId)?.panes[side].entries ?? [] }))

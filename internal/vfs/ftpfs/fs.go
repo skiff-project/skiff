@@ -114,8 +114,9 @@ func (f *FS) mlsd() bool {
 }
 
 func (f *FS) Caps() vfs.Caps {
+	// listings without MLSD come from LIST, precise to the minute at best
 	prec := time.Minute
-	if f.mlsd() || f.c.has("MDTM") {
+	if f.mlsd() {
 		prec = time.Second
 	}
 	return vfs.Caps{
@@ -382,6 +383,15 @@ func (f *FS) Stat(ctx context.Context, p string) (vfs.Entry, error) {
 		for _, x := range entries {
 			if x.Name == base {
 				e = x
+				// LIST gives the minute at best (only the day for old
+				// files): MDTM gives the exact time
+				if !e.IsDir && c.has("MDTM") {
+					if r, err := c.cmd("MDTM " + c.encode(p)); err == nil && r.Code == 213 {
+						if t := parseFTPTime(r.Msg); !t.IsZero() {
+							e.ModTime = t
+						}
+					}
+				}
 				return nil
 			}
 		}
