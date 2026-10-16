@@ -66,6 +66,38 @@ Chaque surveillance affiche le dossier local, la destination, les compteurs d'en
 
 En script, la commande `keepuptodate` fait la même chose (voir [Scripts](13-scripts-cli.md)).
 
+
+## 7.4 Tâches planifiées
+
+Une synchronisation ou un script peut s'exécuter **tout seul** : chaque nuit, toutes les heures, en semaine à 8 h… Ouvrez l'onglet **Tâches planifiées** depuis la palette (`Ctrl+K`), le menu **⋯** de la liste des sites, ou directement depuis la boîte de synchronisation : **Planifier…** enregistre ses réglages (site, dossiers, sens, mode, critères, masque) comme une nouvelle tâche.
+
+![Tâches planifiées : une synchronisation et son historique](images/taches.png)
+
+**+** crée une **Synchronisation** (un site enregistré, le dossier local, le dossier distant — vide : celui du site — et les mêmes options que la [boîte de synchronisation](#71-synchroniser-deux-dossiers)) ou un **Script** (des [commandes compatibles WinSCP](13-scripts-cli.md#133-commandes-de-script), une par ligne). Puis :
+
+| Réglage | Effet |
+|---|---|
+| **Activée** | Décochée, la tâche ne s'exécute qu'avec **Exécuter maintenant** |
+| **Quand** | **À la main**, **Intervalle** (toutes les N minutes), **Chaque jour** à une heure, **Chaque semaine** les jours cochés à une heure, ou une expression **Cron** (`minute heure jour mois jour-de-semaine`, avec `*`, `1-5`, `*/15`, `1,3,5` ; 0 et 7 sont le dimanche) |
+| **Rattraper au démarrage…** | Si Skiff était fermé à l'heure prévue, la tâche s'exécute une fois à l'ouverture ; sinon l'exécution manquée est sautée |
+| **Notification** | **En cas d'échec** (par défaut), **Après chaque exécution** ou **Jamais** : une notification résume le résultat |
+
+La liste indique pour chaque tâche la prochaine exécution et une pastille de la dernière (verte : réussie, rouge : en échec, orange : arrêtée). **Exécuter maintenant** la lance tout de suite, **Arrêter** l'interrompt. L'**Historique** garde les 200 dernières exécutions, avec leur déclencheur (planifiée, rattrapée, à la main, ligne de commande), leur résumé (fichiers transférés, supprimés, erreurs) et leur journal complet, déplié d'un clic.
+
+Une tâche s'exécute **sans poser de question**, dans sa propre connexion : une clé d'hôte inconnue, un mot de passe ou une phrase secrète manquants la font échouer avec un message qui dit quoi faire (se connecter une fois depuis Skiff pour accepter la clé, enregistrer le mot de passe dans le site, ou utiliser le [trousseau](11-securite.md#117-trousseau-skiff-et-transfert-dagent)). Une synchronisation n'écrase jamais en demandant : elle suit ses critères.
+
+**Skiff fermé** : les tâches s'exécutent tant que Skiff est ouvert (fenêtre ou `skiff serve`). Pour qu'elles tournent aussi Skiff fermé, confiez la commande affichée sous la planification au planificateur du système ; le résultat s'ajoute au même historique ([§ 13.9](13-scripts-cli.md#139-skiff-task)) :
+
+```bash
+# Linux, macOS (crontab -e) : tous les jours à 2 h
+0 2 * * * /usr/local/bin/skiff task run -q "Publier le site"
+```
+
+```powershell
+# Windows : Planificateur de tâches
+schtasks /Create /SC DAILY /ST 02:00 /TN "Skiff - Publier le site" /TR "\"C:\Program Files\Skiff\skiff.exe\" task run -q \"Publier le site\""
+```
+
 ---
 
 [← Transferts](06-transferts.md) · [Sommaire](README.md) · [Édition, diff et aperçu →](08-edition.md)

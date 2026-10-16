@@ -26,13 +26,14 @@ function Keygen({ close }: { close: () => void }) {
   const sep = info?.localStyle === 'windows' ? '\\' : '/'
   const [saveTo, setSaveTo] = useState(displayPath('local', `${info?.localHome}${sep}.ssh${sep}id_ed25519_skiff`))
   const [res, setRes] = useState<GeneratedKey | null>(null)
+  const [keychain, setKeychain] = useState(false)
   const [busy, setBusy] = useState(false)
   const [target, setTarget] = useState(conns[0]?.id || '')
 
   const gen = async () => {
     setBusy(true)
     try {
-      setRes(await call<GeneratedKey>('keys.generate', { type, bits: type === 'ed25519' ? 0 : bits, comment, passphrase: pass, format, saveTo }))
+      setRes(await call<GeneratedKey>('keys.generate', { type, bits: type === 'ed25519' ? 0 : bits, comment, passphrase: pass, format, saveTo, keychain, name: comment }))
     } catch (e) {
       errorToast(t('keygen.title'), e)
     } finally {
@@ -97,6 +98,7 @@ function Keygen({ close }: { close: () => void }) {
             </div>
           </div>
           <div className="field"><label>{t('keygen.saveTo')}</label><input className="input mono" value={saveTo} onChange={(e) => setSaveTo(e.target.value)} /></div>
+          <label className="switch"><input type="checkbox" checked={keychain} onChange={(e) => setKeychain(e.target.checked)} /> {t('keygen.toKeychain')}</label>
         </div>
       ) : (
         <div className="form">

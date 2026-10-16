@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Clock, FolderPlus, RefreshCcwDot, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CalendarClock, Clock, FolderPlus, RefreshCcwDot, Trash2 } from 'lucide-react'
 import { Dialog } from '../ui/Dialog'
 import { openDialog } from '../../lib/dialogs'
 import { call } from '../../lib/api'
 import { errorToast, toast, useStore } from '../../lib/store'
-import { displayPath, setBottom } from '../../lib/actions'
+import { displayPath, editNewTask, setBottom } from '../../lib/actions'
 import { sessionTab } from '../../lib/fileops'
 import { t } from '../../lib/i18n'
 import type { SyncAction, SyncPlan, SyncRequest } from '../../lib/types'
@@ -33,6 +33,7 @@ function SyncDialog({ init, close }: { init: Init; close: () => void }) {
   const conns = useStore((s) => s.conns)
   const title = (c: string) => (c === 'local' ? t('common.local') : conns[c]?.title || c)
   const up = (p: Partial<SyncRequest>) => setReq((r) => ({ ...r, ...p }))
+  const siteId = conns[req.remoteConn]?.siteId
 
   const compare = async () => {
     setBusy(true)
@@ -131,6 +132,7 @@ function SyncDialog({ init, close }: { init: Init; close: () => void }) {
       onSubmit={compare}
       footer={
         <>
+          <button className="btn" disabled={!siteId} data-tip={siteId ? t('tasks.scheduleTip') : t('tasks.needsSite')} onClick={() => { close(); editNewTask({ kind: 'sync', name: t('tasks.syncName', { site: title(req.remoteConn) }), siteId, sync: { ...req, localConn: 'local', remoteConn: '' } }) }}><CalendarClock /> {t('tasks.schedule')}</button>
           <div className="spacer" />
           <button className="btn" onClick={close}>{t('common.cancel')}</button>
           <button className="btn primary" disabled={busy} onClick={compare}>{busy ? <span className="spinner" /> : null} {busy ? t('sync.comparing') : t('sync.compare')}</button>
@@ -148,42 +150,51 @@ function SyncDialog({ init, close }: { init: Init; close: () => void }) {
             <input className="input mono" value={req.remoteDir} onChange={(e) => up({ remoteDir: e.target.value })} />
           </div>
         </div>
-        <div className="field">
-          <label>{t('sync.direction')}</label>
-          <div className="segmented">
-            <button className={req.direction === 'remote' ? 'on' : ''} onClick={() => up({ direction: 'remote' })}><ArrowRight /> {t('sync.toRemote')}</button>
-            <button className={req.direction === 'local' ? 'on' : ''} onClick={() => up({ direction: 'local' })}><ArrowLeft /> {t('sync.toLocal')}</button>
-            <button className={req.direction === 'both' ? 'on' : ''} onClick={() => up({ direction: 'both', delete: false })}>⇄ {t('sync.both')}</button>
-          </div>
-        </div>
-        <div className="field-row">
-          <div className="field">
-            <label>{t('sync.mode')}</label>
-            <select className="select" value={req.mode} onChange={(e) => up({ mode: e.target.value as any })}>
-              <option value="standard">{t('sync.standard')}</option>
-              <option value="mirror">{t('sync.mirror')}</option>
-              <option value="timestamps">{t('sync.timestamps')}</option>
-            </select>
-          </div>
-          <div className="field">
-            <label>{t('sync.criteria')}</label>
-            <select className="select" value={req.criteria} onChange={(e) => up({ criteria: e.target.value as any })}>
-              {['time', 'size', 'either', 'checksum', 'none'].map((c) => <option key={c} value={c}>{t(`sync.c.${c}`)}</option>)}
-            </select>
-          </div>
-        </div>
-        <div className="field">
-          <label>{t('transfer.fileMask')}</label>
-          <input className="input mono" value={req.fileMask} placeholder="* | .git/; node_modules/; *.tmp" onChange={(e) => up({ fileMask: e.target.value })} />
-          <span className="hint">{t('transfer.fileMaskHint')}</span>
-        </div>
-        <div className="check-grid">
-          <label className={`check${req.direction === 'both' ? ' disabled' : ''}`}><input type="checkbox" checked={req.delete} onChange={(e) => up({ delete: e.target.checked })} /> <span className={req.delete ? 'danger-text' : ''}>{t('sync.delete')}</span></label>
-          <label className="check"><input type="checkbox" checked={req.existingOnly} onChange={(e) => up({ existingOnly: e.target.checked })} /> {t('sync.existingOnly')}</label>
-          <label className="check"><input type="checkbox" checked={!!req.excludeHidden} onChange={(e) => up({ excludeHidden: e.target.checked })} /> {t('transfer.excludeHidden')}</label>
-        </div>
+        <SyncOptionsFields req={req} up={up} />
       </div>
     </Dialog>
+  )
+}
+
+/** Direction, mode, criteria, mask and options of a synchronization. */
+export function SyncOptionsFields({ req, up }: { req: SyncRequest; up: (p: Partial<SyncRequest>) => void }) {
+  return (
+    <>
+          <div className="field">
+            <label>{t('sync.direction')}</label>
+            <div className="segmented">
+              <button className={req.direction === 'remote' ? 'on' : ''} onClick={() => up({ direction: 'remote' })}><ArrowRight /> {t('sync.toRemote')}</button>
+              <button className={req.direction === 'local' ? 'on' : ''} onClick={() => up({ direction: 'local' })}><ArrowLeft /> {t('sync.toLocal')}</button>
+              <button className={req.direction === 'both' ? 'on' : ''} onClick={() => up({ direction: 'both', delete: false })}>⇄ {t('sync.both')}</button>
+            </div>
+          </div>
+          <div className="field-row">
+            <div className="field">
+              <label>{t('sync.mode')}</label>
+              <select className="select" value={req.mode} onChange={(e) => up({ mode: e.target.value as any })}>
+                <option value="standard">{t('sync.standard')}</option>
+                <option value="mirror">{t('sync.mirror')}</option>
+                <option value="timestamps">{t('sync.timestamps')}</option>
+              </select>
+            </div>
+            <div className="field">
+              <label>{t('sync.criteria')}</label>
+              <select className="select" value={req.criteria} onChange={(e) => up({ criteria: e.target.value as any })}>
+                {['time', 'size', 'either', 'checksum', 'none'].map((c) => <option key={c} value={c}>{t(`sync.c.${c}`)}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="field">
+            <label>{t('transfer.fileMask')}</label>
+            <input className="input mono" value={req.fileMask} placeholder="* | .git/; node_modules/; *.tmp" onChange={(e) => up({ fileMask: e.target.value })} />
+            <span className="hint">{t('transfer.fileMaskHint')}</span>
+          </div>
+          <div className="check-grid">
+            <label className={`check${req.direction === 'both' ? ' disabled' : ''}`}><input type="checkbox" checked={req.delete} onChange={(e) => up({ delete: e.target.checked })} /> <span className={req.delete ? 'danger-text' : ''}>{t('sync.delete')}</span></label>
+            <label className="check"><input type="checkbox" checked={req.existingOnly} onChange={(e) => up({ existingOnly: e.target.checked })} /> {t('sync.existingOnly')}</label>
+            <label className="check"><input type="checkbox" checked={!!req.excludeHidden} onChange={(e) => up({ excludeHidden: e.target.checked })} /> {t('transfer.excludeHidden')}</label>
+          </div>
+    </>
   )
 }
 

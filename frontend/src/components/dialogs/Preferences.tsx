@@ -1,20 +1,23 @@
 import { useEffect, useState } from 'react'
 import {
   ArrowDownUp, Check, CheckSquare, Code2, FileCog, Fingerprint, Info, KeyRound, Keyboard, LayoutPanelLeft, ListOrdered, Palette, Plus, ScrollText,
-  Lock, Settings, Shield, SquareTerminal, Trash2, Wand2,
+  Lock, Settings, Shield, SquareTerminal, Trash2, Wand2, KeySquare, Copy, Pencil, Laptop, RefreshCw,
 } from 'lucide-react'
 import { Dialog } from '../ui/Dialog'
 import { openDialog } from '../../lib/dialogs'
 import { call } from '../../lib/api'
-import { get, useStore } from '../../lib/store'
+import { errorToast, get, toast, useStore } from '../../lib/store'
 import { displayPath, savePrefs } from '../../lib/actions'
-import { commandName, languages, t } from '../../lib/i18n'
-import type { CustomCommand, KeyFile, KnownHost, Prefs } from '../../lib/types'
+import { commandName, languages, snippetName, t } from '../../lib/i18n'
+import type { CustomCommand, DevSyncConfig, DevSyncView, KeychainKey, KeyFile, KnownHost, Prefs, Snippet } from '../../lib/types'
 import { TransferOptionsForm } from './TransferDialog'
 import { formatDate, formatSize } from '../../lib/format'
-import { masterPasswordDialog } from './MasterPassword'
+import { masterPasswordDialog, PasswordMeter } from './MasterPassword'
+import { devSyncSummary } from '../../lib/summaries'
 import { openConvertKey, openKeygen } from './KeygenDialog'
-import { ask } from './common'
+import { openKeychainAdd } from './KeychainDialog'
+import { copyToClipboard } from '../../lib/fileops'
+import { ask, prompt } from './common'
 
 export function openPreferences(section?: string) {
   openDialog((close) => <Preferences close={close} initial={section} />)
@@ -22,7 +25,7 @@ export function openPreferences(section?: string) {
 
 const ACCENTS = ['#4f7cff', '#7c5cff', '#d946ef', '#ec4899', '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#64748b']
 
-type Sec = 'appearance' | 'panels' | 'transfer' | 'queue' | 'editor' | 'terminal' | 'ssh' | 'confirm' | 'security' | 'commands' | 'logging' | 'shortcuts' | 'about'
+type Sec = 'appearance' | 'panels' | 'transfer' | 'queue' | 'editor' | 'terminal' | 'ssh' | 'devices' | 'confirm' | 'security' | 'commands' | 'logging' | 'shortcuts' | 'about'
 
 function Preferences({ close, initial }: { close: () => void; initial?: string }) {
   const prefs = useStore((s) => s.prefs)!
@@ -38,6 +41,7 @@ function Preferences({ close, initial }: { close: () => void; initial?: string }
     { id: 'editor', label: t('prefs.editor'), icon: Code2 },
     { id: 'terminal', label: t('prefs.terminal'), icon: SquareTerminal },
     { id: 'ssh', label: 'SSH', icon: FileCog },
+    { id: 'devices', label: t('devsync.section'), icon: Laptop },
     { id: 'confirm', label: t('prefs.confirmations'), icon: CheckSquare },
     { id: 'security', label: t('prefs.security'), icon: Shield },
     { id: 'commands', label: t('prefs.commands'), icon: Wand2 },
@@ -57,6 +61,7 @@ function Preferences({ close, initial }: { close: () => void; initial?: string }
         </nav>
         <div className="prefs-body">
           {sec === 'ssh' && <SshPrefs prefs={prefs} up={up} />}
+          {sec === 'devices' && <DevicesSection />}
           {sec === 'appearance' && (
             <div className="form">
               <div className="field">
@@ -155,6 +160,15 @@ function Preferences({ close, initial }: { close: () => void; initial?: string }
               <div className="field"><label>{t('prefs.retry')}</label><input className="input tnum" type="number" min={0} max={20} style={{ width: 120 }} value={prefs.queue.retryCount} onChange={(e) => up({ queue: { ...prefs.queue, retryCount: parseInt(e.target.value, 10) || 0 } })} /></div>
               <label className="switch"><input type="checkbox" checked={prefs.queue.continueOnError} onChange={(e) => up({ queue: { ...prefs.queue, continueOnError: e.target.checked } })} /> {t('prefs.continueOnError')}</label>
               <label className="switch"><input type="checkbox" checked={prefs.queue.autoPopup} onChange={(e) => up({ queue: { ...prefs.queue, autoPopup: e.target.checked } })} /> {t('prefs.autoPopup')}</label>
+              <div className="form-section">
+                <h4>{t('prefs.segments')}</h4>
+                <label className="switch"><input type="checkbox" checked={prefs.queue.segmentSize > 0} onChange={(e) => up({ queue: { ...prefs.queue, segmentSize: e.target.checked ? 100 << 20 : 0 } })} /> {t('prefs.segmentsOn')}</label>
+                <div className="field-row">
+                  <div className="field"><label>{t('prefs.segmentThreshold')}</label><input className="input tnum" type="number" min={1} max={100000} disabled={prefs.queue.segmentSize <= 0} value={prefs.queue.segmentSize > 0 ? Math.round(prefs.queue.segmentSize / (1 << 20)) : ''} onChange={(e) => up({ queue: { ...prefs.queue, segmentSize: Math.max(1, parseInt(e.target.value, 10) || 1) * (1 << 20) } })} /></div>
+                  <div className="field"><label>{t('prefs.segmentCount')}</label><input className="input tnum" type="number" min={2} max={8} disabled={prefs.queue.segmentSize <= 0} value={prefs.queue.segments || 4} onChange={(e) => up({ queue: { ...prefs.queue, segments: Math.min(8, Math.max(2, parseInt(e.target.value, 10) || 4)) } })} /></div>
+                </div>
+                <span className="hint">{t('prefs.segmentsHint')}</span>
+              </div>
             </div>
           )}
 
@@ -198,6 +212,22 @@ function Preferences({ close, initial }: { close: () => void; initial?: string }
               <div className="field"><label>TERM</label><input className="input mono" style={{ width: 200 }} value={prefs.terminal.term} onChange={(e) => up({ terminal: { ...prefs.terminal, term: e.target.value } })} /></div>
               <label className="switch"><input type="checkbox" checked={prefs.terminal.cursorBlink} onChange={(e) => up({ terminal: { ...prefs.terminal, cursorBlink: e.target.checked } })} /> {t('prefs.cursorBlink')}</label>
               <label className="switch"><input type="checkbox" checked={prefs.terminal.copyOnSelect} onChange={(e) => up({ terminal: { ...prefs.terminal, copyOnSelect: e.target.checked } })} /> {t('prefs.copyOnSelect')}</label>
+              <div className="form-section">
+                <h4>{t('term.snippets')}</h4>
+                <p className="muted" style={{ margin: 0 }}>{t('prefs.snippetsHint')}</p>
+                {(prefs.terminal.snippets || []).map((s, i) => {
+                  const setS = (patch: Partial<Snippet>) => up({ terminal: { ...prefs.terminal, snippets: prefs.terminal.snippets.map((x, k) => (k === i ? { ...x, ...patch } : x)) } })
+                  return (
+                    <div key={s.id} className="row snippet-row">
+                      <input className="input" style={{ width: 200 }} value={snippetName(s)} placeholder={t('keychain.name')} onChange={(e) => setS({ name: e.target.value })} />
+                      <input className="input mono grow" value={s.command} placeholder="systemctl status nginx" onChange={(e) => setS({ command: e.target.value })} />
+                      <label className="check" data-tip={t('prefs.snippetRunTip')}><input type="checkbox" checked={s.run} onChange={(e) => setS({ run: e.target.checked })} /> {t('prefs.snippetRun')}</label>
+                      <button className="icon-btn sm" data-tip={t('common.delete')} onClick={() => up({ terminal: { ...prefs.terminal, snippets: prefs.terminal.snippets.filter((_, k) => k !== i) } })}><Trash2 /></button>
+                    </div>
+                  )
+                })}
+                <div><button className="btn sm" onClick={() => up({ terminal: { ...prefs.terminal, snippets: [...(prefs.terminal.snippets || []), { id: Math.random().toString(36).slice(2), name: '', command: '', run: true }] } })}><Plus /> {t('common.add')}</button></div>
+              </div>
             </div>
           )}
 
@@ -252,10 +282,28 @@ function SecuritySection() {
   const info = useStore((s) => s.info)!
   const [hosts, setHosts] = useState<KnownHost[]>([])
   const [keys, setKeys] = useState<KeyFile[]>([])
+  const [chain, setChain] = useState<{ keys: KeychainKey[]; locked: boolean }>({ keys: [], locked: false })
   const load = () => {
     call<KnownHost[]>('hostkeys.list').then(setHosts).catch(() => {})
     call<KeyFile[]>('keys.list').then(setKeys).catch(() => {})
+    call<{ keys: KeychainKey[]; locked: boolean }>('keychain.list').then(setChain).catch(() => {})
   }
+  const toKeychain = async (k: KeyFile) => {
+    let passphrase = ''
+    if (k.encrypted) {
+      const p = await prompt({ title: t('keychain.add'), label: t('keygen.currentPassphrase'), password: true })
+      if (p === undefined) return
+      passphrase = p
+    }
+    try {
+      const added = await call<KeychainKey>('keychain.add', { path: k.path, passphrase })
+      toast('ok', t('keychain.added'), added.name)
+      load()
+    } catch (e) {
+      errorToast(t('keychain.add'), e)
+    }
+  }
+  const inChain = (fp: string) => chain.keys.some((k) => k.fingerprint === fp)
   useEffect(load, [])
   return (
     <div className="form">
@@ -276,6 +324,30 @@ function SecuritySection() {
         </div>
       </div>
       <div className="form-section">
+        <h4>{t('keychain.title')}</h4>
+        <p className="muted" style={{ margin: 0 }}>{t('keychain.desc')}</p>
+        {chain.locked && <div className="alert warn"><Lock /><span>{t('keychain.locked')}</span></div>}
+        {chain.keys.length > 0 && (
+          <table className="table keychain">
+            <tbody>
+              {chain.keys.map((k) => (
+                <tr key={k.id}>
+                  <td><KeySquare style={{ width: 14 }} /> <span className="strong">{k.name}</span></td>
+                  <td className="muted" style={{ whiteSpace: 'nowrap' }}>{k.type}</td>
+                  <td className="mono faint" style={{ fontSize: 11 }}>{k.fingerprint}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    <button className="icon-btn sm" data-tip={t('keychain.copyPublic')} onClick={() => copyToClipboard(k.publicKey)}><Copy /></button>
+                    <button className="icon-btn sm" data-tip={t('common.rename')} onClick={async () => { const n = await prompt({ title: t('common.rename'), label: t('keychain.name'), value: k.name }); if (n) { await call('keychain.rename', { id: k.id, name: n }); load() } }}><Pencil /></button>
+                    <button className="icon-btn sm" data-tip={t('common.delete')} onClick={async () => { if (await ask({ title: t('keychain.remove'), message: t('keychain.removeConfirm', { name: k.name }), danger: true, ok: t('common.delete') })) { await call('keychain.remove', { id: k.id }); load() } }}><Trash2 /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <div><button className="btn" disabled={chain.locked} onClick={() => openKeychainAdd().then((k) => k && load())}><Plus /> {t('keychain.add')}</button></div>
+      </div>
+      <div className="form-section">
         <h4>{t('prefs.keys')}</h4>
         {keys.length > 0 && (
           <table className="table">
@@ -286,7 +358,12 @@ function SecuritySection() {
                   <td className="muted" style={{ whiteSpace: 'nowrap' }}>{k.type}</td>
                   <td className="mono faint" style={{ fontSize: 11 }}>{k.fingerprint}</td>
                   <td>{k.encrypted ? <span className="badge">🔒</span> : ''} <span className="badge">{k.format}</span></td>
-                  <td>{info.mode !== 'web' && <button className="btn sm ghost" onClick={() => openConvertKey(k).then(load)}>{t('keygen.convert')}</button>}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    {info.mode !== 'web' && <button className="btn sm ghost" onClick={() => openConvertKey(k).then(load)}>{t('keygen.convert')}</button>}
+                    {info.mode !== 'web' && (inChain(k.fingerprint)
+                      ? <span className="badge ok">{t('keychain.inChain')}</span>
+                      : <button className="btn sm ghost" disabled={chain.locked} onClick={() => toKeychain(k)}>{t('keychain.toChain')}</button>)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -408,6 +485,109 @@ function SshPrefs({ prefs, up }: { prefs: Prefs; up: (p: Partial<Prefs>) => void
         </div>
         <span className="hint">{t('sshcfg.osHint')}</span>
         {sshConfig?.enabled && <span className="hint">{t('sshcfg.hostsCount', { n: sshConfig.hosts.length })}</span>}
+      </div>
+    </div>
+  )
+}
+
+function DevicesSection() {
+  const live = useStore((s) => s.devsync)
+  const sites = useStore((s) => s.sites)
+  const [v, setV] = useState<DevSyncView | null>(live)
+  const [conf, setConf] = useState<DevSyncConfig | null>(live)
+  const [pass, setPass] = useState('')
+  const [dirty, setDirty] = useState(false)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    call<DevSyncView>('devsync.get').then((x) => { useStore.setState({ devsync: x }); setV(x); setConf(x) }).catch(() => {})
+  }, [])
+  useEffect(() => {
+    if (live) setV(live)
+  }, [live])
+  if (!v || !conf) return null
+  const up = (p: Partial<DevSyncConfig>) => { setConf({ ...conf, ...p }); setDirty(true) }
+  const save = async (): Promise<boolean> => {
+    try {
+      const x = await call<DevSyncView>('devsync.set', { config: conf, passphrase: pass || undefined })
+      useStore.setState({ devsync: x })
+      setV(x)
+      setPass('')
+      setDirty(false)
+      return true
+    } catch (e) {
+      errorToast(t('devsync.section'), e)
+      return false
+    }
+  }
+  const syncNow = async () => {
+    if ((dirty || pass) && !(await save())) return
+    setBusy(true)
+    try {
+      await call('devsync.now')
+      toast('ok', t('devsync.done'))
+    } catch (e) {
+      errorToast(t('devsync.now'), e)
+    } finally {
+      setBusy(false)
+    }
+  }
+  const st = v.state
+  return (
+    <div className="form">
+      <div className="form-section">
+        <h4>{t('devsync.title')}</h4>
+        <p className="muted" style={{ margin: 0 }}>{t('devsync.desc')}</p>
+        <div className="field-row">
+          <div className="field">
+            <label>{t('devsync.site')}</label>
+            <select className="select" value={conf.siteId} onChange={(e) => up({ siteId: e.target.value })}>
+              <option value="">—</option>
+              {sites.map((x) => <option key={x.id} value={x.id}>{x.name || x.host}</option>)}
+            </select>
+          </div>
+          <div className="field"><label>{t('devsync.path')}</label><input className="input mono" value={conf.path} onChange={(e) => up({ path: e.target.value })} spellCheck={false} /></div>
+        </div>
+        <div className="field-row">
+          <div className="field">
+            <label>{t('devsync.passphrase')}</label>
+            <input className="input" type="password" autoComplete="new-password" value={pass} placeholder={v.hasPassphrase ? t('site.passwordSaved') : ''} onChange={(e) => { setPass(e.target.value); setDirty(true) }} />
+            {pass && <PasswordMeter pw={pass} />}
+          </div>
+          <div className="field"><label>{t('devsync.device')}</label><input className="input" value={conf.device} onChange={(e) => up({ device: e.target.value })} /></div>
+        </div>
+        <span className="hint">{t('devsync.passphraseHint')}</span>
+        <div className="check-grid">
+          <label className="check"><input type="checkbox" checked={conf.sites} onChange={(e) => up({ sites: e.target.checked })} /> {t('devsync.what.sites')}</label>
+          <label className="check"><input type="checkbox" checked={conf.keychain} onChange={(e) => up({ keychain: e.target.checked })} /> {t('devsync.what.keychain')}</label>
+          <label className="check"><input type="checkbox" checked={conf.prefs} onChange={(e) => up({ prefs: e.target.checked })} /> {t('devsync.what.prefs')}</label>
+          <label className="check"><input type="checkbox" checked={conf.hostKeys} onChange={(e) => up({ hostKeys: e.target.checked })} /> {t('devsync.what.hostKeys')}</label>
+        </div>
+        <label className="switch"><input type="checkbox" checked={conf.enabled} onChange={(e) => up({ enabled: e.target.checked })} /> {t('devsync.auto')}</label>
+        {conf.enabled && (
+          <div className="field">
+            <label>{t('devsync.interval')}</label>
+            <select className="select" style={{ width: 260 }} value={conf.interval} onChange={(e) => up({ interval: parseInt(e.target.value, 10) })}>
+              {[5, 15, 30, 60].map((n) => <option key={n} value={n}>{t('devsync.every', { n })}</option>)}
+              <option value={0}>{t('devsync.onChange')}</option>
+            </select>
+          </div>
+        )}
+        <div className="row">
+          <button className="btn" disabled={!dirty} onClick={save}>{t('common.save')}</button>
+          <button className="btn primary" disabled={busy || st.running || !conf.siteId || (!v.hasPassphrase && !pass)} onClick={syncNow}>{busy || st.running ? <span className="spinner" /> : <RefreshCw />} {t('devsync.now')}</button>
+        </div>
+      </div>
+      <div className="form-section devsync-state">
+        <h4>{t('devsync.stateTitle')}</h4>
+        {!st.lastSync && <p className="faint" style={{ margin: 0 }}>{t('devsync.never')}</p>}
+        {st.lastSync && (
+          <dl className="kv">
+            <dt>{t('devsync.last')}</dt><dd>{formatDate(st.lastSync, 'short')} · <span className={st.lastStatus === 'ok' ? 'ok-text' : 'danger-text'}>{st.lastStatus === 'ok' ? t('devsync.ok') : t('devsync.failed')}</span></dd>
+            {st.lastStatus === 'ok' && (st.result || st.summary) && <><dt>{t('devsync.result')}</dt><dd>{devSyncSummary(st)}</dd></>}
+            {st.lastDevice && <><dt>{t('devsync.lastDevice')}</dt><dd>{st.lastDevice}</dd></>}
+          </dl>
+        )}
+        {st.lastStatus === 'failed' && st.lastError && <div className="alert danger"><Laptop /><span className="selectable">{st.lastError}</span></div>}
       </div>
     </div>
   )

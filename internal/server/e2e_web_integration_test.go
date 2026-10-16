@@ -170,6 +170,10 @@ func TestE2EWeb(t *testing.T) {
 			{"fs.reveal", map[string]string{"conn": "local", "path": "/docs/a.txt"}},
 			{"sites.importPreview", map[string]string{"source": "winscp-ini", "path": "/etc/passwd"}},
 			{"keys.convert", map[string]string{"path": "/etc/ssh/ssh_host_ed25519_key", "format": "ppk"}},
+			{"keychain.add", map[string]string{"path": "/etc/ssh/ssh_host_ed25519_key"}},
+			{"containers.list", map[string]string{"runtime": "docker"}},
+			{"conn.open", map[string]any{"site": map[string]any{"protocol": "container", "host": "x", "containerRuntime": "docker"}}},
+			{"conn.open", map[string]any{"url": "docker://x/"}},
 		} {
 			if r := rpc(client, hs.URL, c.method, c.params); r.code == 200 {
 				t.Errorf("%s must be refused in web mode: %s", c.method, r.body)

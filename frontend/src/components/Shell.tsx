@@ -8,6 +8,8 @@ import { StatusBar } from './StatusBar'
 import { EditorView } from './editor/EditorView'
 import { DiffView } from './editor/DiffView'
 import { TerminalView } from './terminal/TerminalView'
+import { MonitorView } from './monitor/MonitorView'
+import { TasksView } from './tasks/TasksView'
 import { CommandPalette } from './CommandPalette'
 import { Splitter } from './ui/Splitter'
 import { handleGlobalKey } from '../lib/keys'
@@ -46,6 +48,8 @@ export function Shell() {
               {tab.kind === 'editor' && <EditorView tab={tab} visible={visible} />}
               {tab.kind === 'diff' && <DiffView tab={tab} />}
               {tab.kind === 'terminal' && <TerminalView tab={tab} visible={visible} />}
+              {tab.kind === 'monitor' && <MonitorView tab={tab} visible={visible} />}
+              {tab.kind === 'tasks' && <TasksView />}
             </div>
           )
         })}

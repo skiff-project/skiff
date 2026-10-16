@@ -122,6 +122,13 @@ type SharedFork interface {
 	IsSharedFork() bool
 }
 
+// RandomWriter is implemented by backends that can write one file at any
+// offset through several handles at once (segmented transfers). WriteAt
+// opens an existing file for writing at offset, without truncating it.
+type RandomWriter interface {
+	WriteAt(ctx context.Context, p string, offset int64) (io.WriteCloser, error)
+}
+
 type RemoveAller interface {
 	RemoveAll(ctx context.Context, p string) error
 }

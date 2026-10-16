@@ -607,6 +607,70 @@ scene('terminal', async () => {
   await page.locator('.tab.active .tab-close').click()
 })
 
+scene('terminal-divise', async () => {
+  await openTab('Site vitrine')
+  await row(1, 'index.html').click()
+  await tip('Ouvrir un terminal').click()
+  await V('.xterm').waitFor()
+  await sleep(1200)
+  await V('[data-tip="Diviser à droite"]').click()
+  await page.locator('.menu-item', { hasText: 'même serveur' }).click()
+  await V('.term-pane').nth(1).waitFor()
+  await sleep(1500)
+  await V('[data-tip="Diffuser la saisie à tous les terminaux de l’onglet"]').click()
+  await V('.term-pane').nth(0).click()
+  await page.keyboard.type('uptime && df -h /config | tail -1\n')
+  await sleep(1500)
+  await shot('terminal-divise')
+  await page.locator('.tab.active .tab-close').click()
+})
+
+scene('moniteur', async () => {
+  await openTab('Site vitrine')
+  await tip('Moniteur du serveur').click()
+  await V('.mon-table tbody tr').first().waitFor()
+  await sleep(6500)
+  await shot('moniteur')
+  await page.locator('.tab.active .tab-close').click()
+})
+
+scene('conteneurs', async () => {
+  await sitesTab()
+  await page.locator('.sites-side-head .icon-btn').nth(1).click()
+  await page.locator('.menu-item', { hasText: 'Conteneurs de cet ordinateur' }).click()
+  await dialog().locator('[data-container="boutique-web"]').waitFor()
+  await shot('conteneurs', { el: dialog() })
+  await closeDialogs()
+  await page.locator('.sites-side-head [data-tip="Nouveau site"]').click()
+  const se = page.locator('.site-editor')
+  await se.locator('.segmented button', { hasText: 'Conteneur' }).click()
+  await se.locator('.se-name').fill('Boutique (conteneur)')
+  await se.locator('.field', { hasText: 'Conteneur' }).locator('input').first().fill('boutique-web')
+  await se.locator('.field', { hasText: 'Utilisateur' }).locator('input').fill('www-data')
+  await shot('site-conteneur', { el: se, pad: 0 })
+  await btnIn(page.locator('.se-head'), 'Annuler').click()
+})
+
+scene('taches', async () => {
+  const task = await rpc('tasks.save', {
+    name: 'Publier le site vitrine', kind: 'sync', enabled: true, siteId: ids.vitrine, catchUp: true, notify: 'failure',
+    sync: { localConn: 'local', localDir: '~/Projets/site-vitrine', remoteConn: '', remoteDir: '/config/www', direction: 'remote', mode: 'standard', criteria: 'time', delete: false, existingOnly: false, fileMask: '* | .git/; *.tmp', excludeHidden: true },
+    schedule: { kind: 'weekly', at: '02:30', days: [1, 2, 3, 4, 5] },
+  })
+  await rpc('tasks.save', { name: 'Sauvegarde des journaux', kind: 'script', enabled: true, catchUp: false, notify: 'always', schedule: { kind: 'cron', cron: '0 3 * * *' }, script: 'open "Site vitrine (SFTP)"\nlcd ~/Documents\nget -neweronly /config/logs/*.log\nexit\n' })
+  await rpc('tasks.run', { id: task.id })
+  for (let i = 0; i < 100 && (await rpc('tasks.runs', { id: task.id }))[0]?.status !== 'ok'; i++) await sleep(200)
+  await page.keyboard.press('Control+k')
+  await page.keyboard.type('Tâches planifiées')
+  await page.keyboard.press('Enter')
+  await page.locator('[data-task="Publier le site vitrine"]').click()
+  const ed = page.locator('.task-editor')
+  await ed.locator('.task-run-head').first().click()
+  await ed.locator('.task-body').evaluate((el) => (el.scrollTop = el.scrollHeight))
+  await shot('taches', { wait: 600 })
+  await page.locator('.tab.active .tab-close').click()
+})
+
 scene('tunnels', async () => {
   await openTab('Site vitrine')
   await tip('Tunnels').click()
@@ -715,12 +779,16 @@ scene('connexion-perdue', async () => {
 })
 
 scene('preferences', async () => {
+  // the keychain and the sync between devices have something to show
+  await rpc('keychain.add', { path: join(HOME, '.ssh/id_ed25519'), name: 'Clé du portable' }).catch(() => {})
+  await rpc('devsync.set', { config: { enabled: true, siteId: ids.vitrine, path: '/config/skiff-sync.bin', interval: 15, device: 'Portable d’Alex', sites: true, keychain: true, prefs: true, hostKeys: true }, passphrase: 'phrase de démonstration' })
+  await rpc('devsync.now').catch(() => {})
   await openTab('Site vitrine')
   await page.keyboard.press('Control+,')
   await dialog().locator('.prefs').waitFor()
   const sections = [
     ['Apparence', 'prefs-apparence'], ['Panneaux', 'prefs-panneaux'], ['Transferts', 'prefs-transferts'], ["File d'attente", 'prefs-file'],
-    ['Éditeur', 'prefs-editeur'], ['Terminal', 'prefs-terminal'], ['SSH', 'prefs-ssh'], ['Confirmations', 'prefs-confirmations'], ['Sécurité', 'prefs-securite'],
+    ['Éditeur', 'prefs-editeur'], ['Terminal', 'prefs-terminal'], ['SSH', 'prefs-ssh'], ['Appareils', 'prefs-appareils'], ['Confirmations', 'prefs-confirmations'], ['Sécurité', 'prefs-securite'],
     ['Commandes personnalisées', 'prefs-commandes'], ['Journalisation', 'prefs-journalisation'], ['Raccourcis clavier', 'prefs-raccourcis'], ['À propos de Skiff', 'prefs-a-propos'],
   ]
   for (const [label, file] of sections) {

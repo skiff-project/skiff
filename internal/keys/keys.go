@@ -43,6 +43,9 @@ type GenerateRequest struct {
 	Passphrase string `json:"passphrase"`
 	Format     string `json:"format"` // openssh, ppk
 	SaveTo     string `json:"saveTo,omitempty"`
+	// Keychain also adds the key to Skiff's keychain (done by the server).
+	Keychain bool   `json:"keychain,omitempty"`
+	Name     string `json:"name,omitempty"` // name in the keychain
 }
 
 type Generated struct {

@@ -88,7 +88,7 @@ export interface Forward {
   label?: string
 }
 
-export type Protocol = 'sftp' | 'scp' | 'ftp' | 'webdav' | 's3'
+export type Protocol = 'sftp' | 'scp' | 'ftp' | 'webdav' | 's3' | 'container'
 
 export interface Site {
   id: string
@@ -113,6 +113,14 @@ export interface Site {
   macs?: string[]
   hostKeyAlgos?: string[]
   ignoreSshConfig?: boolean
+  forwardAgent?: boolean
+  containerRuntime?: 'docker' | 'podman' | 'kubectl'
+  containerCommand?: string
+  k8sContext?: string
+  k8sNamespace?: string
+  k8sContainer?: string
+  viaSite?: string
+  viaConn?: string
   ftps?: 'none' | 'explicit' | 'implicit'
   ftpActive?: boolean
   ftpActiveIp?: string
@@ -230,9 +238,10 @@ export interface Job {
   doneFiles: number
   failedFiles: number
   skippedFiles: number
+  segmentedFiles?: number
   speed: number
   eta: number
-  active: { name: string; size: number; done: number }[]
+  active: { name: string; size: number; done: number; parts?: number }[]
   error?: string
   errors?: { path: string; error: string }[]
   paths: string[] | null
@@ -324,9 +333,9 @@ export interface Prefs {
     addXToDirs: boolean; overwrite: string; resumeThreshold: number; fileMask: string; speedLimit: number; caseMode: string
     verify: boolean; excludeHidden: boolean; replaceInvalid: boolean; ignorePermErrors: boolean; clearArchive: boolean
   }
-  queue: { maxParallel: number; background: boolean; autoPopup: boolean; retryCount: number; retryDelay: number; continueOnError: boolean; segmentSize: number }
+  queue: { maxParallel: number; background: boolean; autoPopup: boolean; retryCount: number; retryDelay: number; continueOnError: boolean; segmentSize: number; segments: number }
   editor: { default: 'internal' | 'external'; externalCmd: string; tabSize: number; wordWrap: boolean; fontSize: number; maxSizeMB: number; encoding: string; autoReload: boolean; associations: { mask: string; command: string }[] }
-  terminal: { fontSize: number; fontFamily: string; scrollback: number; cursorBlink: boolean; copyOnSelect: boolean; term: string }
+  terminal: { fontSize: number; fontFamily: string; scrollback: number; cursorBlink: boolean; copyOnSelect: boolean; term: string; snippets: Snippet[] }
   logging: { toFile: boolean; level: string; keepDays: number }
   restoreTabs: boolean
   autoReconnect: boolean
@@ -344,6 +353,40 @@ export interface ImportItem { site: Site; password?: string; passphrase?: string
 
 export interface KeyFile { path: string; type: string; fingerprint: string; comment: string; encrypted: boolean; format: string }
 export interface GeneratedKey { private: string; public: string; fingerprint: string; type: string; path?: string; format: string }
+export interface MonitorProc { pid: number; user: string; name: string; state: string; cpu: number; mem: number; threads: number }
+export interface MonitorSample {
+  time: string; hostname: string; kernel: string; cpus: number; uptime: number; load: [number, number, number]; cpu: number
+  memTotal: number; memUsed: number; swapTotal: number; swapUsed: number; netRx: number; netTx: number
+  disks: { mount: string; fs: string; total: number; used: number }[]
+  procs: MonitorProc[]; procCount: number
+}
+export interface DevSyncConfig {
+  enabled: boolean; siteId: string; path: string; interval: number; device: string
+  sites: boolean; keychain: boolean; prefs: boolean; hostKeys: boolean
+}
+export interface DevSyncView extends DevSyncConfig {
+  hasPassphrase: boolean
+  state: {
+    lastSync?: string; lastOk?: string; lastStatus?: string; lastError?: string; summary?: string; lastDevice?: string; running: boolean
+    result?: { uploaded: boolean; created: boolean; sitesIn: number; sitesOut: number; keysIn: number; keysOut: number; prefsIn: boolean; hostKeysIn: number; remoteDevice?: string }
+  }
+}
+export interface TaskSchedule { kind: 'manual' | 'interval' | 'daily' | 'weekly' | 'cron'; every?: number; at?: string; days?: number[]; cron?: string }
+export interface Task {
+  id: string; name: string; enabled: boolean; kind: 'sync' | 'script'
+  siteId?: string; sync?: SyncRequest; script?: string
+  schedule: TaskSchedule; catchUp: boolean; notify?: 'failure' | 'always' | 'never'
+  created?: string; updated?: string
+}
+export interface TaskRun {
+  id: string; taskId: string; taskName: string; trigger: string; start: string; end?: string
+  status: 'running' | 'ok' | 'failed' | 'cancelled'; summary?: string; log?: string[]
+  stats?: { files: number; bytes: number; deleted: number; compared: number; upToDate?: boolean; commands?: number }
+}
+export interface TaskView extends Task { next?: string; last?: TaskRun; running: boolean }
+export interface ContainerInfo { name: string; image?: string; status?: string; running: boolean; namespace?: string; containers?: string[] }
+export interface Snippet { id: string; name: string; command: string; run: boolean }
+export interface KeychainKey { id: string; name: string; type: string; fingerprint: string; publicKey: string; added: string }
 export interface KnownHost { hosts: string; keyType: string; fingerprint: string; line: number }
 
 // OpenSSH client configuration (ssh_config)

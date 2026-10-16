@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ChevronDown, ChevronRight, Clock, Copy, Download, Edit3, Folder, FolderOpen, FolderPlus, Import, KeyRound, Link2, Lock, MoreHorizontal,
-  Plug, Plus, Search, Server, SquareTerminal, Trash2, Upload, Zap, Code2, LayoutGrid, Save, FileCog,
+  Plug, Plus, Search, Server, SquareTerminal, Trash2, Upload, Zap, Code2, LayoutGrid, Save, FileCog, Box, CalendarClock,
 } from 'lucide-react'
 import { get, useStore } from '../../lib/store'
-import { connectSite, connectSshHost, connectUrl, openTerminal, reloadSites, reloadSshConfig, saveWorkspace, openWorkspace, deleteWorkspace } from '../../lib/actions'
+import { openTasks, connectSite, connectSshHost, connectUrl, openTerminal, reloadSites, reloadSshConfig, saveWorkspace, openWorkspace, deleteWorkspace } from '../../lib/actions'
 import { SshHostPanel, SshHostRow } from './SshConfig'
+import { openContainers } from '../dialogs/ContainersDialog'
 import { openGenerateDialog } from '../dialogs/GenerateDialog'
 import { call } from '../../lib/api'
 import { t } from '../../lib/i18n'
@@ -25,6 +26,7 @@ const NO_WS: { name: string; tabs: any[] }[] = []
 const PROTO_LABEL: Record<string, string> = { sftp: 'SFTP', scp: 'SCP', ftp: 'FTP', webdav: 'DAV', s3: 'S3' }
 
 function protoLabel(s: Site) {
+  if (s.protocol === 'container') return s.containerRuntime === 'kubectl' ? 'K8S' : (s.containerRuntime || 'docker').toUpperCase()
   if (s.protocol === 'ftp' && s.ftps && s.ftps !== 'none') return 'FTPS'
   if (s.protocol === 'webdav' && s.tls) return 'DAVS'
   return PROTO_LABEL[s.protocol] || s.protocol
@@ -71,6 +73,7 @@ export function SitesView() {
   const folders = useStore((s) => s.folders)
   const info = useStore((s) => s.info)
   const sshConfig = useStore((s) => s.sshConfig)
+  const siteDraft = useStore((s) => s.siteDraft)
   const workspaces = useStore((s) => s.prefs?.workspaces ?? NO_WS)
   const [sel, setSelSite] = useState<string | null>(null)
   const [sshSel, setSshSel] = useState<string | null>(null)
@@ -96,6 +99,14 @@ export function SitesView() {
     const lq = q.toLowerCase()
     return hosts.filter((h) => [h.alias, h.hostName, h.user].some((v) => v?.toLowerCase().includes(lq)))
   }, [sshConfig, q])
+  // a site prepared elsewhere (containers, ...)
+  useEffect(() => {
+    if (!siteDraft) return
+    setSel(null)
+    setSshSel(null)
+    setDraft({ ...newSiteDraft(), ...siteDraft, id: '' })
+    useStore.setState({ siteDraft: null })
+  }, [siteDraft])
   // the files may change outside Skiff
   useEffect(() => {
     reloadSshConfig()
@@ -268,6 +279,8 @@ export function SitesView() {
           <button className="icon-btn" data-tip={t('common.more')} onClick={(e) => showMenuAt(e.currentTarget, [
             { label: t('sites.newFolder'), icon: <FolderPlus />, onClick: () => newFolder() },
             { label: t('sites.import'), icon: <Import />, onClick: () => openImportDialog() },
+            { label: t('tasks.title'), icon: <CalendarClock />, onClick: () => openTasks() },
+            { label: t('ctr.titleLocal'), icon: <Box />, hidden: !info?.localTerminal, onClick: () => openContainers({ onNewSite: (st) => setDraft({ ...newSiteDraft(), ...st }) }) },
             { label: t('sites.export'), icon: <Upload />, onClick: () => openExportDialog() },
             { separator: true },
             { label: t('ws.save'), icon: <Save />, onClick: async () => { const n = await prompt({ title: t('ws.title'), label: t('ws.name'), value: '' }); if (n) saveWorkspace(n) } },

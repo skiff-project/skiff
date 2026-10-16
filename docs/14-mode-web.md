@@ -58,6 +58,7 @@ La session du navigateur dure sept jours. Les sites, préférences, mots de pass
 | **Ouvrir avec l'application par défaut** | Remplacé par un téléchargement, ou l'aperçu pour les images, vidéos et PDF |
 | Éditeur externe, **Afficher dans le gestionnaire de fichiers** | Indisponibles |
 | Terminal local | Désactivé, sauf avec `--allow-local-terminal`. Jamais disponible avec `--root` : un shell ne peut pas être confiné à un dossier. |
+| Conteneurs de la machine serveur | Comme le terminal local (les commandes `docker`, `podman`, `kubectl` de la machine). Ceux des serveurs SSH restent disponibles. |
 | Commandes locales (commandes personnalisées marquées **Commande locale**) | Désactivées |
 | Import depuis un fichier | Collez le contenu du fichier ou envoyez-le par le navigateur (seul `~/.ssh/config` du serveur est lu directement) |
 | Configuration OpenSSH | Celle **du serveur** (le `~/.ssh/config` de l'utilisateur qui lance `skiff serve`) |

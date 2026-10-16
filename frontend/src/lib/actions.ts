@@ -1,7 +1,7 @@
 import { call, EventStream, setUnauthorizedHandler } from './api'
 import {
   get, getTab, newPane, set, toast, errorToast, uid, updatePane, updateTab, useStore,
-  type EditorTab, type PaneState, type SessionTab, type Side, type Tab, type TerminalTab,
+  type EditorTab, type MonitorTab, type PaneState, type SessionTab, type Side, type Tab, type TerminalTab, type TermPaneState,
 } from './store'
 import type { AppInfo, ConnInfo, Entry, Job, Prefs, PromptEvent, SiteView, SshConfigInfo, TabState } from './types'
 import { setLang, t } from './i18n'
@@ -191,6 +191,17 @@ function onEvent(type: string, data: any) {
     case 'sites.changed':
       reloadSites()
       break
+    case 'devsync.update':
+      set({ devsync: data as import('./types').DevSyncView })
+      break
+    case 'task.update':
+      if (get().tasks) reloadTasks()
+      break
+    case 'task.run': {
+      const { run, notify } = data as { run: import('./types').TaskRun; notify: boolean }
+      if (notify) import('./summaries').then(({ runSummary }) => toast(run.status === 'ok' ? 'ok' : run.status === 'cancelled' ? 'warn' : 'error', `${run.taskName} — ${t(`tasks.status.${run.status}`)}`, runSummary(run), { timeout: run.status === 'ok' ? 5000 : 12000 }))
+      break
+    }
     case 'prefs.changed':
       call<Prefs>('prefs.get').then((p) => {
         set({ prefs: p })
@@ -298,7 +309,7 @@ export async function closeTab(id: string, force = false): Promise<boolean> {
       call('conn.close', { conn: tab.conn }).catch(() => {})
     }
   }
-  if (tab.kind === 'terminal') call('term.close', { id: tab.termId }).catch(() => {})
+  if (tab.kind === 'terminal') for (const p of terminalPanes(tab)) call('term.close', { id: p.termId }).catch(() => {})
   set((s) => {
     const idx = s.tabs.findIndex((x) => x.id === id)
     const tabs = s.tabs.filter((x) => x.id !== id)
@@ -520,8 +531,34 @@ export function connectUrl(url: string, password?: string, opts: OpenOpts = {}) 
   openConnection(title, { url, password }, opts)
 }
 
-export function connectAdhoc(site: any, password?: string) {
-  openConnection(site.name || `${site.user ? site.user + '@' : ''}${site.host}`, { site, password })
+export function connectAdhoc(site: any, password?: string, opts: OpenOpts = {}) {
+  openConnection(site.name || `${site.user ? site.user + '@' : ''}${site.host}`, { site, password }, opts)
+}
+
+/** Shows the scheduled tasks tab. */
+export function openTasks() {
+  if (!get().tabs.some((x) => x.id === 'tasks')) addTab({ id: 'tasks', kind: 'tasks', title: t('tasks.title') } as Tab)
+  else activate('tasks')
+  reloadTasks()
+}
+
+/** Opens the tasks tab with a new task prepared elsewhere (sync dialog). */
+export function editNewTask(task: Partial<import('./types').Task>) {
+  set({ taskDraft: task })
+  openTasks()
+}
+
+export async function reloadTasks() {
+  try {
+    set({ tasks: await call<import('./types').TaskView[]>('tasks.list') })
+  } catch {
+    /* keep */
+  }
+}
+
+/** Opens a new site in the editor of the Sites tab. */
+export function editNewSite(site: SiteView | import('./types').Site) {
+  set({ siteDraft: site as any, activeTab: 'sites' })
 }
 
 export async function reconnect(connId: string) {
@@ -745,10 +782,75 @@ export function openDiff(left: { conn: string; path: string }, right: { conn: st
   addTab({ id: uid('d'), kind: 'diff', title: lt === rt ? `${lt} ↔` : `${lt} ↔ ${rt}`, left, right })
 }
 
+/** Opens (or shows) the server monitor of an SSH connection. */
+export function openMonitor(conn: string) {
+  const existing = get().tabs.find((x) => x.kind === 'monitor' && x.conn === conn)
+  if (existing) return activate(existing.id)
+  const title = get().conns[conn]?.title || conn
+  addTab({ id: uid('m'), kind: 'monitor', title: t('mon.tabTitle', { title }), conn } as MonitorTab)
+}
+
+/** The terminals of a tab (one unless it is split). */
+export function terminalPanes(tab: TerminalTab): TermPaneState[] {
+  return tab.panes?.length ? tab.panes : [{ termId: tab.termId, conn: tab.conn, title: tab.title }]
+}
+
+/** Adds a terminal on conn to a terminal tab, beside or below the others. */
+export async function splitTerminal(tabId: string, conn: string, dir: 'columns' | 'rows', cwd?: string) {
+  try {
+    const term = await call<{ id: string; title: string }>('term.open', { conn, cols: 80, rows: 24, cwd: cwd || '' })
+    updateTab<TerminalTab>(tabId, (tb) => ({ panes: [...terminalPanes(tb), { termId: term.id, conn, title: term.title, cwd }], split: dir }))
+  } catch (e) {
+    errorToast(t('term.title'), e)
+  }
+}
+
+/** Closes one terminal of a split tab (the tab with its last one). */
+export function closeTermPane(tabId: string, termId: string) {
+  const tab = getTab<TerminalTab>(tabId)
+  if (!tab) return
+  const rest = terminalPanes(tab).filter((p) => p.termId !== termId)
+  if (!rest.length) {
+    closeTab(tabId)
+    return
+  }
+  call('term.close', { id: termId }).catch(() => {})
+  updateTab<TerminalTab>(tabId, () => ({ panes: rest, termId: rest[0].termId, conn: rest[0].conn, title: rest[0].title, broadcast: rest.length > 1 && getTab<TerminalTab>(tabId)?.broadcast }))
+}
+
+function sessionFor(conn: string): { tab: SessionTab; side: Side } | null {
+  const s = get()
+  const order = [s.tabs.find((x) => x.id === s.activeTab), ...s.tabs]
+  for (const tb of order) {
+    if (tb?.kind !== 'session') continue
+    if (tb.panes.right.conn === conn) return { tab: tb, side: 'right' }
+    if (tb.panes.left.conn === conn) return { tab: tb, side: 'left' }
+  }
+  return null
+}
+
+/** The file panel of the terminal's connection follows its current folder. */
+export function followTerminalCwd(conn: string, path: string) {
+  const found = sessionFor(conn)
+  if (found && found.tab.panes[found.side].path !== path) loadDir(found.tab.id, found.side, path)
+}
+
+/** Shows the terminal's current folder in a file panel. */
+export function revealTerminalCwd(conn: string, path: string) {
+  const found = sessionFor(conn)
+  if (found) {
+    loadDir(found.tab.id, found.side, path)
+    activate(found.tab.id)
+    return
+  }
+  const c = get().conns[conn]
+  if (c) openSessionTab(c, { remote: path })
+}
+
 export async function openTerminal(conn: string, cwd?: string) {
   try {
     const term = await call<{ id: string; title: string }>('term.open', { conn, cols: 120, rows: 32, cwd: cwd || '' })
-    const tab: TerminalTab = { id: uid('x'), kind: 'terminal', title: term.title, termId: term.id, conn }
+    const tab: TerminalTab = { id: uid('x'), kind: 'terminal', title: term.title, termId: term.id, conn, panes: [{ termId: term.id, conn, title: term.title, cwd }] }
     addTab(tab)
   } catch (e) {
     errorToast(t('term.title'), e)
@@ -756,7 +858,7 @@ export async function openTerminal(conn: string, cwd?: string) {
 }
 
 export function attachTerminalTab(termId: string, conn: string, title: string) {
-  const existing = get().tabs.find((x) => x.kind === 'terminal' && x.termId === termId)
+  const existing = get().tabs.find((x) => x.kind === 'terminal' && terminalPanes(x).some((p) => p.termId === termId))
   if (existing) return activate(existing.id)
   addTab({ id: uid('x'), kind: 'terminal', title, termId, conn })
 }

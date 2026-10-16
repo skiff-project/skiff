@@ -44,7 +44,7 @@ Dans un fichier de script, les lignes vides et les lignes commençant par `#` ou
 
 | Commande | Description |
 |---|---|
-| `open <url\|site> [options]` | Ouvre une session. L'argument est une [URL de session](15-protocoles.md#157-url-de-session), le nom d'un site enregistré (`Production/Site vitrine (SFTP)` ou simplement `Site vitrine (SFTP)`) ou un hôte de `~/.ssh/config` (`open recette`, comme `ssh recette` : adresse, port, utilisateur, clés et rebonds viennent du fichier, voir [Configuration OpenSSH](03-sites.md#34-configuration-openssh-ssh_config)). |
+| `open <url\|site> [options]` | Ouvre une session. L'argument est une [URL de session](15-protocoles.md#158-url-de-session), le nom d'un site enregistré (`Production/Site vitrine (SFTP)` ou simplement `Site vitrine (SFTP)`) ou un hôte de `~/.ssh/config` (`open recette`, comme `ssh recette` : adresse, port, utilisateur, clés et rebonds viennent du fichier, voir [Configuration OpenSSH](03-sites.md#34-configuration-openssh-ssh_config)). |
 | `close [n]` | Ferme la session courante (ou la session `n`) |
 | `session [n]` | Liste les sessions ouvertes, ou rend la session `n` courante. Plusieurs sessions peuvent être ouvertes en même temps. |
 | `exit` (`bye`, `quit`) | Ferme les sessions et termine le script |
@@ -214,6 +214,18 @@ La commande affiche le chemin de la clé privée, l'empreinte et la clé publiqu
 ## 13.8 `skiff serve`
 
 Voir [Mode web distant](14-mode-web.md).
+
+## 13.9 `skiff task`
+
+Liste les [tâches planifiées](07-synchronisation.md#74-tâches-planifiées) ou en exécute une tout de suite, sans ouvrir Skiff : c'est la commande à confier au planificateur du système (cron, Planificateur de tâches de Windows, launchd) pour qu'une tâche tourne Skiff fermé.
+
+```bash
+skiff task list                        # état, nom, type, planification, dernière exécution
+skiff task run "Publier le site"       # nom (sans tenir compte de la casse) ou identifiant
+skiff task run -q "Publier le site"    # n'affiche que le résultat, pas le journal
+```
+
+`run` affiche le journal au fil de l'exécution puis une ligne `OK: …`, `FAILED: …` ou `CANCELLED: …` avec la durée. Le code de retour est 0 en cas de succès, 1 sinon (tâche inconnue comprise). L'exécution est ajoutée à l'historique de la tâche, avec le déclencheur « ligne de commande ».
 
 ---
 

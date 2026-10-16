@@ -4,16 +4,22 @@ import (
 	"context"
 	"errors"
 	"os"
+	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
+
+	"golang.org/x/crypto/ssh"
 
 	"skiff/internal/config"
 	"skiff/internal/core"
+	"skiff/internal/devsync"
 	"skiff/internal/importer"
 	"skiff/internal/keys"
 	"skiff/internal/prompt"
 	"skiff/internal/sshconfig"
 	"skiff/internal/sshx"
+	"skiff/internal/tasks"
 	"skiff/internal/transfer"
 	"skiff/internal/vfs"
 )
@@ -66,6 +72,7 @@ func (s *Server) registerRPC() {
 		}
 		c.Transfers.SetMaxParallel(p.Queue.MaxParallel)
 		c.Bus.Publish("prefs.changed", nil)
+		s.changed()
 		return yes, nil
 	})
 
@@ -245,6 +252,68 @@ func (s *Server) registerRPC() {
 		return yes, c.HostKeys.Remove(p.Line)
 	})
 
+	// ---- scheduled tasks ----
+	method(s, "tasks.list", func(ctx context.Context, _ empty) ([]tasks.View, error) {
+		return s.tasks.Views(), nil
+	})
+	method(s, "tasks.save", func(ctx context.Context, t tasks.Task) (tasks.View, error) {
+		saved, err := s.tasks.Store.Save(t)
+		if err != nil {
+			return tasks.View{}, err
+		}
+		s.tasks.Changed(saved.ID)
+		return s.tasks.View(saved), nil
+	})
+	method(s, "tasks.delete", func(ctx context.Context, p idp) (ok, error) {
+		s.tasks.Cancel(p.ID)
+		if err := s.tasks.Store.Delete(p.ID); err != nil {
+			return ok{}, err
+		}
+		s.tasks.Changed(p.ID)
+		return yes, nil
+	})
+	method(s, "tasks.run", func(ctx context.Context, p idp) (ok, error) {
+		return yes, s.tasks.RunNow(p.ID, "manual")
+	})
+	method(s, "tasks.cancel", func(ctx context.Context, p idp) (ok, error) {
+		s.tasks.Cancel(p.ID)
+		return yes, nil
+	})
+	method(s, "tasks.runs", func(ctx context.Context, p struct {
+		ID string `json:"id,omitempty"`
+	}) ([]tasks.Run, error) {
+		return s.tasks.Store.Runs(p.ID), nil
+	})
+
+	// ---- containers ----
+	method(s, "containers.list", func(ctx context.Context, p struct {
+		Runtime   string `json:"runtime"`
+		Command   string `json:"command,omitempty"`
+		Via       string `json:"via,omitempty"` // an open SSH connection, "" = this computer
+		Context   string `json:"context,omitempty"`
+		Namespace string `json:"namespace,omitempty"`
+	}) ([]core.ContainerInfo, error) {
+		if p.Via == "" && !s.localExecAllowed() {
+			return nil, errLocalContainers
+		}
+		return c.ListContainers(ctx, p.Runtime, p.Command, p.Via, p.Context, p.Namespace)
+	})
+
+	// ---- server monitor ----
+	method(s, "monitor.sample", func(ctx context.Context, p struct {
+		Conn string `json:"conn"`
+		Key  string `json:"key"`
+	}) (core.MonitorSample, error) {
+		return c.MonitorSample(ctx, p.Conn, p.Key)
+	})
+	method(s, "monitor.kill", func(ctx context.Context, p struct {
+		Conn   string `json:"conn"`
+		PID    int    `json:"pid"`
+		Signal string `json:"signal"`
+	}) (ok, error) {
+		return yes, c.MonitorKill(ctx, p.Conn, p.PID, p.Signal)
+	})
+
 	// ---- OpenSSH configuration ----
 	type sshHost struct {
 		sshconfig.HostEntry
@@ -304,6 +373,15 @@ func (s *Server) registerRPC() {
 			p.Site = &st
 			if p.Password == "" {
 				p.Password = pw
+			}
+		}
+		if site := p.Site; site != nil || p.SiteID != "" {
+			if site == nil {
+				st, _ := c.Store.Site(p.SiteID)
+				site = &st
+			}
+			if site.Protocol == config.ProtoContainer && site.ViaConn == "" && site.ViaSite == "" && !s.localExecAllowed() {
+				return core.ConnInfo{}, errLocalContainers
 			}
 		}
 		// The connection must survive the HTTP request.
@@ -605,7 +683,15 @@ func (s *Server) registerRPC() {
 				return keys.Generated{}, err
 			}
 		}
-		return keys.Generate(p)
+		g, err := keys.Generate(p)
+		if err == nil && p.Keychain {
+			name := p.Name
+			if name == "" {
+				name = p.Comment
+			}
+			_, err = addToKeychain(c, keys.ConvertRequest{Data: g.Private, Passphrase: p.Passphrase}, name)
+		}
+		return g, err
 	})
 	method(s, "keys.list", func(ctx context.Context, _ empty) ([]keys.KeyFile, error) { return keys.List(), nil })
 	method(s, "keys.install", func(ctx context.Context, p struct {
@@ -614,10 +700,107 @@ func (s *Server) registerRPC() {
 	}) (string, error) {
 		return keys.Install(ctx, c, p.Conn, p.PublicKey)
 	})
+	// ---- Skiff keychain ----
+	type keychainList struct {
+		Keys   []config.KeychainKey `json:"keys"`
+		Locked bool                 `json:"locked"`
+	}
+	method(s, "keychain.list", func(ctx context.Context, _ empty) (keychainList, error) {
+		return keychainList{Keys: c.Store.Keys(), Locked: c.Store.Secrets.Locked()}, nil
+	})
+	type keychainAdd struct {
+		Name       string `json:"name"`
+		Path       string `json:"path,omitempty"` // a key file, or
+		Data       string `json:"data,omitempty"` // its content
+		Passphrase string `json:"passphrase,omitempty"`
+	}
+	method(s, "keychain.add", func(ctx context.Context, p keychainAdd) (config.KeychainKey, error) {
+		if s.web() && p.Path != "" {
+			return config.KeychainKey{}, errors.New("in web mode, paste the key instead of giving a path")
+		}
+		k, err := addToKeychain(c, keys.ConvertRequest{Path: p.Path, Data: p.Data, Passphrase: p.Passphrase}, p.Name)
+		if err == nil {
+			s.changed()
+		}
+		return k, err
+	})
+	method(s, "keychain.rename", func(ctx context.Context, p struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}) (ok, error) {
+		s.changed()
+		return yes, c.Store.RenameKey(p.ID, p.Name)
+	})
+	method(s, "keychain.remove", func(ctx context.Context, p idp) (ok, error) {
+		s.changed()
+		return yes, c.Store.RemoveKey(p.ID)
+	})
+
+	// ---- sync between devices ----
+	method(s, "devsync.get", func(ctx context.Context, _ empty) (devsync.View, error) {
+		return s.devsync.View(), nil
+	})
+	method(s, "devsync.set", func(ctx context.Context, p struct {
+		Config     devsync.Config `json:"config"`
+		Passphrase *string        `json:"passphrase,omitempty"`
+	}) (devsync.View, error) {
+		err := s.devsync.SetConfig(p.Config, p.Passphrase)
+		return s.devsync.View(), err
+	})
+	method(s, "devsync.now", func(ctx context.Context, _ empty) (devsync.Result, error) {
+		cctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		return s.devsync.Sync(cctx)
+	})
+
 	method(s, "keys.convert", func(ctx context.Context, p keys.ConvertRequest) (keys.Generated, error) {
 		if s.web() && (p.Path != "" || p.SaveTo != "") {
 			return keys.Generated{}, errors.New("in web mode, paste the key instead of giving a path")
 		}
 		return keys.Convert(p)
 	})
+}
+
+// addToKeychain stores a private key (any format, decrypted with its
+// passphrase) in the keychain.
+func addToKeychain(c *core.Core, r keys.ConvertRequest, name string) (config.KeychainKey, error) {
+	r.Format, r.NewPassphrase, r.SaveTo = "openssh", "", ""
+	g, err := keys.Convert(r)
+	if err != nil {
+		var pm *ssh.PassphraseMissingError
+		if errors.As(err, &pm) {
+			return config.KeychainKey{}, errors.New("this key is protected by a passphrase")
+		}
+		return config.KeychainKey{}, err
+	}
+	if name == "" {
+		name = keyName(g, r.Path)
+	}
+	return c.Store.AddKey(config.KeychainKey{Name: name, Type: g.Type, Fingerprint: g.Fingerprint, PublicKey: strings.TrimSpace(g.Public)}, g.Private)
+}
+
+// keyName names a key added without a name: its comment (in the key, or in
+// the .pub file next to it), else its type and the start of its fingerprint.
+func keyName(g keys.Generated, path string) string {
+	if f := strings.Fields(g.Public); len(f) > 2 {
+		return strings.Join(f[2:], " ")
+	}
+	if path != "" {
+		if b, err := os.ReadFile(path + ".pub"); err == nil {
+			if f := strings.Fields(string(b)); len(f) > 2 {
+				return strings.Join(f[2:], " ")
+			}
+		}
+		return filepath.Base(path)
+	}
+	fp := strings.TrimPrefix(g.Fingerprint, "SHA256:")
+	return g.Type + " " + fp[:min(8, len(fp))]
+}
+
+var errLocalContainers = errors.New("the containers of the server running Skiff are disabled in web mode (see --allow-local-terminal)")
+
+// localExecAllowed tells whether commands may run on the computer running
+// Skiff for the user (local terminal, local containers).
+func (s *Server) localExecAllowed() bool {
+	return (!s.web() || s.opts.AllowLocalTerminal) && s.core.Local.Root == ""
 }

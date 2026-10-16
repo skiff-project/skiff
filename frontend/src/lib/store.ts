@@ -53,12 +53,37 @@ export interface DiffTab {
   right: { conn: string; path: string }
 }
 
+export interface TermPaneState {
+  termId: string
+  conn: string
+  title: string
+  cwd?: string // folder it was opened in
+}
+
 export interface TerminalTab {
   id: string
   kind: 'terminal'
   title: string
+  // the first terminal (panes[0] when the tab is split)
   termId: string
   conn: string
+  panes?: TermPaneState[]
+  split?: 'columns' | 'rows'
+  broadcast?: boolean // input goes to every pane
+  follow?: boolean // the file panel follows the current folder
+}
+
+export interface MonitorTab {
+  id: string
+  kind: 'monitor'
+  title: string
+  conn: string
+}
+
+export interface TasksTab {
+  id: 'tasks'
+  kind: 'tasks'
+  title: string
 }
 
 export interface SitesTab {
@@ -67,7 +92,7 @@ export interface SitesTab {
   title: string
 }
 
-export type Tab = SitesTab | SessionTab | EditorTab | DiffTab | TerminalTab
+export type Tab = SitesTab | SessionTab | EditorTab | DiffTab | TerminalTab | MonitorTab | TasksTab
 
 export type BottomTab = 'queue' | 'log' | 'find' | 'watch' | 'tunnels' | 'edits'
 
@@ -113,6 +138,12 @@ export interface State {
   palette: boolean
   authed: boolean | null
   connecting: Record<string, { title: string; token: string; error?: string; params?: any; opts?: any }>
+  /** a site to open in the site editor (set from outside the Sites tab) */
+  siteDraft: import('./types').Site | null
+  tasks: import('./types').TaskView[] | null
+  devsync: import('./types').DevSyncView | null
+  /** a task to open in the task editor */
+  taskDraft: Partial<import('./types').Task> | null
   previewOpen: boolean
 }
 
@@ -139,6 +170,10 @@ export const useStore = create<State>(() => ({
   palette: false,
   authed: null,
   connecting: {},
+  siteDraft: null,
+  tasks: null,
+  devsync: null,
+  taskDraft: null,
   previewOpen: false,
 }))
 

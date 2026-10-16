@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 
 	"skiff/internal/netx"
 	"skiff/internal/prompt"
@@ -48,6 +49,8 @@ type Target struct {
 	AuthOrder      []string `json:"-"` // PreferredAuthentications; methods not listed are not tried
 	HostKeyAlias   string   `json:"-"` // name looked up in known_hosts instead of the host
 	HostKeyPolicy  Policy   `json:"-"`
+	// ForwardAgent gives the server access to the keychain and agent keys.
+	ForwardAgent bool `json:"-"`
 }
 
 func (t Target) Addr() string {
@@ -87,6 +90,10 @@ type Options struct {
 	// Legacy enables insecure algorithms for old servers.
 	Legacy bool
 
+	// Keychain holds the keys of Skiff's keychain, offered like agent keys
+	// (when the target uses the agent) and forwarded with ForwardAgent.
+	Keychain []ssh.Signer
+
 	HostKeys *HostKeyStore
 	Prompter prompt.Prompter
 	Banner   func(host, msg string)
@@ -120,6 +127,8 @@ type Conn struct {
 	jumps []*ssh.Client
 	stop  chan struct{}
 	once  sync.Once
+	// forward is set when the agent is forwarded to the server
+	forward bool
 	// Dead is closed when the connection is lost.
 	Dead chan struct{}
 }
@@ -206,6 +215,20 @@ func Dial(ctx context.Context, opts Options) (*Conn, error) {
 	}
 	info.Jumps = len(jumps)
 	c := &Conn{Client: final, Info: info, jumps: jumps, stop: make(chan struct{}), Dead: make(chan struct{})}
+	if opts.Target.ForwardAgent {
+		fa := &forwardAgent{keys: opts.Keychain}
+		if opts.Target.UseAgent {
+			if sys, _, err := agentClient(opts.Target.AgentPath); err == nil {
+				fa.sys = sys
+			}
+		}
+		if err := agent.ForwardToAgent(final, fa); err != nil {
+			logf("Agent forwarding unavailable: %v", err)
+		} else {
+			c.forward = true
+			logf("SSH agent forwarded to the server")
+		}
+	}
 	go func() {
 		final.Wait()
 		close(c.Dead)
@@ -311,7 +334,7 @@ func handshake(ctx context.Context, nc net.Conn, t Target, opts *Options, logf f
 	pr := opts.Prompter
 	auth := map[string]ssh.AuthMethod{}
 
-	signers, err := publicKeys(ctx, t, pr, logf)
+	signers, err := publicKeys(ctx, t, opts.Keychain, pr, logf)
 	if err != nil {
 		return nil, info, err
 	}
@@ -463,14 +486,16 @@ func handshake(ctx context.Context, nc net.Conn, t Target, opts *Options, logf f
 // publicKeys returns the keys to offer: the agent's first, then the key
 // files whose key the agent does not hold (so that their passphrase is not
 // asked for nothing), with their certificates.
-func publicKeys(ctx context.Context, t Target, pr prompt.Prompter, logf func(string, ...any)) ([]ssh.Signer, error) {
+func publicKeys(ctx context.Context, t Target, keychain []ssh.Signer, pr prompt.Prompter, logf func(string, ...any)) ([]ssh.Signer, error) {
 	if t.NoPubkey {
 		return nil, nil
 	}
 	var agentKeys []ssh.Signer
+	nKeychain := 0
 	if t.UseAgent {
+		agentKeys = append(agentKeys, keychain...)
 		if ag, err := agentSigners(t.AgentPath); err == nil {
-			agentKeys = ag
+			agentKeys = append(agentKeys, ag...)
 		} else {
 			logf("SSH agent unavailable: %v", err)
 		}
@@ -544,8 +569,18 @@ func publicKeys(ctx context.Context, t Target, pr prompt.Prompter, logf func(str
 		}
 		agentKeys = kept
 	}
-	if len(agentKeys) > 0 {
-		logf("Using %d key(s) from the SSH agent", len(agentKeys))
+	for _, a := range agentKeys {
+		for _, k := range keychain {
+			if a == k {
+				nKeychain++
+			}
+		}
+	}
+	if nKeychain > 0 {
+		logf("Using %d key(s) from the Skiff keychain", nKeychain)
+	}
+	if n := len(agentKeys) - nKeychain; n > 0 {
+		logf("Using %d key(s) from the SSH agent", n)
 	}
 	signers := append(agentKeys, files...)
 	// explicit certificates go before the plain keys they certify

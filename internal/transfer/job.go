@@ -22,21 +22,22 @@ import (
 )
 
 type task struct {
-	src   string
-	dst   string
-	rel   string
-	isDir bool
-	size  int64
-	mtime time.Time
-	mode  uint32
+	src     string
+	dst     string
+	rel     string
+	isDir   bool
+	size    int64
+	mtime   time.Time
+	mode    uint32
 	hasMode bool
-	text  bool
+	text    bool
 }
 
 type activeFile struct {
-	name string
-	size int64
-	done atomic.Int64
+	name  string
+	size  int64
+	parts int
+	done  atomic.Int64
 }
 
 type job struct {
@@ -44,16 +45,16 @@ type job struct {
 	id  string
 	req Request
 
-	ctx    context.Context
+	ctx      context.Context
 	cancelFn context.CancelFunc
-	done   chan struct{}
+	done     chan struct{}
 
-	mu       sync.Mutex
-	snap     Snapshot
-	held     bool
-	dirty    bool
-	failed   []Pair
-	active   map[*activeFile]bool
+	mu        sync.Mutex
+	snap      Snapshot
+	held      bool
+	dirty     bool
+	failed    []Pair
+	active    map[*activeFile]bool
 	lastBytes int64
 	lastTick  time.Time
 
@@ -63,18 +64,18 @@ type job struct {
 	paused  bool
 	pauseCh chan struct{}
 
-	promptMu      sync.Mutex
-	overwriteAll  string // decision applied to all remaining conflicts
-	errorAll      string // "skip" when the user chose skip all
+	promptMu     sync.Mutex
+	overwriteAll string // decision applied to all remaining conflicts
+	errorAll     string // "skip" when the user chose skip all
 
 	limiter *rate.Limiter
 
-	dirsMu  sync.Mutex
+	dirsMu   sync.Mutex
 	dirsMade map[string]bool
 
 	srcCaps, dstCaps vfs.Caps
-	fmask    *mask.Mask
-	textMask *mask.Mask
+	fmask            *mask.Mask
+	textMask         *mask.Mask
 }
 
 func newJob(m *Manager, req Request) *job {
@@ -145,7 +146,7 @@ func (j *job) snapshot() Snapshot {
 	}
 	s.Active = make([]Active, 0, len(j.active))
 	for a := range j.active {
-		s.Active = append(s.Active, Active{Name: a.name, Size: a.size, Done: a.done.Load()})
+		s.Active = append(s.Active, Active{Name: a.name, Size: a.size, Done: a.done.Load(), Parts: a.parts})
 	}
 	sort.Slice(s.Active, func(a, b int) bool { return s.Active[a].Name < s.Active[b].Name })
 	s.Errors = append([]FileError(nil), s.Errors...)
@@ -254,6 +255,13 @@ func (j *job) failedPairs() []Pair {
 func (j *job) logf(format string, a ...any) {
 	if j.m.Logf != nil {
 		j.m.Logf(format, a...)
+	}
+	if j.m.ConnLogf != nil {
+		for _, c := range []string{j.req.Src, j.req.Dst} {
+			if c != "local" {
+				j.m.ConnLogf(c, format, a...)
+			}
+		}
 	}
 }
 
@@ -924,6 +932,20 @@ func (j *job) transferFile(ctx context.Context, w *worker, t *task) error {
 		counted = 0
 	}
 
+	if parts := j.segments(t, offset, dst); parts > 1 {
+		af.parts = parts
+		if err := j.copySegments(ctx, w, t, writeTo, parts, af, &counted); err != nil {
+			rollback()
+			// a file written in parts has holes: never resume it
+			dst.Remove(context.WithoutCancel(ctx), writeTo, false)
+			return err
+		}
+		j.mu.Lock()
+		j.snap.SegmentedFiles++
+		j.mu.Unlock()
+		return j.finishFile(ctx, w, t, writeTo, target, counted)
+	}
+
 	r, err := src.Open(ctx, t.src, offset)
 	if err != nil {
 		rollback()
@@ -933,41 +955,14 @@ func (j *job) transferFile(ctx context.Context, w *worker, t *task) error {
 	if t.text {
 		size = -1
 	}
-	mode := uint32(0)
-	if o.SetPerms && o.Perms != 0 {
-		mode = o.Perms
-	} else if o.PreservePerms && t.hasMode {
-		mode = t.mode & 0o777
-	}
-	wc, err := dst.Create(ctx, writeTo, vfs.CreateOpts{Offset: offset, Size: size, Mode: mode, ModTime: t.mtime})
+	wc, err := dst.Create(ctx, writeTo, vfs.CreateOpts{Offset: offset, Size: size, Mode: j.fileMode(t), ModTime: t.mtime})
 	if err != nil {
 		r.Close()
 		rollback()
 		return err
 	}
 
-	progress := func(n int) error {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		if err := j.waitPaused(); err != nil {
-			return err
-		}
-		if j.limiter != nil && n > 0 {
-			for n > 0 {
-				c := n
-				if c > j.limiter.Burst() {
-					c = j.limiter.Burst()
-				}
-				if err := j.limiter.WaitN(ctx, c); err != nil {
-					return err
-				}
-				n -= c
-			}
-		}
-		return nil
-	}
-	var reader io.Reader = &countReader{r: r, af: af, j: j, counted: &counted, check: progress}
+	var reader io.Reader = &countReader{r: r, af: af, j: j, counted: &counted, check: j.progress(ctx)}
 	if t.text {
 		reader = newEOLReader(reader, o.SrcEOL, o.DstEOL)
 	}
@@ -984,6 +979,14 @@ func (j *job) transferFile(ctx context.Context, w *worker, t *task) error {
 		}
 		return cerr
 	}
+	return j.finishFile(ctx, w, t, writeTo, target, counted)
+}
+
+// finishFile renames the temporary file, applies the attributes, verifies
+// and deletes the source of a move.
+func (j *job) finishFile(ctx context.Context, w *worker, t *task, writeTo, target string, counted int64) error {
+	o := j.req.Options
+	src, dst := w.src, w.dst
 	// account for size differences (text mode, file changed while copying)
 	if counted != t.size {
 		j.doneBytes.Add(t.size - counted)
@@ -1016,6 +1019,44 @@ func (j *job) transferFile(ctx context.Context, w *worker, t *task) error {
 	j.dirty = true
 	j.mu.Unlock()
 	return nil
+}
+
+// fileMode is the permission given to a new file (0 = backend default).
+func (j *job) fileMode(t *task) uint32 {
+	o := j.req.Options
+	if o.SetPerms && o.Perms != 0 {
+		return o.Perms
+	}
+	if o.PreservePerms && t.hasMode {
+		return t.mode & 0o777
+	}
+	return 0
+}
+
+// progress returns the check run for each chunk read: cancellation, pause
+// and speed limit.
+func (j *job) progress(ctx context.Context) func(n int) error {
+	return func(n int) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := j.waitPaused(); err != nil {
+			return err
+		}
+		if j.limiter != nil && n > 0 {
+			for n > 0 {
+				c := n
+				if c > j.limiter.Burst() {
+					c = j.limiter.Burst()
+				}
+				if err := j.limiter.WaitN(ctx, c); err != nil {
+					return err
+				}
+				n -= c
+			}
+		}
+		return nil
+	}
 }
 
 func (j *job) verify(ctx context.Context, src, dst vfs.FS, sp, dp string) error {
@@ -1073,11 +1114,11 @@ func (c *countReader) Read(p []byte) (int, error) {
 
 // eolReader converts line endings on the fly.
 type eolReader struct {
-	r        io.Reader
-	toCRLF   bool
-	buf      []byte
-	pending  []byte
-	lastCR   bool
+	r       io.Reader
+	toCRLF  bool
+	buf     []byte
+	pending []byte
+	lastCR  bool
 }
 
 func newEOLReader(r io.Reader, from, to string) io.Reader {
@@ -1129,4 +1170,3 @@ func (e *eolReader) Read(p []byte) (int, error) {
 	e.pending = e.pending[n:]
 	return n, nil
 }
-

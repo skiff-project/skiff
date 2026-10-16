@@ -5,6 +5,7 @@ package core
 import (
 	"context"
 	"os"
+	"strings"
 
 	"github.com/UserExistsError/conpty"
 )
@@ -20,6 +21,25 @@ func startLocalPty(cols, rows int, cwd, term string) (ptyBackend, error) {
 		cwd, _ = os.UserHomeDir()
 	}
 	c, err := conpty.Start(shell, conpty.ConPtyDimensions(cols, rows), conpty.ConPtyWorkDir(cwd))
+	if err != nil {
+		return nil, err
+	}
+	return &localPty{c: c}, nil
+}
+
+// startLocalPtyCmd runs argv in a pseudo-console of this computer.
+func startLocalPtyCmd(cols, rows int, cwd, term string, argv []string) (ptyBackend, error) {
+	q := make([]string, len(argv))
+	for i, a := range argv {
+		if strings.ContainsAny(a, " \t\"") {
+			a = `"` + strings.ReplaceAll(a, `"`, `\"`) + `"`
+		}
+		q[i] = a
+	}
+	if cwd == "" {
+		cwd, _ = os.UserHomeDir()
+	}
+	c, err := conpty.Start(strings.Join(q, " "), conpty.ConPtyDimensions(cols, rows), conpty.ConPtyWorkDir(cwd))
 	if err != nil {
 		return nil, err
 	}

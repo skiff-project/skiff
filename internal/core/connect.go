@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/crypto/ssh"
+
 	"skiff/internal/config"
 	"skiff/internal/netx"
 	"skiff/internal/prompt"
@@ -33,6 +35,8 @@ type dialed struct {
 	remember bool
 	// forwards to start with the session (the site's, else ssh_config's)
 	forwards []config.Forward
+	// where the runtime of a container runs
+	container *containerHost
 	// where an SSH site really leads once ssh_config is applied
 	host string
 	port int
@@ -109,8 +113,27 @@ func proxyConfig(s config.Site) *netx.ProxyConfig {
 	return &netx.ProxyConfig{Type: p.Type, Host: p.Host, Port: p.Port, User: p.User, Password: p.Password, Command: p.Command, RemoteDNS: p.RemoteDNS}
 }
 
+// keychain returns the keys of Skiff's keychain (none while it is locked).
+func (c *Core) keychain(log *Log) []ssh.Signer {
+	pems, err := c.Store.KeyPrivates()
+	if err != nil {
+		if len(c.Store.Keys()) > 0 {
+			log.Warnf("Skiff keychain not used: %v", err)
+		}
+		return nil
+	}
+	var out []ssh.Signer
+	for _, p := range pems {
+		if s, err := ssh.ParsePrivateKey([]byte(p)); err == nil {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
 func (c *Core) sshOptions(s *sshSetup, site config.Site, pr prompt.Prompter, log *Log) sshx.Options {
 	return sshx.Options{
+		Keychain:       c.keychain(log),
 		Target:         s.target,
 		Jumps:          s.jumps,
 		Dial:           netx.Options{Timeout: s.timeout, IPVersion: s.ipVersion, Proxy: s.proxy},
@@ -216,6 +239,10 @@ func (c *Core) dial(ctx context.Context, site config.Site, pr prompt.Prompter, l
 		return finish(), nil
 	}
 
+	if site.Protocol == config.ProtoContainer {
+		return c.dialContainer(ctx, site, p, log)
+	}
+
 	// Non-SSH protocols: optional SSH tunnel through the jump chain.
 	jumps, err := c.jumpTargets(site, 0)
 	if err != nil {
@@ -227,7 +254,7 @@ func (c *Core) dial(ctx context.Context, site config.Site, pr prompt.Prompter, l
 		topts := sshx.Options{
 			Target: target, Jumps: jumps[:len(jumps)-1],
 			Dial:     netx.Options{Timeout: timeout, IPVersion: site.IPVersion, Proxy: proxyConfig(site)},
-			HostKeys: c.HostKeys, Prompter: p, Logf: log.Logf, Keepalive: 30 * time.Second,
+			HostKeys: c.HostKeys, Prompter: p, Logf: log.Logf, Keepalive: 30 * time.Second, Keychain: c.keychain(log),
 		}
 		tc, err := sshx.Dial(ctx, topts)
 		if err != nil {

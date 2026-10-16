@@ -128,6 +128,7 @@ function JobRow({ job: j, first, last, fmt }: { job: Job; first: boolean; last: 
           {j.active.map((a) => (
             <div key={a.name} className="job-file">
               <span className="ellipsis">{a.name}</span>
+              {!!a.parts && <span className="badge accent" data-tip={t('queue.partsTip')}>{t('queue.parts', { n: a.parts })}</span>}
               <div className="progress" style={{ width: 120 }}>
                 <div style={{ width: `${a.size ? (a.done / a.size) * 100 : 0}%` }} />
               </div>

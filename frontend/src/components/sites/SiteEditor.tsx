@@ -10,6 +10,7 @@ import { t } from '../../lib/i18n'
 import type { Forward, Jump, Protocol, SecretInput, Site, SiteView } from '../../lib/types'
 import { ask } from '../dialogs/common'
 import { copyToClipboard } from '../../lib/fileops'
+import { openContainers, RUNTIME_LABEL } from '../dialogs/ContainersDialog'
 import { SshConfigOptions, SshEffective, SshWarnings, useSshReport } from './SshConfig'
 
 export function newSiteDraft(): Site {
@@ -44,6 +45,8 @@ export function SiteEditor({ site, isNew, onSaved, onDeleted, onCancel }: { site
   const sites = useStore((st) => st.sites)
   const view = site as SiteView
   const ssh = s.protocol === 'sftp' || s.protocol === 'scp'
+  const isCtr = s.protocol === 'container'
+  const sshSites = sites.filter((x) => x.id !== s.id && (x.protocol === 'sftp' || x.protocol === 'scp'))
   const sshConfigOn = useStore((st) => st.sshConfig?.enabled ?? false)
   const report = useSshReport(ssh ? s : null, sshConfigOn)
   const detected = report?.enabled && report.options.length ? report : null
@@ -61,16 +64,16 @@ export function SiteEditor({ site, isNew, onSaved, onDeleted, onCancel }: { site
     { id: 'general', label: t('common.general'), icon: Server, show: true },
     { id: 'dirs', label: t('site.directories'), icon: Folder, show: true },
     { id: 'env', label: t('site.environment'), icon: Clock, show: true },
-    { id: 'conn', label: t('site.connection'), icon: Cable, show: true },
-    { id: 'proxy', label: t('site.proxy'), icon: Globe, show: true },
-    { id: 'jumps', label: t('site.tunnel'), icon: Waypoints, show: true },
+    { id: 'conn', label: t('site.connection'), icon: Cable, show: !isCtr },
+    { id: 'proxy', label: t('site.proxy'), icon: Globe, show: !isCtr },
+    { id: 'jumps', label: t('site.tunnel'), icon: Waypoints, show: !isCtr },
     { id: 'forwards', label: t('site.forwards'), icon: Network, show: ssh },
     { id: 'ssh', label: t('site.ssh'), icon: KeyRound, show: ssh },
     { id: 'ftp', label: t('site.ftp'), icon: Settings2, show: s.protocol === 'ftp' },
     { id: 'tls', label: 'TLS', icon: Shield, show: (s.protocol === 'ftp' && s.ftps !== 'none') || ((s.protocol === 'webdav' || s.protocol === 's3') && !!s.tls) },
     { id: 's3', label: t('site.s3'), icon: Cloud, show: s.protocol === 's3' },
     { id: 'notes', label: t('site.notes'), icon: NotebookPen, show: true },
-  ], [s.protocol, s.ftps, s.tls, ssh])
+  ], [s.protocol, s.ftps, s.tls, ssh, isCtr])
 
   const save = async (): Promise<SiteView | null> => {
     if (!s.host.trim() && s.protocol !== 's3') {
@@ -179,9 +182,9 @@ export function SiteEditor({ site, isNew, onSaved, onDeleted, onCancel }: { site
               <div className="field">
                 <label>{t('site.protocol')}</label>
                 <div className="segmented">
-                  {(['sftp', 'scp', 'ftp', 'webdav', 's3'] as Protocol[]).map((p) => (
-                    <button key={p} className={s.protocol === p ? 'on' : ''} onClick={() => up({ protocol: p, tls: p === 's3' ? true : p === 'webdav' ? s.tls : s.tls, port: 0 })}>
-                      {p === 'webdav' ? 'WebDAV' : p.toUpperCase()}
+                  {(['sftp', 'scp', 'ftp', 'webdav', 's3', 'container'] as Protocol[]).map((p) => (
+                    <button key={p} className={s.protocol === p ? 'on' : ''} onClick={() => up({ protocol: p, tls: p === 's3' ? true : p === 'webdav' ? s.tls : s.tls, port: 0, ...(p === 'container' && !s.containerRuntime ? { containerRuntime: 'docker' } : {}) })}>
+                      {p === 'webdav' ? 'WebDAV' : p === 'container' ? t('site.container') : p.toUpperCase()}
                     </button>
                   ))}
                 </div>
@@ -199,6 +202,42 @@ export function SiteEditor({ site, isNew, onSaved, onDeleted, onCancel }: { site
               {(s.protocol === 'webdav' || s.protocol === 's3') && (
                 <label className="switch"><input type="checkbox" checked={!!s.tls} onChange={(e) => up({ tls: e.target.checked, port: 0 })} /> {t('site.tls')}</label>
               )}
+              {isCtr && (
+                <>
+                  <div className="field">
+                    <label>{t('ctr.runtime')}</label>
+                    <div className="segmented">
+                      {(['docker', 'podman', 'kubectl'] as const).map((r) => <button key={r} className={(s.containerRuntime || 'docker') === r ? 'on' : ''} onClick={() => up({ containerRuntime: r })}>{RUNTIME_LABEL[r]}</button>)}
+                    </div>
+                  </div>
+                  <div className="field">
+                    <label>{t('ctr.where')}</label>
+                    <select className="select" value={s.viaSite || ''} onChange={(e) => up({ viaSite: e.target.value || undefined })}>
+                      <option value="">{t('ctr.thisComputer')}</option>
+                      {sshSites.map((x) => <option key={x.id} value={x.id}>{t('ctr.onSite', { name: x.name || x.host })}</option>)}
+                    </select>
+                    <span className="hint">{t('ctr.whereHint')}</span>
+                  </div>
+                  <div className="field">
+                    <label>{s.containerRuntime === 'kubectl' ? t('ctr.pod') : t('ctr.name')}</label>
+                    <div className="row">
+                      <input className="input grow" value={s.host} placeholder={s.containerRuntime === 'kubectl' ? 'api-7f9c4d' : 'web'} onChange={(e) => up({ host: e.target.value })} spellCheck={false} autoFocus={isNew} />
+                      {!s.viaSite && <button className="btn" onClick={() => openContainers({ runtime: s.containerRuntime || 'docker', onPick: (c, r, k8s) => up({ host: c.name, containerRuntime: r, name: s.name || c.name, k8sNamespace: c.namespace || k8s.namespace || undefined, k8sContext: k8s.context || undefined, k8sContainer: c.containers?.[0] || undefined }) })}>{t('ctr.pick')}</button>}
+                    </div>
+                  </div>
+                  {s.containerRuntime === 'kubectl' ? (
+                    <div className="field-row r3">
+                      <div className="field"><label>{t('ctr.context')}</label><input className="input" value={s.k8sContext || ''} placeholder={t('ctr.currentContext')} onChange={(e) => up({ k8sContext: e.target.value })} /></div>
+                      <div className="field"><label>{t('ctr.namespace')}</label><input className="input" value={s.k8sNamespace || ''} placeholder="default" onChange={(e) => up({ k8sNamespace: e.target.value })} /></div>
+                      <div className="field"><label>{t('ctr.podContainer')}</label><input className="input" value={s.k8sContainer || ''} placeholder={t('ctr.firstContainer')} onChange={(e) => up({ k8sContainer: e.target.value })} /></div>
+                    </div>
+                  ) : (
+                    <div className="field"><label>{t('ctr.user')}</label><input className="input" value={s.user || ''} placeholder={t('ctr.userPlaceholder')} onChange={(e) => up({ user: e.target.value })} spellCheck={false} /></div>
+                  )}
+                  <div className="field"><label>{t('ctr.command')}</label><input className="input mono" value={s.containerCommand || ''} placeholder={s.containerRuntime || 'docker'} onChange={(e) => up({ containerCommand: e.target.value })} spellCheck={false} /><span className="hint">{t('ctr.commandHint')}</span></div>
+                </>
+              )}
+              {!isCtr && (
               <div className="field-row r-port">
                 <div className="field">
                   <label>{isS3 ? 'Endpoint' : t('site.host')}</label>
@@ -209,6 +248,8 @@ export function SiteEditor({ site, isNew, onSaved, onDeleted, onCancel }: { site
                   <input className="input tnum" type="number" min={0} max={65535} value={s.port || ''} placeholder={String(detected?.port || defaultPort(s))} onChange={(e) => up({ port: parseInt(e.target.value, 10) || 0 })} />
                 </div>
               </div>
+              )}
+              {!isCtr && (
               <div className="field-row">
                 <div className="field">
                   <label>{isS3 ? t('site.accessKey') : t('site.user')}</label>
@@ -216,6 +257,7 @@ export function SiteEditor({ site, isNew, onSaved, onDeleted, onCancel }: { site
                 </div>
                 {pwField(isS3 ? t('site.secretKey') : t('site.password'), 'password', view.hasPassword)}
               </div>
+              )}
               {s.protocol === 'ftp' && (
                 <label className="check"><input type="checkbox" checked={s.user === 'anonymous'} onChange={(e) => up({ user: e.target.checked ? 'anonymous' : '' })} /> {t('site.anonymous')}</label>
               )}
@@ -425,6 +467,8 @@ export function SiteEditor({ site, isNew, onSaved, onDeleted, onCancel }: { site
                 <div className="field"><label>{t('site.keyFile')}</label><input className="input mono" value={s.keyFile || ''} placeholder={t('site.keyFilePlaceholder')} onChange={(e) => up({ keyFile: e.target.value })} /></div>
                 {pwField(t('site.passphrase'), 'passphrase', view.hasPassphrase)}
                 <label className="switch"><input type="checkbox" checked={s.useAgent} onChange={(e) => up({ useAgent: e.target.checked })} /> {t('site.useAgent')}</label>
+                <label className="switch"><input type="checkbox" checked={!!s.forwardAgent} onChange={(e) => up({ forwardAgent: e.target.checked })} /> {t('site.forwardAgent')}</label>
+                <span className="hint">{t('site.forwardAgentHint')}</span>
                 <label className="switch"><input type="checkbox" checked={s.kbdInteractive} onChange={(e) => up({ kbdInteractive: e.target.checked })} /> {t('site.kbdint')}</label>
               </div>
               <div className="form-section">

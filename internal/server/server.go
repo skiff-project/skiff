@@ -20,6 +20,8 @@ import (
 	"golang.org/x/crypto/argon2"
 
 	"skiff/internal/core"
+	"skiff/internal/devsync"
+	"skiff/internal/tasks"
 )
 
 type Mode string
@@ -56,6 +58,10 @@ type Server struct {
 	port     int
 	pending  sync.Map // connection attempts: token -> cancel
 	startup  string   // session URL passed on the command line
+	tasks    *tasks.Scheduler
+	devsync  *devsync.Syncer
+	// changed tells the sync between devices that the settings changed
+	changed func()
 }
 
 // SetStartupURL makes the UI connect to url once it is loaded.
@@ -75,6 +81,20 @@ func (s *Server) takeStartupURL() string {
 
 func New(c *core.Core, opts Options) *Server {
 	s := &Server{core: c, opts: opts, mux: http.NewServeMux(), sessions: map[string]time.Time{}, attempts: map[string][]time.Time{}}
+	s.tasks = tasks.NewScheduler(c.Store, c.Bus)
+	s.tasks.Start()
+	c.OnShutdown(s.tasks.Close)
+	s.devsync = devsync.New(c.Store, c.Bus, c.HostKeys.Path)
+	changes := make(chan struct{}, 1)
+	s.changed = func() {
+		select {
+		case changes <- struct{}{}:
+		default:
+		}
+	}
+	unsub := c.Store.OnSitesChanged(s.changed)
+	stopSync := s.devsync.Start(changes)
+	c.OnShutdown(func() { unsub(); stopSync() })
 	s.registerRPC()
 	s.mux.HandleFunc("/api/rpc/", s.handleRPC)
 	s.mux.HandleFunc("/api/events", s.handleEvents)

@@ -7,6 +7,7 @@ package prompt
 import (
 	"context"
 	"errors"
+	"fmt"
 )
 
 type Kind string
@@ -98,3 +99,20 @@ func WithConn(p Prompter, conn string) Prompter {
 		return p.Prompt(ctx, req)
 	})
 }
+
+// Unattended answers what a run without a user may answer (overwrite, as
+// the operation decided) and refuses the rest with a message telling how
+// to avoid the question (scheduled tasks, sync between devices).
+var Unattended = Func(func(ctx context.Context, req Request) (Response, error) {
+	switch req.Kind {
+	case HostKey:
+		return Response{}, fmt.Errorf("the host key of %s is not known: connect once from Skiff to accept it", req.Details["host"])
+	case Password, KbdInteractive:
+		return Response{}, errors.New("a password is needed: save it in the site")
+	case Passphrase:
+		return Response{}, errors.New("the key needs its passphrase: save it in the site or use the Skiff keychain")
+	case Overwrite:
+		return Response{Choice: "overwrite", ApplyAll: true}, nil
+	}
+	return Response{}, ErrNoUser
+})

@@ -10,6 +10,9 @@ package main
 //   go test -tags integration . -run TestCLI -v
 
 import (
+	"skiff/internal/config"
+	"skiff/internal/tasks"
+
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
@@ -453,6 +456,34 @@ func TestCLIAgent(t *testing.T) {
 	c.env = append(c.env, "SSH_AUTH_SOCK="+sock)
 	if out, code := c.run("", script...); code != 0 || !strings.Contains(out, "/config") {
 		t.Errorf("open with the agent: %d %s", code, out)
+	}
+}
+
+// TestCLITask runs a scheduled task from the command line, as the system
+// scheduler would.
+func TestCLITask(t *testing.T) {
+	c := newCLI(t)
+	store, err := config.Open(filepath.Join(c.home, "config"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ts := tasks.OpenStore(store)
+	if _, err := ts.Save(tasks.Task{Name: "Lister la racine", Kind: "script", Enabled: true, Schedule: tasks.Schedule{Kind: "daily", At: "02:00"},
+		Script: "open sftp://skiff:skiff@127.0.0.1:2222/ -hostkey=*\nls /\nexit\n"}); err != nil {
+		t.Fatal(err)
+	}
+	if out, code := c.run("", "task", "list"); code != 0 || !strings.Contains(out, "Lister la racine") || !strings.Contains(out, "daily at 02:00") {
+		t.Errorf("list: %d %s", code, out)
+	}
+	out, code := c.run("", "task", "run", "lister la racine")
+	if code != 0 || !strings.Contains(out, "config") || !strings.Contains(out, "OK: Script finished") {
+		t.Errorf("run: %d %s", code, out)
+	}
+	if runs := tasks.OpenStore(store).Runs(""); len(runs) != 1 || runs[0].Trigger != "command line" || runs[0].Status != "ok" {
+		t.Errorf("history %+v", runs)
+	}
+	if _, code := c.run("", "task", "run", "absente"); code != 1 {
+		t.Errorf("unknown task: exit %d", code)
 	}
 }
 

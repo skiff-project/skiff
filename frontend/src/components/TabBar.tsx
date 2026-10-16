@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
-import { ArrowDownUp, Command, FileDiff, LogOut, Moon, Plus, Settings, SquareTerminal, Sun, X } from 'lucide-react'
+import { Activity, CalendarClock, ArrowDownUp, Command, FileDiff, LogOut, Moon, Plus, Settings, SquareTerminal, Sun, X } from 'lucide-react'
 import { get, set, useStore, type Tab } from '../lib/store'
-import { activate, closeTab, duplicateSession, moveTab, reconnect, savePrefs, setBottom } from '../lib/actions'
+import { activate, closeTab, duplicateSession, moveTab, reconnect, savePrefs, setBottom, terminalPanes } from '../lib/actions'
 import { showMenu } from './ui/Menu'
 import { t } from '../lib/i18n'
 import { FileIcon } from '../lib/fileicons'
@@ -20,6 +20,8 @@ function TabIcon({ tab }: { tab: Tab }) {
   if (tab.kind === 'editor') return <FileIcon entry={{ name: tab.title, isDir: false }} size={14} />
   if (tab.kind === 'terminal') return <SquareTerminal className="tab-svg" />
   if (tab.kind === 'diff') return <FileDiff className="tab-svg" />
+  if (tab.kind === 'monitor') return <Activity className="tab-svg" />
+  if (tab.kind === 'tasks') return <CalendarClock className="tab-svg" />
   return null
 }
 
@@ -62,7 +64,7 @@ export function TabBar() {
       <div className="tabstrip" ref={stripRef}>
         {tabs.map((tab, i) => {
           const isTerm = tab.kind === 'terminal'
-          const exited = isTerm && terminals[tab.termId]?.exited
+          const exited = isTerm && terminalPanes(tab).every((p) => terminals[p.termId]?.exited)
           return (
             <div
               key={tab.id}

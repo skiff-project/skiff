@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowRightLeft, Copy, CornerDownLeft, File, FileSearch, Folder, FolderPlus, GitCompareArrows, KeyRound, Link2, Moon, Network, Plug, Plus,
-  RefreshCcwDot, ScrollText, Server, Settings, SquareTerminal, Trash2, Upload, Zap, Eye, Download, Lock,
+  RefreshCcwDot, ScrollText, Server, Settings, SquareTerminal, Trash2, Upload, Zap, Eye, Download, Lock, Activity, Box, CalendarClock,
 } from 'lucide-react'
 import { activeSession, get, set, useStore } from '../lib/store'
-import { activate, connectSite, connectUrl, loadDir, openTerminal, savePrefs, setBottom, toggleSyncBrowsing, attachTerminalTab, openWorkspace, saveWorkspace } from '../lib/actions'
+import { activate, connectSite, connectUrl, loadDir, openMonitor, openTasks, openTerminal, savePrefs, setBottom, toggleSyncBrowsing, attachTerminalTab, openWorkspace, saveWorkspace } from '../lib/actions'
 import { prompt } from './dialogs/common'
 import { compareDirs, copyOrMove, deleteSelected, mkdir, newFile, terminalHere, openEntry } from '../lib/fileops'
 import { t } from '../lib/i18n'
@@ -13,6 +13,7 @@ import { openSyncDialog } from './dialogs/SyncDialog'
 import { openFindDialog } from './dialogs/FindDialog'
 import { openWatchDialog } from './dialogs/WatchDialog'
 import { openPreferences } from './dialogs/Preferences'
+import { openContainers } from './dialogs/ContainersDialog'
 import { openImportDialog } from './dialogs/ImportDialog'
 import { openKeygen } from './dialogs/KeygenDialog'
 import { openTunnelDialog } from './dialogs/TunnelDialog'
@@ -93,6 +94,7 @@ export function CommandPalette() {
     cmd('theme', t('toolbar.theme'), Moon, () => savePrefs({ theme: document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark' }))
     cmd('queue', t('toolbar.queue'), ArrowRightLeft, () => setBottom(true, 'queue'), 'F12')
     cmd('log', t('toolbar.log'), ScrollText, () => setBottom(true, 'log'))
+    cmd('tasks', t('tasks.title'), CalendarClock, () => openTasks())
     cmd('localterm', `${t('term.title')} (${t('common.local')})`, SquareTerminal, () => openTerminal('local'), undefined, !get().info?.localTerminal)
     if (s) {
       cmd('copy', t('fkey.copy'), Copy, () => copyOrMove(s.id, side, false), 'F5')
@@ -107,6 +109,8 @@ export function CommandPalette() {
       cmd('syncbrowse', t('toolbar.syncBrowsing'), Link2, () => toggleSyncBrowsing(s.id), 'Ctrl+B')
       cmd('term', t('toolbar.terminal'), SquareTerminal, () => terminalHere(s.id, side), 'Ctrl+T')
       cmd('tunnel', t('tunnel.new'), Network, () => openTunnelDialog(s.conn), undefined, !conns[s.conn]?.caps.tunnels)
+      cmd('monitor', t('mon.open'), Activity, () => openMonitor(s.conn), undefined, !conns[s.conn]?.caps.shell)
+      cmd('containers', t('ctr.ofServer'), Box, () => openContainers({ via: s.conn }), undefined, !conns[s.conn]?.caps.tunnels)
       cmd('hidden', t('toolbar.hidden'), Eye, () => savePrefs({ showHidden: !get().prefs?.showHidden }), 'Ctrl+Alt+H')
       // files in the current folder
       const p = s.panes[side]

@@ -17,6 +17,9 @@ const (
 	ProtoFTP    = "ftp"
 	ProtoWebDAV = "webdav"
 	ProtoS3     = "s3"
+	// ProtoContainer is a Docker or Podman container, or a Kubernetes pod,
+	// reached with "exec" on this computer or on an SSH server.
+	ProtoContainer = "container"
 )
 
 // Proxy settings (password stored encrypted).
@@ -84,6 +87,9 @@ type Site struct {
 	// IgnoreSSHConfig stops the OpenSSH configuration (~/.ssh/config)
 	// from completing the settings of this site.
 	IgnoreSSHConfig bool `json:"ignoreSshConfig,omitempty"`
+	// ForwardAgent lets the server use the keychain and agent keys
+	// (git, ssh to another host) while connected.
+	ForwardAgent bool `json:"forwardAgent,omitempty"`
 
 	// FTP
 	FTPS           string `json:"ftps,omitempty"` // none, explicit, implicit
@@ -104,6 +110,18 @@ type Site struct {
 	S3Region       string `json:"s3Region,omitempty"`
 	S3PathStyle    bool   `json:"s3PathStyle,omitempty"`
 	S3SessionToken string `json:"s3SessionToken,omitempty"` // encrypted
+
+	// Containers: Host is the container (or pod) name, User the user the
+	// commands run as.
+	ContainerRuntime string `json:"containerRuntime,omitempty"` // docker, podman, kubectl
+	ContainerCommand string `json:"containerCommand,omitempty"` // path of the runtime command
+	K8sContext       string `json:"k8sContext,omitempty"`
+	K8sNamespace     string `json:"k8sNamespace,omitempty"`
+	K8sContainer     string `json:"k8sContainer,omitempty"` // container of the pod
+	// ViaSite runs the runtime on that saved SSH site ("" = this computer);
+	// ViaConn on an open connection (sessions opened from it, not saved).
+	ViaSite string `json:"viaSite,omitempty"`
+	ViaConn string `json:"viaConn,omitempty"`
 
 	// Directories & environment
 	RemoteDir       string `json:"remoteDir,omitempty"`
@@ -167,6 +185,9 @@ func (s *Site) ApplyDefaults() {
 	if s.FTPS == "" {
 		s.FTPS = "none"
 	}
+	if s.Protocol == ProtoContainer && s.ContainerRuntime == "" {
+		s.ContainerRuntime = "docker"
+	}
 }
 
 // NewSite returns a site with defaults.
@@ -208,7 +229,22 @@ func (s *Site) URL(withPassword bool, plainPassword string) string {
 	case s.Protocol == ProtoWebDAV:
 		scheme = "dav"
 	}
+	if s.Protocol == ProtoContainer {
+		scheme = s.ContainerRuntime
+		if scheme == "" {
+			scheme = "docker"
+		}
+	}
 	u := url.URL{Scheme: scheme, Host: s.Host}
+	if s.Protocol == ProtoContainer {
+		q := url.Values{}
+		for k, v := range map[string]string{"namespace": s.K8sNamespace, "context": s.K8sContext, "container": s.K8sContainer} {
+			if v != "" {
+				q.Set(k, v)
+			}
+		}
+		u.RawQuery = q.Encode()
+	}
 	if s.Port != 0 && s.Port != DefaultPort(s) {
 		u.Host = s.Host + ":" + strconv.Itoa(s.Port)
 	}
@@ -273,6 +309,12 @@ func ParseURL(raw string) (Site, string, error) {
 		s.Protocol, s.TLS = ProtoS3, true
 	case "s3plain":
 		s.Protocol = ProtoS3
+	case "docker", "podman", "kubectl", "kube", "k8s":
+		// docker://container, podman://container, kubectl://namespace/pod
+		s.Protocol, s.ContainerRuntime = ProtoContainer, strings.ToLower(u.Scheme)
+		if s.ContainerRuntime == "kube" || s.ContainerRuntime == "k8s" {
+			s.ContainerRuntime = "kubectl"
+		}
 	default:
 		return s, "", fmt.Errorf("unknown protocol %q", u.Scheme)
 	}
@@ -293,6 +335,11 @@ func ParseURL(raw string) (Site, string, error) {
 	}
 	if s.Protocol == ProtoS3 && s.Host == "" {
 		s.Host = "s3.amazonaws.com"
+	}
+	if s.Protocol == ProtoContainer {
+		q := u.Query()
+		s.K8sNamespace, s.K8sContext, s.K8sContainer = q.Get("namespace"), q.Get("context"), q.Get("container")
+		s.Port = 0
 	}
 	s.ApplyDefaults()
 	return s, pass, nil
