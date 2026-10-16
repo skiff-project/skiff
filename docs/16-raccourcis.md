@@ -93,11 +93,14 @@ Pendant un glisser-déposer : `Ctrl` (ou `Alt`) force la copie, `Maj` force le d
 
 | Touche | Action |
 |---|---|
+| `Ctrl+C` | Copier la sélection ; sans sélection, interrompre le programme |
+| `Ctrl+V` | Coller |
 | `Ctrl+Maj+C` | Copier la sélection |
 | `Ctrl+Maj+V` | Coller |
+| Clic droit | Copier la sélection, ou coller s'il n'y en a pas |
 | `Ctrl+Maj+F` | Rechercher dans le terminal |
 
-Les autres touches sont envoyées au shell.
+`Ctrl+C` et `Ctrl+V` vont toujours au programme avec le réglage **Ctrl+Maj+C / Ctrl+Maj+V seulement**, et le clic droit ouvre un menu avec **Clic droit → Menu** ([§ 12.6](12-preferences.md#126-terminal)). Les autres touches sont envoyées au shell.
 
 ## 16.5 Liste des sites et palette
 

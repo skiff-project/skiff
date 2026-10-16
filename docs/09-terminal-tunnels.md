@@ -9,17 +9,47 @@ Pour les sessions SFTP et SCP, **Terminal** (`Ctrl+T`) ouvre un terminal SSH com
 ![Terminal SSH intégré](images/terminal-ssh.png)
 
 - Émulation xterm complète (xterm.js) : couleurs, 256 couleurs et vraies couleurs, souris, applications plein écran (`vim`, `htop`, `mc`, `tmux`…), redimensionnement automatique.
-- Barre d'outils : **Rechercher** dans le défilement (`Ctrl+Maj+F`), **Copier** la sélection (`Ctrl+Maj+C`), **Coller** (`Ctrl+Maj+V`), **Réduire la police** et **Agrandir la police** (de 9 à 28 px, pour ce terminal).
+- Barre d'outils : **Rechercher** dans le défilement (`Ctrl+Maj+F`), **Copier** la sélection, **Coller**, **Réduire la police** et **Agrandir la police** (de 9 à 28 px, pour ce terminal).
+- Copier-coller comme dans le Terminal Windows (voir [Copier, coller et clic droit](#copier-coller-et-clic-droit)).
 - Option **Copier à la sélection** (Préférences → Terminal) : sélectionner du texte le copie.
 - Le terminal continue de tourner quand vous changez d'onglet. Quand l'interface se recharge (par exemple en mode web), les 256 derniers Kio affichés sont restitués.
 - Quand le shell se termine, le terminal affiche « La session est terminée » et un bouton **Rouvrir**.
 - Avec le **transfert d'agent** activé dans le site, `git`, `ssh` et `scp` lancés dans le terminal utilisent vos clés (trousseau Skiff et agent), sans les copier sur le serveur (voir [§ 11.7](11-securite.md#117-trousseau-skiff-et-transfert-dagent)).
 
-Le shell est le shell de connexion de l'utilisateur (`$SHELL -l`). La police, sa taille, le nombre de lignes conservées, le curseur et la variable `TERM` se règlent dans **Préférences → Terminal**. Un terminal s'ouvre aussi depuis la liste des sites (**Ouvrir dans un terminal**), qui se connecte et ouvre le terminal en une seule étape.
+Le shell est le shell de connexion de l'utilisateur (`$SHELL -l`), sauf si vous en choisissez un autre (voir ci-dessous). La police, sa taille, le nombre de lignes conservées, le curseur et la variable `TERM` se règlent dans **Préférences → Terminal**. Un terminal s'ouvre aussi depuis la liste des sites (**Ouvrir dans un terminal**), qui se connecte et ouvre le terminal en une seule étape.
+
+### Choisir le shell ou l'interpréteur
+
+La flèche à droite du bouton **Terminal** (barre de la session) liste ce qui est installé sur le serveur, le conteneur ou l'ordinateur : les **Shells** (Bash, Zsh, Fish, Nushell, PowerShell, sh…) puis les **Interpréteurs** (Python, IPython, Node.js, Deno, Bun, Ruby, PHP, Lua, R). Le shell de connexion est marqué **par défaut**. Un clic ouvre le terminal dans le dossier courant du panneau, avec ce programme ; l'onglet porte son nom (par exemple « skiff@serveur · Python »).
+
+![Menu du bouton Terminal : shells et interpréteurs trouvés](images/terminal-shells.png)
+
+La liste est établie par une seule commande (`command -v`) à la première ouverture du menu, puis gardée une minute. Sur un serveur dont le shell n'est pas POSIX (serveur OpenSSH de Windows), seul son shell est proposé.
+
+Quand le programme se termine (`exit()` dans Python, `.exit` dans Node.js), le terminal affiche « La session est terminée » et **Rouvrir** relance le même programme, dans le même dossier.
+
+### Copier, coller et clic droit
+
+Comme dans le Terminal Windows et PowerShell :
+
+| Geste | Effet |
+|---|---|
+| `Ctrl+C` avec une sélection | Copie la sélection (qui disparaît) |
+| `Ctrl+C` sans sélection | Interrompt le programme, comme d'habitude |
+| `Ctrl+V` | Colle |
+| `Ctrl+Maj+C`, `Ctrl+Maj+V` | Copient et collent toujours |
+| Clic droit avec une sélection | Copie la sélection |
+| Clic droit sans sélection | Colle |
+
+Sur macOS, `Cmd+C` et `Cmd+V` font de même. Si vous préférez que `Ctrl+C` et `Ctrl+V` aillent toujours au programme (par exemple pour `Ctrl+V` dans `vim` ou `nano`), choisissez **Ctrl+Maj+C / Ctrl+Maj+V seulement** dans **Préférences → Terminal**. Le réglage **Clic droit → Menu** remplace le collage par un menu : **Copier**, **Coller**, **Tout sélectionner**, **Effacer**, **Rechercher**, **Diviser à droite**, **Diviser en bas**.
+
+![Menu du clic droit dans le terminal](images/terminal-menu.png)
+
+En [mode web](14-mode-web.md) sur une adresse `http://` autre que `localhost`, le navigateur interdit à la page de lire le presse-papiers : `Ctrl+V` colle toujours, mais pas le clic droit ni le bouton **Coller** (un message le rappelle). Servez Skiff en HTTPS pour les retrouver.
 
 ### Plusieurs terminaux dans un onglet
 
-**Diviser à droite** et **Diviser en bas** (barre du terminal) ajoutent un terminal à l'onglet, sur le même serveur (dans le même dossier) ou sur une autre connexion ouverte, voire l'ordinateur local. Deux terminaux se partagent l'onglet côte à côte ou l'un au-dessus de l'autre, trois ou quatre en grille. Chacun a son en-tête (connexion, dossier courant, **Fermer ce terminal**) ; celui qui a le clavier est entouré de la couleur d'accent.
+**Diviser à droite** et **Diviser en bas** (barre du terminal) ajoutent un terminal à l'onglet, sur le même serveur (dans le même dossier, avec le même shell) ou sur une autre connexion ouverte, voire l'ordinateur local. La flèche à droite de chaque connexion ouvre un autre shell ou un interpréteur de celle-ci. Deux terminaux se partagent l'onglet côte à côte ou l'un au-dessus de l'autre, trois ou quatre en grille. Chacun a son en-tête (connexion, dossier courant, **Fermer ce terminal**) ; celui qui a le clavier est entouré de la couleur d'accent.
 
 ![Deux terminaux côte à côte, saisie diffusée](images/terminal-divise.png)
 
@@ -40,12 +70,14 @@ Le terminal connaît le dossier courant du shell quand celui-ci l'annonce (séqu
 
 ## 9.2 Terminal local
 
-**Terminal local**, sur l'écran d'accueil ou dans la palette (`Ctrl+K` → « Terminal (Local) »), ouvre un terminal sur l'ordinateur ; **Ouvrir un terminal ici** dans le panneau local l'ouvre dans le dossier affiché.
+**Terminal local**, sur l'écran d'accueil ou dans la palette (`Ctrl+K` → « Terminal (Local) »), ouvre un terminal sur l'ordinateur ; **Ouvrir un terminal ici** dans le panneau local l'ouvre dans le dossier affiché. La palette propose aussi chaque shell et interpréteur installé (« Terminal local : Python »…), et la flèche du bouton **Terminal** du panneau local les liste comme pour un serveur.
 
-| Système | Shell |
-|---|---|
-| Linux, macOS, FreeBSD | `$SHELL` (pseudo-terminal) |
-| Windows | PowerShell 7 (`pwsh.exe`) s'il est installé, sinon Windows PowerShell, via ConPTY |
+| Système | Shell par défaut | Aussi proposés s'ils sont installés |
+|---|---|---|
+| Linux, macOS, FreeBSD | `$SHELL` (pseudo-terminal) | Bash, Zsh, Fish, Nushell, Korn shell, PowerShell, sh, et les interpréteurs |
+| Windows | PowerShell 7 (`pwsh.exe`), sinon Windows PowerShell, via ConPTY | Invite de commandes (`cmd`), Git Bash, chaque distribution WSL (« Ubuntu (WSL) »), Python (`py`), Node.js… |
+
+Le shell par défaut des terminaux locaux se change dans **Préférences → Terminal → Shell des terminaux locaux**.
 
 En [mode web](14-mode-web.md), le terminal local est désactivé, sauf avec l'option `--allow-local-terminal`.
 

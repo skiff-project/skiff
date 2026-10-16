@@ -95,6 +95,9 @@ Les options de transfert par défaut, identiques à celles de la [boîte de tran
 | **TERM** | Type de terminal annoncé au serveur (`xterm-256color`) |
 | **Curseur clignotant** | |
 | **Copier à la sélection** | Copie le texte dès qu'il est sélectionné |
+| **Copier et coller** | **Ctrl+C / Ctrl+V** (par défaut) : `Ctrl+C` copie la sélection, et sans sélection interrompt le programme ; `Ctrl+V` colle. **Ctrl+Maj+C / Ctrl+Maj+V seulement** : `Ctrl+C` et `Ctrl+V` vont toujours au programme. `Ctrl+Maj+C` et `Ctrl+Maj+V` marchent dans les deux cas ([§ 9.1](09-terminal-tunnels.md#copier-coller-et-clic-droit)). |
+| **Clic droit** | **Copier ou coller (comme PowerShell)** (par défaut) : copie la sélection, colle s'il n'y en a pas. **Menu** : ouvre un menu (copier, coller, tout sélectionner, effacer, rechercher, diviser). |
+| **Shell des terminaux locaux** | **Automatique** (le shell de connexion, PowerShell sous Windows) ou l'un des shells et interpréteurs trouvés sur l'ordinateur ([§ 9.2](09-terminal-tunnels.md#92-terminal-local)). Absent quand le terminal local est désactivé (mode web). |
 | **Commandes enregistrées** | Nom, commande et **Exécuter** (appuyer aussi sur Entrée) des commandes du bouton **Commandes enregistrées** du terminal ([§ 9.1](09-terminal-tunnels.md#91-terminal-ssh)). **Ajouter** en crée une, la corbeille la supprime. |
 
 ## 12.7 SSH

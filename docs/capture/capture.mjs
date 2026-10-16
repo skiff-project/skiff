@@ -625,6 +625,34 @@ scene('terminal-divise', async () => {
   await page.locator('.tab.active .tab-close').click()
 })
 
+scene('terminal-shells', async () => {
+  await openTab('Site vitrine')
+  await activeSide(0)
+  await tip('Choisir le shell ou l’interpréteur').click()
+  await page.locator('.menu-label', { hasText: 'Shells' }).waitFor()
+  await shot('terminal-shells')
+  await page.keyboard.press('Escape')
+})
+
+scene('terminal-menu', async () => {
+  const prefs = await rpc('prefs.get')
+  await rpc('prefs.set', { ...prefs, terminal: { ...prefs.terminal, rightClick: 'menu' } })
+  await openTab('Site vitrine')
+  await row(1, 'index.html').click()
+  await tip('Ouvrir un terminal').click()
+  await V('.xterm').waitFor()
+  await sleep(1500)
+  await page.keyboard.type('ls -la --color=always\n')
+  await sleep(1000)
+  const box = await V('.term-host').first().boundingBox()
+  await page.mouse.click(box.x + 420, box.y + 110, { button: 'right' })
+  await page.locator('.menu-item', { hasText: 'Tout sélectionner' }).waitFor()
+  await shot('terminal-menu')
+  await page.keyboard.press('Escape')
+  await rpc('prefs.set', { ...(await rpc('prefs.get')), terminal: prefs.terminal })
+  await page.locator('.tab.active .tab-close').click()
+})
+
 scene('moniteur', async () => {
   await openTab('Site vitrine')
   await tip('Moniteur du serveur').click()
