@@ -87,6 +87,7 @@ func cmdGUI(args []string) int {
 		fmt.Println("Skiff UI:", u)
 		select {}
 	}
+	installDesktopEntry(store.Portable)
 	err = desktop.Run(desktop.Options{
 		URL:     u,
 		Title:   "Skiff",

@@ -90,6 +90,29 @@ func testKeychain(t *testing.T, e *e2e) {
 			t.Errorf("log:\n%s", l)
 		}
 	})
+	t.Run("forwardingThroughJump", func(t *testing.T) {
+		// the bastion logs in with the keychain too; the agent goes to the
+		// final server only, like ssh -A -J
+		bastion := site
+		bastion.ID, bastion.Name, bastion.ForwardAgent = "", "Bastion du trousseau", false
+		b := e.saveSite(t, bastion, "")
+		behind := site
+		behind.ID, behind.Name, behind.Host, behind.ForwardAgent = "", "Derrière le bastion", "localhost", true // localhost: as seen from the bastion
+		behind.Jumps = []config.Jump{{SiteID: b.ID}}
+		c := e.open(t, e.saveSite(t, behind, "").ID)
+		var term termInfo
+		e.must(t, "term.open", map[string]any{"conn": c.ID, "cols": 120, "rows": 30}, &term)
+		send, wait, done := e.termSession(t, term.ID)
+		defer done()
+		send("ssh-add -l; echo FIN-$((40+6))\n")
+		if out := wait("FIN-46"); !strings.Contains(out, g.Fingerprint) || !strings.Contains(out, g2.Fingerprint) {
+			t.Errorf("agent not forwarded through the jump host:\n%s", out)
+		}
+		e.must(t, "term.close", map[string]string{"id": term.ID}, nil)
+		if l := logOf(c.ID); !strings.Contains(l, "through jump host") || !strings.Contains(l, "SSH agent forwarded") {
+			t.Errorf("log:\n%s", l)
+		}
+	})
 	t.Run("noForwarding", func(t *testing.T) {
 		site.ForwardAgent = false
 		c := e.open(t, e.saveSite(t, site, "").ID)
