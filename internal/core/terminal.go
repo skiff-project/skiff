@@ -90,8 +90,43 @@ func (c *Core) OpenTerminal(conn string, cols, rows int, cwd string) (*Terminal,
 			return nil, err
 		}
 		s := cn.SSH()
+		if s == nil && cn.container != nil {
+			// a shell inside the container
+			shell := "command -v bash >/dev/null 2>&1 && exec bash || exec sh"
+			if cwd != "" {
+				shell = "cd " + vfs.ShellQuote(cwd) + " 2>/dev/null; " + shell
+			}
+			argv := append(execArgv(cn.site, true), "sh", "-c", shell)
+			if h := cn.container; h.ssh != nil {
+				s = h.ssh
+				title = cn.Title
+				sess, err := s.NewSession()
+				if err != nil {
+					return nil, err
+				}
+				modes := ssh.TerminalModes{ssh.ECHO: 1, ssh.TTY_OP_ISPEED: 115200, ssh.TTY_OP_OSPEED: 115200}
+				if err := sess.RequestPty(term, rows, cols, modes); err != nil {
+					sess.Close()
+					return nil, err
+				}
+				in, _ := sess.StdinPipe()
+				out, _ := sess.StdoutPipe()
+				if err := sess.Start(shellLine(argv)); err != nil {
+					sess.Close()
+					return nil, err
+				}
+				be = &sshPty{sess: sess, in: in, out: out}
+			} else {
+				lp, err := startLocalPtyCmd(cols, rows, "", term, argv)
+				if err != nil {
+					return nil, err
+				}
+				be, title = lp, cn.Title
+			}
+			return c.addTerminal(conn, title, be, nil), nil
+		}
 		if s == nil {
-			return nil, errors.New("terminals are only available for SFTP and SCP connections")
+			return nil, errors.New("terminals are only available for SFTP, SCP and container connections")
 		}
 		title = cn.Title
 		sess, err := s.NewSession()
@@ -102,6 +137,9 @@ func (c *Core) OpenTerminal(conn string, cols, rows int, cwd string) (*Terminal,
 			if sess, err = s.NewSession(); err != nil {
 				return nil, err
 			}
+		}
+		if err := s.RequestAgentForwarding(sess); err != nil {
+			cn.log.Warnf("Agent forwarding refused by the server: %v", err)
 		}
 		modes := ssh.TerminalModes{ssh.ECHO: 1, ssh.TTY_OP_ISPEED: 115200, ssh.TTY_OP_OSPEED: 115200}
 		if err := sess.RequestPty(term, rows, cols, modes); err != nil {
@@ -132,6 +170,11 @@ func (c *Core) OpenTerminal(conn string, cols, rows int, cwd string) (*Terminal,
 		be = &sshPty{sess: sess, in: in, out: out}
 		stderr = errp
 	}
+	return c.addTerminal(conn, title, be, stderr), nil
+}
+
+// addTerminal registers a started terminal and pumps its output.
+func (c *Core) addTerminal(conn, title string, be ptyBackend, stderr io.Reader) *Terminal {
 	t := &Terminal{ID: randID(6), Conn: conn, Title: title, Created: time.Now(), be: be, subs: map[int]chan []byte{}, core: c}
 	c.terms.mu.Lock()
 	c.terms.m[t.ID] = t
@@ -152,7 +195,7 @@ func (c *Core) OpenTerminal(conn string, cols, rows int, cwd string) (*Terminal,
 		}()
 	}
 	c.Bus.Publish("term.update", t.info())
-	return t, nil
+	return t
 }
 
 func (t *Terminal) info() Terminal {

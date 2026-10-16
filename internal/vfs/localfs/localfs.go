@@ -250,6 +250,23 @@ func (l *FS) Create(ctx context.Context, p string, opt vfs.CreateOpts) (io.Write
 	return os.OpenFile(rp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode)
 }
 
+// WriteAt opens an existing file for writing at offset (segmented transfers).
+func (l *FS) WriteAt(ctx context.Context, p string, offset int64) (io.WriteCloser, error) {
+	rp, err := l.resolve(p)
+	if err != nil {
+		return nil, err
+	}
+	f, err := os.OpenFile(rp, os.O_WRONLY, 0)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := f.Seek(offset, io.SeekStart); err != nil {
+		f.Close()
+		return nil, err
+	}
+	return f, nil
+}
+
 func (l *FS) Mkdir(ctx context.Context, p string) error {
 	rp, err := l.resolve(p)
 	if err != nil {

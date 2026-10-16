@@ -35,6 +35,10 @@ type Options struct {
 	RetryCount       int    `json:"retryCount,omitempty"`
 	RetryDelay       int    `json:"retryDelay,omitempty"`
 	ContinueOnError  bool   `json:"continueOnError,omitempty"`
+	// SegmentSize > 0 splits files of at least that many bytes into
+	// Segments parts copied in parallel (SFTP, each part on its own channel).
+	SegmentSize int64 `json:"segmentSize,omitempty"`
+	Segments    int   `json:"segments,omitempty"`
 	// EOL of each side for text mode ("LF"/"CRLF"), filled in by the core.
 	SrcEOL string `json:"srcEol,omitempty"`
 	DstEOL string `json:"dstEol,omitempty"`
@@ -86,38 +90,41 @@ type FileError struct {
 }
 
 type Active struct {
-	Name  string `json:"name"`
-	Size  int64  `json:"size"`
-	Done  int64  `json:"done"`
+	Name  string  `json:"name"`
+	Size  int64   `json:"size"`
+	Done  int64   `json:"done"`
 	Speed float64 `json:"speed"`
+	Parts int     `json:"parts,omitempty"` // segments copied in parallel
 }
 
 // Snapshot is the public state of a job.
 type Snapshot struct {
-	ID          string      `json:"id"`
-	Label       string      `json:"label"`
-	Src         string      `json:"src"`
-	Dst         string      `json:"dst"`
-	SrcTitle    string      `json:"srcTitle"`
-	DstTitle    string      `json:"dstTitle"`
-	DstDir      string      `json:"dstDir"`
-	Move        bool        `json:"move"`
-	Status      Status      `json:"status"`
-	Created     time.Time   `json:"created"`
-	Started     time.Time   `json:"started,omitempty"`
-	Finished    time.Time   `json:"finished,omitempty"`
-	TotalBytes  int64       `json:"totalBytes"`
-	DoneBytes   int64       `json:"doneBytes"`
-	TotalFiles  int         `json:"totalFiles"`
-	DoneFiles   int         `json:"doneFiles"`
-	FailedFiles int         `json:"failedFiles"`
-	SkippedFiles int        `json:"skippedFiles"`
-	Speed       float64     `json:"speed"`
-	ETA         float64     `json:"eta"`
-	Active      []Active    `json:"active"`
-	Error       string      `json:"error,omitempty"`
-	Errors      []FileError `json:"errors,omitempty"`
-	Paths       []string    `json:"paths"`
+	ID           string    `json:"id"`
+	Label        string    `json:"label"`
+	Src          string    `json:"src"`
+	Dst          string    `json:"dst"`
+	SrcTitle     string    `json:"srcTitle"`
+	DstTitle     string    `json:"dstTitle"`
+	DstDir       string    `json:"dstDir"`
+	Move         bool      `json:"move"`
+	Status       Status    `json:"status"`
+	Created      time.Time `json:"created"`
+	Started      time.Time `json:"started,omitempty"`
+	Finished     time.Time `json:"finished,omitempty"`
+	TotalBytes   int64     `json:"totalBytes"`
+	DoneBytes    int64     `json:"doneBytes"`
+	TotalFiles   int       `json:"totalFiles"`
+	DoneFiles    int       `json:"doneFiles"`
+	FailedFiles  int       `json:"failedFiles"`
+	SkippedFiles int       `json:"skippedFiles"`
+	// SegmentedFiles counts the files copied in parallel parts.
+	SegmentedFiles int         `json:"segmentedFiles,omitempty"`
+	Speed          float64     `json:"speed"`
+	ETA            float64     `json:"eta"`
+	Active         []Active    `json:"active"`
+	Error          string      `json:"error,omitempty"`
+	Errors         []FileError `json:"errors,omitempty"`
+	Paths          []string    `json:"paths"`
 }
 
 // Resolver gives the engine access to connections.

@@ -110,6 +110,7 @@ func (c *Core) resolveSSH(site config.Site, depth int) (*sshSetup, error) {
 		target: sshx.Target{
 			Host: site.Host, Port: site.Port, User: site.User, Password: site.Password, Passphrase: site.Passphrase,
 			UseAgent: site.UseAgent, KbdInteractive: site.KbdInteractive, HostKey: site.HostKey,
+			ForwardAgent: site.ForwardAgent,
 		},
 		proxy:     proxyConfig(site),
 		timeout:   seconds(site.Timeout, defaultTimeout),
@@ -320,6 +321,12 @@ func (c *Core) applyConnection(s *sshSetup, site config.Site, cfg *sshconfig.Con
 	}
 	if h.Has("ProxyUseFdpass") {
 		st["proxyusefdpass"] = "ignored"
+	}
+	if v, set := h.Bool("ForwardAgent"); set {
+		mark("ForwardAgent", !site.ForwardAgent)
+		if !site.ForwardAgent {
+			s.target.ForwardAgent = v
+		}
 	}
 	if n, ok := h.Int("ConnectTimeout"); ok && n > 0 {
 		free := site.Timeout == 0 || site.Timeout == defaultTimeout

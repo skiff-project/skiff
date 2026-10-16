@@ -24,6 +24,9 @@ type Manager struct {
 	wake        chan struct{}
 	stop        chan struct{}
 	Logf        func(format string, args ...any)
+	// ConnLogf, when set, also writes the job messages to the log of the
+	// source and destination connections.
+	ConnLogf func(conn, format string, args ...any)
 }
 
 func NewManager(res Resolver, pub Publisher, pr prompt.Prompter, maxParallel int) *Manager {

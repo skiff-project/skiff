@@ -21,7 +21,10 @@ type Store struct {
 	sites   sitesFile
 	prefs   Prefs
 	certs   map[string][]string // host -> trusted SHA-256 fingerprints
-	onSites []func()
+	keys    []KeychainKey
+	tombs   map[string]time.Time // deletions, for the sync between devices
+	onSites map[int]func()
+	nextFn  int
 }
 
 type sitesFile struct {
@@ -57,6 +60,8 @@ func Open(dir string, portable bool) (*Store, error) {
 	if data, err := os.ReadFile(s.path("trusted_certs.json")); err == nil {
 		json.Unmarshal(data, &s.certs)
 	}
+	s.loadKeychain()
+	s.loadTombstones()
 	return s, nil
 }
 
@@ -68,7 +73,23 @@ func (s *Store) KnownHostsPath() string { return s.path("known_hosts") }
 // LogDir is where session logs are written.
 func (s *Store) LogDir() string { return s.path("logs") }
 
-func (s *Store) OnSitesChanged(fn func()) { s.onSites = append(s.onSites, fn) }
+// OnSitesChanged calls fn after each change of the sites; the returned
+// function stops it.
+func (s *Store) OnSitesChanged(fn func()) func() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.onSites == nil {
+		s.onSites = map[int]func(){}
+	}
+	s.nextFn++
+	id := s.nextFn
+	s.onSites[id] = fn
+	return func() {
+		s.mu.Lock()
+		delete(s.onSites, id)
+		s.mu.Unlock()
+	}
+}
 
 func (s *Store) saveSitesLocked() error {
 	sort.SliceStable(s.sites.Sites, func(i, j int) bool {
@@ -245,12 +266,16 @@ func (s *Store) DeleteSites(ids []string) error {
 		del[id] = true
 	}
 	out := s.sites.Sites[:0]
+	var gone []string
 	for _, st := range s.sites.Sites {
 		if !del[st.ID] {
 			out = append(out, st)
+		} else {
+			gone = append(gone, "site:"+st.ID)
 		}
 	}
 	s.sites.Sites = out
+	s.buryLocked(gone...)
 	return s.saveSitesLocked()
 }
 
@@ -265,6 +290,7 @@ func (s *Store) MoveSites(ids []string, folder string) error {
 	for i := range s.sites.Sites {
 		if set[s.sites.Sites[i].ID] {
 			s.sites.Sites[i].Folder = folder
+			s.sites.Sites[i].Updated = time.Now()
 		}
 	}
 	return s.saveSitesLocked()
@@ -325,12 +351,19 @@ func (s *Store) RenameFolder(from, to string) error {
 		}
 		return f
 	}
+	var gone []string
 	for i := range s.sites.Folders {
-		s.sites.Folders[i] = re(s.sites.Folders[i])
+		if n := re(s.sites.Folders[i]); n != s.sites.Folders[i] {
+			gone = append(gone, "folder:"+s.sites.Folders[i])
+			s.sites.Folders[i] = n
+		}
 	}
 	for i := range s.sites.Sites {
-		s.sites.Sites[i].Folder = re(s.sites.Sites[i].Folder)
+		if n := re(s.sites.Sites[i].Folder); n != s.sites.Sites[i].Folder {
+			s.sites.Sites[i].Folder, s.sites.Sites[i].Updated = n, time.Now()
+		}
 	}
+	s.buryLocked(gone...)
 	return s.saveSitesLocked()
 }
 
@@ -344,10 +377,12 @@ func (s *Store) DeleteFolder(name string, withSites bool) error {
 		parent = name[:i]
 	}
 	in := func(f string) bool { return f == name || strings.HasPrefix(f, name+"/") }
-	var folders []string
+	var folders, gone []string
 	for _, f := range s.sites.Folders {
 		if !in(f) {
 			folders = append(folders, f)
+		} else {
+			gone = append(gone, "folder:"+f)
 		}
 	}
 	s.sites.Folders = folders
@@ -355,12 +390,15 @@ func (s *Store) DeleteFolder(name string, withSites bool) error {
 	for _, st := range s.sites.Sites {
 		if in(st.Folder) {
 			if withSites {
+				gone = append(gone, "site:"+st.ID)
 				continue
 			}
 			st.Folder = parent
+			st.Updated = time.Now()
 		}
 		out = append(out, st)
 	}
+	s.buryLocked(gone...)
 	s.sites.Sites = out
 	return s.saveSitesLocked()
 }
@@ -432,8 +470,18 @@ func (s *Store) ReencryptAll(decrypt func(string) (string, error), encrypt func(
 			}
 		}
 	}
+	keys := append([]KeychainKey(nil), s.keys...)
+	for i := range keys {
+		if err := conv(&keys[i].Private); err != nil {
+			return err
+		}
+	}
 	s.sites.Sites = sites
-	return s.saveSitesLocked()
+	if err := s.saveSitesLocked(); err != nil {
+		return err
+	}
+	s.keys = keys
+	return s.saveKeychainLocked()
 }
 
 // SetMasterPassword changes the master password and re-encrypts secrets.

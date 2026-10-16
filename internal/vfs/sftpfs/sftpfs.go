@@ -313,6 +313,19 @@ func (f *FS) Create(ctx context.Context, p string, opt vfs.CreateOpts) (io.Write
 	return writer{fh}, nil
 }
 
+// WriteAt opens an existing file for writing at offset (segmented transfers).
+func (f *FS) WriteAt(ctx context.Context, p string, offset int64) (io.WriteCloser, error) {
+	fh, err := f.client.OpenFile(p, os.O_WRONLY)
+	if err != nil {
+		return nil, vfs.WrapErr("open", p, err)
+	}
+	if _, err := fh.Seek(offset, io.SeekStart); err != nil {
+		fh.Close()
+		return nil, err
+	}
+	return writer{fh}, nil
+}
+
 func (f *FS) Mkdir(ctx context.Context, p string) error {
 	return vfs.WrapErr("mkdir", p, f.client.Mkdir(p))
 }

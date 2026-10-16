@@ -49,7 +49,7 @@ Host cfg-*
 
 Host cfg-direct
     ServerAliveInterval 7
-    ForwardAgent yes
+    Compression yes
 
 Host cfg-jump
     ProxyJump cfg-direct
@@ -194,7 +194,7 @@ Host cfg-proxycmd
 		for _, o := range r.Options {
 			st[o.Key], src[o.Key] = o.Status, o.Source
 		}
-		if !r.Enabled || r.Host != "127.0.0.1" || r.Port != 2222 || r.User != "someone" || st["User"] != "site" || st["HostName"] != "applied" || st["ForwardAgent"] != "ignored" {
+		if !r.Enabled || r.Host != "127.0.0.1" || r.Port != 2222 || r.User != "someone" || st["User"] != "site" || st["HostName"] != "applied" || st["Compression"] != "ignored" {
 			t.Errorf("report %+v", r)
 		}
 		if !strings.HasPrefix(src["HostName"], "~/.ssh/config:") || !strings.HasSuffix(src["ConnectTimeout"], "ssh_config:2") {

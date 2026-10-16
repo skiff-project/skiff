@@ -40,6 +40,8 @@ type Core struct {
 	edits    *externalEdits
 
 	localWatch localWatch
+	monitor    monitorState
+	onShutdown []func()
 	finds      sync.Map // id -> context.CancelFunc
 }
 
@@ -67,11 +69,16 @@ func New(store *config.Store, opts Options) *Core {
 	}
 	prefs := store.Prefs()
 	c.Transfers = transfer.NewManager(c, bus, c.Prompter, prefs.Queue.MaxParallel)
+	c.Transfers.ConnLogf = func(conn, format string, args ...any) {
+		if cn, err := c.Conn(conn); err == nil {
+			cn.log.Logf(format, args...)
+		}
+	}
 	c.terms = newTerminals(c)
 	c.tunnels = newTunnels(c)
 	c.watchers = newWatchers(c)
 	c.edits = newExternalEdits(c)
-	store.OnSitesChanged(func() { bus.Publish("sites.changed", nil) })
+	c.OnShutdown(store.OnSitesChanged(func() { bus.Publish("sites.changed", nil) }))
 	return c
 }
 
@@ -85,6 +92,8 @@ type Conn struct {
 	site config.Site // resolved, secrets in plain text (memory only)
 	// forwards started with the session: the site's, else ssh_config's
 	forwards []config.Forward
+	// where the runtime of a container session runs
+	container *containerHost
 	// host, port and user really used (ssh_config may change them)
 	host string
 	port int
@@ -269,7 +278,7 @@ func (conn *Conn) open(ctx context.Context) error {
 		info = in.Info()
 	}
 	conn.mu.Lock()
-	conn.fs, conn.ssh, conn.tunnel = d.fs, d.ssh, d.tunnel
+	conn.fs, conn.ssh, conn.tunnel, conn.container = d.fs, d.ssh, d.tunnel, d.container
 	conn.caps = d.fs.Caps()
 	conn.home = home
 	conn.info = info
@@ -547,7 +556,22 @@ func (c *Core) EOL(id string) string {
 }
 
 // Shutdown closes everything.
+// OnShutdown registers a function run by Shutdown (before the connections
+// close).
+func (c *Core) OnShutdown(f func()) {
+	c.mu.Lock()
+	c.onShutdown = append(c.onShutdown, f)
+	c.mu.Unlock()
+}
+
 func (c *Core) Shutdown() {
+	c.mu.Lock()
+	hooks := c.onShutdown
+	c.onShutdown = nil
+	c.mu.Unlock()
+	for _, f := range hooks {
+		f()
+	}
 	c.Transfers.Close()
 	c.closeLocalWatch()
 	c.mu.Lock()

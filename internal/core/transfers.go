@@ -14,7 +14,7 @@ func (c *Core) DefaultTransferOptions(src, dst string) transfer.Options {
 		ResumeThreshold: t.ResumeThreshold, FileMask: t.FileMask, SpeedLimit: t.SpeedLimit, CaseMode: t.CaseMode,
 		Verify: t.Verify, ExcludeHidden: t.ExcludeHidden, ReplaceInvalid: t.ReplaceInvalid,
 		IgnorePermErrors: t.IgnorePermErrors, RetryCount: p.Queue.RetryCount, RetryDelay: p.Queue.RetryDelay,
-		ContinueOnError: p.Queue.ContinueOnError,
+		ContinueOnError: p.Queue.ContinueOnError, SegmentSize: p.Queue.SegmentSize, Segments: p.Queue.Segments,
 	}
 	if !p.ConfirmOverwrite && o.Overwrite == "ask" {
 		o.Overwrite = "overwrite"

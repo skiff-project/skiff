@@ -22,6 +22,7 @@ Usage:
   skiff shell [session-url]        interactive console
   skiff keygen [flags]             generate (or -convert) an SSH key pair (OpenSSH or PuTTY .ppk)
   skiff import <source> [file]     import sessions (winscp-ini, winscp-registry, putty, filezilla, ssh-config)
+  skiff task list | run <name>     list the scheduled tasks, or run one now (for the system scheduler)
   skiff version                    print the version
 
 WinSCP compatibility:
@@ -29,7 +30,7 @@ WinSCP compatibility:
   skiff /command "open sftp://..." "get *.txt" "exit"
 
 Session URLs: sftp://user@host:22/path, scp://, ftp://, ftps:// (implicit),
-ftpes:// (explicit TLS), dav://, davs://, s3://
+ftpes:// (explicit TLS), dav://, davs://, s3://, docker://, podman://, kubectl://
 
 Run "skiff <command> -h" for the flags of a command.
 `
@@ -55,6 +56,8 @@ func main() {
 		code = cmdKeygen(args[1:])
 	case "import":
 		code = cmdImport(args[1:])
+	case "task", "tasks":
+		code = cmdTask(args[1:])
 	case "version", "--version", "-v":
 		fmt.Printf("skiff %s\n", version)
 	case "help", "--help", "-h":

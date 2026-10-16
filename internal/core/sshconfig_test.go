@@ -50,6 +50,7 @@ Host app
     PasswordAuthentication no
     PreferredAuthentications publickey,keyboard-interactive
     ForwardAgent yes
+    Compression yes
 
 Host bastion
     HostName bastion.example.com
@@ -99,6 +100,9 @@ func TestSSHConfigFillsEmptySettings(t *testing.T) {
 	if s.timeout != 4*time.Second || s.keepalive != 11*time.Second || s.keepaliveCount != 5 || s.ipVersion != "4" {
 		t.Errorf("connection: %v %v %d %s", s.timeout, s.keepalive, s.keepaliveCount, s.ipVersion)
 	}
+	if !tg.ForwardAgent {
+		t.Error("ForwardAgent yes not applied")
+	}
 	if !reflect.DeepEqual(s.ciphers, []string{"aes256-gcm@openssh.com"}) {
 		t.Errorf("ciphers %v", s.ciphers)
 	}
@@ -106,7 +110,7 @@ func TestSSHConfigFillsEmptySettings(t *testing.T) {
 		t.Errorf("forwards %+v", s.forwards)
 	}
 	st := statuses(s.report)
-	for k, want := range map[string]string{"HostName": "applied", "Port": "applied", "IdentityFile": "applied", "ProxyJump": "applied", "ForwardAgent": "ignored", "LocalForward": "applied"} {
+	for k, want := range map[string]string{"HostName": "applied", "Port": "applied", "IdentityFile": "applied", "ProxyJump": "applied", "ForwardAgent": "applied", "Compression": "ignored", "LocalForward": "applied"} {
 		if st[k] != want {
 			t.Errorf("%s: %s, want %s", k, st[k], want)
 		}

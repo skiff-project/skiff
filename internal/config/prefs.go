@@ -23,14 +23,17 @@ type TransferPrefs struct {
 }
 
 type QueuePrefs struct {
-	MaxParallel     int   `json:"maxParallel"`
-	Background      bool  `json:"background"`
-	AutoPopup       bool  `json:"autoPopup"`
-	RetryCount      int   `json:"retryCount"`
-	RetryDelay      int   `json:"retryDelay"` // seconds
-	ContinueOnError bool  `json:"continueOnError"`
-	Notify          bool  `json:"notify"`
-	SegmentSize     int64 `json:"segmentSize"` // parallel chunks for big SFTP files (bytes); 0 = off
+	MaxParallel     int  `json:"maxParallel"`
+	Background      bool `json:"background"`
+	AutoPopup       bool `json:"autoPopup"`
+	RetryCount      int  `json:"retryCount"`
+	RetryDelay      int  `json:"retryDelay"` // seconds
+	ContinueOnError bool `json:"continueOnError"`
+	Notify          bool `json:"notify"`
+	// Big SFTP files (at least SegmentSize bytes, 0 = off) are copied in
+	// Segments parts at the same time.
+	SegmentSize int64 `json:"segmentSize"`
+	Segments    int   `json:"segments"`
 }
 
 type EditorPrefs struct {
@@ -57,6 +60,25 @@ type TerminalPrefs struct {
 	CursorBlink  bool   `json:"cursorBlink"`
 	CopyOnSelect bool   `json:"copyOnSelect"`
 	Term         string `json:"term"`
+	// Snippets are saved commands typed into a terminal from its toolbar.
+	Snippets []Snippet `json:"snippets"`
+}
+
+// Snippet is a saved terminal command; Run also presses Enter.
+type Snippet struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Command string `json:"command"`
+	Run     bool   `json:"run"`
+}
+
+func defaultSnippets() []Snippet {
+	return []Snippet{
+		{ID: "df", Name: "Disk space", Command: "df -h", Run: true},
+		{ID: "free", Name: "Memory", Command: "free -h", Run: true},
+		{ID: "biggest", Name: "Biggest files here", Command: "du -ah . 2>/dev/null | sort -rh | head -20", Run: true},
+		{ID: "logs", Name: "Last system logs", Command: "journalctl -n 100 --no-pager", Run: true},
+	}
 }
 
 type LoggingPrefs struct {
@@ -162,9 +184,9 @@ func DefaultPrefs() Prefs {
 			Mode: "binary", TextMask: DefaultTextMask, PreserveTime: true, PreservePerms: true, Perms: 0o644,
 			AddXToDirs: true, Overwrite: "ask", ResumeThreshold: 100 * 1024, CaseMode: "none", ReplaceInvalid: true,
 		},
-		Queue:       QueuePrefs{MaxParallel: 3, Background: true, AutoPopup: true, RetryCount: 2, RetryDelay: 3},
+		Queue:       QueuePrefs{MaxParallel: 3, Background: true, AutoPopup: true, RetryCount: 2, RetryDelay: 3, SegmentSize: 100 << 20, Segments: 4},
 		Editor:      EditorPrefs{Default: "internal", TabSize: 4, WordWrap: false, FontSize: 13, MaxSizeMB: 20, Encoding: "auto", AutoReload: true},
-		Terminal:    TerminalPrefs{FontSize: 13, FontFamily: "", Scrollback: 10000, CursorBlink: true, Term: "xterm-256color"},
+		Terminal:    TerminalPrefs{FontSize: 13, FontFamily: "", Scrollback: 10000, CursorBlink: true, Term: "xterm-256color", Snippets: defaultSnippets()},
 		Logging:     LoggingPrefs{ToFile: false, Level: "normal", KeepDays: 14},
 		RestoreTabs: true, AutoReconnect: true, ReconnectDelay: 5,
 		Bookmarks: map[string][]Bookmark{},
@@ -218,6 +240,9 @@ func (p *Prefs) normalize() {
 	if p.Queue.MaxParallel <= 0 {
 		p.Queue.MaxParallel = d.Queue.MaxParallel
 	}
+	if p.Queue.Segments == 0 { // settings written before segmented transfers
+		p.Queue.Segments, p.Queue.SegmentSize = d.Queue.Segments, d.Queue.SegmentSize
+	}
 	if p.Editor.Default == "" {
 		p.Editor = d.Editor
 	}
@@ -226,6 +251,9 @@ func (p *Prefs) normalize() {
 	}
 	if p.Terminal.FontSize == 0 {
 		p.Terminal = d.Terminal
+	}
+	if p.Terminal.Snippets == nil { // settings written before snippets
+		p.Terminal.Snippets = defaultSnippets()
 	}
 	if p.Logging.Level == "" {
 		p.Logging = d.Logging

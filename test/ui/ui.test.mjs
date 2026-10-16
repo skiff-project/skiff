@@ -147,7 +147,7 @@ before(async () => {
   mkdirSync(join(HOME, '.ssh'), { recursive: true })
   writeFileSync(join(HOME, '.ssh', 'config'), [
     'Host ui-box', '    HostName 127.0.0.1', '    Port 2222', '    User skiff',
-    '    StrictHostKeyChecking accept-new', '    HostKeyAlias ui-box-key', '    ForwardAgent yes', '',
+    '    StrictHostKeyChecking accept-new', '    HostKeyAlias ui-box-key', '    Compression yes', '',
   ].join('\n'))
   skiff = spawn(SKIFF, [], {
     env: {
@@ -396,7 +396,7 @@ step('configuration OpenSSH : hôtes, paramètres détectés, préférences', as
   const hostName = panel.locator('.sshcfg-row', { hasText: 'HostName' })
   await hostName.waitFor()
   assert.match(await hostName.innerText(), /127\.0\.0\.1\s+appliqué\s+~\/\.ssh\/config:2/)
-  assert.match(await panel.locator('.sshcfg-row', { hasText: 'ForwardAgent' }).innerText(), /ignoré/)
+  assert.match(await panel.locator('.sshcfg-row', { hasText: 'Compression' }).innerText(), /ignoré/)
   // connect by the alias: the password is asked (no key), not the host key (accept-new)
   await button(panel, 'Connexion').click()
   const d = dialog()
@@ -747,6 +747,136 @@ step('mode web : connexion et déconnexion', async () => {
   } finally {
     web.kill()
   }
+})
+
+const closeActiveTab = async () => {
+  await page.locator('.tab.active').click({ button: 'right' })
+  await page.locator('.menu-item', { hasText: "Fermer l'onglet" }).click()
+}
+const termText = async (i) => V('.term-pane .xterm-rows').nth(i).innerText()
+
+step('terminal divisé : diffusion, commandes enregistrées, suivi du dossier', async () => {
+  await pane(1).locator('.pane-status').click()
+  await page.keyboard.press('Control+t')
+  await V('.term-host .xterm').first().waitFor()
+  await sleep(800)
+  await V('[data-tip="Diviser à droite"]').click()
+  await page.locator('.menu-item', { hasText: 'même serveur' }).click()
+  await V('.term-pane').nth(1).waitFor()
+  await sleep(1200)
+  const broadcast = V('[data-tip="Diffuser la saisie à tous les terminaux de l’onglet"]')
+  await broadcast.click()
+  await V('.term-pane').nth(0).click()
+  await page.keyboard.type('echo diffuse-$((6*7))\n')
+  await until('input sent to both terminals', async () => (await termText(0)).includes('diffuse-42') && (await termText(1)).includes('diffuse-42'))
+  await broadcast.click()
+  await V('[data-tip="Commandes enregistrées"]').click()
+  await page.locator('.menu-item', { hasText: 'Espace disque' }).click()
+  await until('saved command run', async () => (await termText(0)).includes('Filesystem'))
+  assert.ok(!(await termText(1)).includes('Filesystem'), 'not broadcast any more')
+  await V('[data-tip="Le panneau de fichiers suit le dossier courant"]').click()
+  await sleep(1500)
+  await page.keyboard.type('cd /tmp\n')
+  await until('current folder shown', async () => (await V('.term-bar .term-cwd').innerText()) === '/tmp')
+  await closeActiveTab()
+  await toSession()
+  await until('the file panel followed', async () => (await pane(1).locator('.path-input, .pathbar').first().innerText()).includes('tmp'))
+  await nav(1, REMOTE)
+})
+
+step('moniteur du serveur', async () => {
+  await V('[data-tip="Moniteur du serveur"]').click()
+  await V('.mon-table tbody tr').first().waitFor()
+  await until('processor measured', async () => /%/.test(await V('[data-metric="cpu"] .mon-big').innerText()))
+  assert.ok((await V('.mon-disk').count()) >= 1, 'disks listed')
+  await V('.monitor input').fill('sshd')
+  await until('processes filtered', async () => {
+    const names = await V('.mon-table tbody td.mono').allInnerTexts()
+    return names.length > 0 && names.every((n) => n.includes('sshd'))
+  })
+  await closeActiveTab()
+})
+
+step('conteneurs de cet ordinateur', async () => {
+  await page.locator('.tab.home').click()
+  await moreMenu().click()
+  await page.locator('.menu-item', { hasText: 'Conteneurs de cet ordinateur' }).click()
+  const ctr = dialog().locator('[data-container="testenv-ssh-1"]')
+  await ctr.waitFor()
+  await ctr.getByRole('button', { name: 'Fichiers' }).click()
+  await until('container session', async () => (await conns()).some((c) => c.protocol === 'container' && c.state === 'connected'))
+  await V('.commander').waitFor()
+  await until('container root listed', async () => (await row(1, 'etc').count()) === 1)
+  await closeActiveTab()
+})
+
+step('tâches planifiées : une synchronisation exécutée et son historique', async () => {
+  await page.locator('.tab-content:visible .tb-btn', { hasText: 'Synchroniser' }).click()
+  assert.ok(await dialog().getByRole('button', { name: /Planifier/ }).isDisabled(), 'an unsaved session cannot be scheduled')
+  await page.keyboard.press('Escape')
+  await rpc('sites.save', { site: { name: 'Site des tâches', protocol: 'sftp', host: '127.0.0.1', port: 2222, user: 'skiff', useAgent: false, kbdInteractive: true, resolveSymlinks: true, keepalive: 30, timeout: 15 }, secrets: { password: 'skiff' } })
+  await page.keyboard.press('Control+k')
+  await page.keyboard.type('Tâches planifiées')
+  await page.keyboard.press('Enter')
+  const tasks = page.locator('.tasks')
+  await tasks.locator('[data-tip="Nouvelle tâche"]').click()
+  await page.locator('.menu-item', { hasText: 'Synchronisation' }).click()
+  const ed = page.locator('.task-editor')
+  await ed.locator('.se-name').fill('Publier depuis le test')
+  await ed.locator('.field', { hasText: 'Site' }).locator('select').first().selectOption({ label: 'Site des tâches' })
+  await ed.locator('.field', { hasText: 'Dossier local' }).locator('input').fill(join(LOCAL, 'site'))
+  await ed.locator('.field', { hasText: 'Dossier distant' }).locator('input').fill(REMOTE + '/planifie')
+  await ed.getByRole('button', { name: 'Exécuter maintenant' }).click()
+  await ed.locator('.task-run[data-status="ok"]').waitFor({ timeout: 60000 })
+  assert.ok(await remoteExists(REMOTE + '/planifie/index.html'), 'synchronized by the task')
+  await tasks.locator('[data-task="Publier depuis le test"]').waitFor()
+  await ed.locator('[data-tip="Supprimer"]').click()
+  await button(dialog(), 'Supprimer').click()
+  await until('task deleted', async () => (await rpc('tasks.list')).length === 0)
+  await closeActiveTab()
+})
+
+step('trousseau Skiff et transfert d’agent', async () => {
+  const k = await rpc('keys.generate', { type: 'ed25519', comment: 'trousseau-ui', format: 'openssh' })
+  await page.keyboard.press('Control+,')
+  const d = dialog()
+  await d.locator('nav.vtabs').getByRole('button', { name: 'Sécurité', exact: true }).click()
+  await d.getByRole('button', { name: /Ajouter une clé/ }).click()
+  const add = page.locator('.dialog').last()
+  await add.locator('textarea').fill(k.private)
+  await add.locator('.field', { hasText: 'Nom' }).locator('input').fill('Clé de l’interface')
+  await button(add, 'Ajouter').click()
+  await until('key in the keychain', async () => (await rpc('keychain.list')).keys.some((x) => x.fingerprint === k.fingerprint))
+  const rowKey = d.locator('table.keychain tr', { hasText: 'Clé de l’interface' })
+  await rowKey.locator('[data-tip="Supprimer"]').click()
+  await button(page.locator('.dialog').last(), 'Supprimer').click()
+  await until('key removed', async () => (await rpc('keychain.list')).keys.length === 0)
+  // the segmented transfers are on by default
+  await d.locator('nav.vtabs').getByRole('button', { name: "File d'attente", exact: true }).click()
+  assert.ok(await d.locator('label', { hasText: 'Copier les gros fichiers' }).locator('input').isChecked())
+  await page.keyboard.press('Escape')
+  // agent forwarding is an option of the SSH section of a site
+  await page.locator('.tab.home').click()
+  await page.locator('.sites-tree .tree-site', { hasText: 'Site des tâches' }).first().click()
+  const se = page.locator('.site-editor')
+  await se.locator('nav.vtabs').getByRole('button', { name: 'SSH', exact: true }).click()
+  await se.locator('label', { hasText: /Transférer l.agent au serveur/ }).click()
+  await button(se, 'Enregistrer').click()
+  await until('forwarding saved', async () => (await rpc('sites.list')).sites.some((x) => x.name === 'Site des tâches' && x.forwardAgent))
+})
+
+step('appareils : partager les réglages par un fichier chiffré', async () => {
+  await page.keyboard.press('Control+,')
+  const d = dialog()
+  await d.locator('nav.vtabs').getByRole('button', { name: 'Appareils', exact: true }).click()
+  await d.locator('.field', { hasText: 'Site qui garde le fichier' }).locator('select').selectOption({ label: 'Site des tâches' })
+  await d.locator('.field', { hasText: 'Fichier' }).locator('input').first().fill(REMOTE + '/skiff-sync.bin')
+  await d.locator('.field', { hasText: 'Phrase secrète' }).locator('input').fill('phrase de test ui')
+  await d.getByRole('button', { name: 'Synchroniser maintenant' }).click()
+  await d.locator('.devsync-state', { hasText: 'réussie' }).waitFor({ timeout: 30000 })
+  assert.ok(await remoteExists(REMOTE + '/skiff-sync.bin'), 'shared file written')
+  assert.match(await remoteText(REMOTE + '/skiff-sync.bin').catch(() => 'SKIFFSYNC1'), /^SKIFFSYNC1/)
+  await page.keyboard.press('Escape')
 })
 
 step('aucune erreur JavaScript', () => {

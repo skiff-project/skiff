@@ -35,6 +35,9 @@ type FS struct {
 	conn *sshx.Conn
 	opts Options
 	fork bool
+	// command-only mode (no SSH session): see NewExec
+	execFn ExecFunc
+	exec   *ExecOptions
 
 	mu       sync.Mutex
 	listMode string // "find", "lsfull", "lsT", "ls"
@@ -46,6 +49,9 @@ func New(conn *sshx.Conn, opts Options) *FS { return &FS{conn: conn, opts: opts}
 func (f *FS) SSH() *sshx.Conn { return f.conn }
 
 func (f *FS) Caps() vfs.Caps {
+	if f.exec != nil {
+		return f.execCaps()
+	}
 	return vfs.Caps{
 		Protocol:       "scp",
 		PathStyle:      "posix",
@@ -76,6 +82,9 @@ func (f *FS) wrap(cmd string) string {
 }
 
 func (f *FS) Exec(ctx context.Context, cmd string, stdin io.Reader, stdout, stderr io.Writer) (int, error) {
+	if f.execFn != nil {
+		return f.execFn(ctx, f.wrap(cmd), stdin, stdout, stderr)
+	}
 	return sftpfs.ExecSSH(ctx, f.conn.Client, f.wrap(cmd), stdin, stdout, stderr)
 }
 
@@ -476,6 +485,9 @@ func readAck(r *bufio.Reader) error {
 }
 
 func (f *FS) Open(ctx context.Context, p string, offset int64) (io.ReadCloser, error) {
+	if f.execFn != nil {
+		return f.execOpen(ctx, p, offset)
+	}
 	if offset > 0 {
 		// SCP cannot resume: stream the tail of the file through the shell.
 		sess, err := f.conn.NewSession()
@@ -694,6 +706,9 @@ type writerOnly struct{ w io.Writer }
 func (w writerOnly) Write(p []byte) (int, error) { return w.w.Write(p) }
 
 func (f *FS) Create(ctx context.Context, p string, opt vfs.CreateOpts) (io.WriteCloser, error) {
+	if f.execFn != nil {
+		return f.execCreate(ctx, p, opt)
+	}
 	if opt.Offset > 0 {
 		return nil, vfs.WrapErr("resume", p, vfs.ErrUnsupported)
 	}
@@ -802,11 +817,17 @@ func (f *FS) Space(ctx context.Context, p string) (int64, int64, error) {
 }
 
 func (f *FS) Fork(ctx context.Context) (vfs.FS, error) {
-	nf := &FS{conn: f.conn, opts: f.opts, fork: true, listMode: f.listMode, home: f.home}
+	f.mu.Lock()
+	mode := f.listMode
+	f.mu.Unlock()
+	nf := &FS{conn: f.conn, opts: f.opts, fork: true, listMode: mode, home: f.home, execFn: f.execFn, exec: f.exec}
 	return nf, nil
 }
 
 func (f *FS) Info() []vfs.InfoItem {
+	if f.exec != nil {
+		return append(append([]vfs.InfoItem(nil), f.exec.Info...), vfs.InfoItem{Group: "Container", Key: "Listing method", Value: f.listMode})
+	}
 	out := sftpfs.SSHInfo(f.conn.Info)
 	out = append(out, vfs.InfoItem{Group: "SCP", Key: "Listing method", Value: f.listMode})
 	if f.opts.Shell != "" {
@@ -817,6 +838,12 @@ func (f *FS) Info() []vfs.InfoItem {
 
 func (f *FS) Close() error {
 	if f.fork {
+		return nil
+	}
+	if f.exec != nil {
+		if f.exec.Close != nil {
+			return f.exec.Close()
+		}
 		return nil
 	}
 	return f.conn.Close()

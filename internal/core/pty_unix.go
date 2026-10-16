@@ -19,7 +19,12 @@ func startLocalPty(cols, rows int, cwd, term string) (ptyBackend, error) {
 	if sh == "" {
 		sh = "/bin/sh"
 	}
-	cmd := exec.Command(sh, "-l")
+	return startLocalPtyCmd(cols, rows, cwd, term, []string{sh, "-l"})
+}
+
+// startLocalPtyCmd runs argv in a pseudo-terminal of this computer.
+func startLocalPtyCmd(cols, rows int, cwd, term string, argv []string) (ptyBackend, error) {
+	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Env = append(os.Environ(), "TERM="+term)
 	if cwd != "" {
 		cmd.Dir = cwd

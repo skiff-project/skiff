@@ -1,9 +1,10 @@
 import {
   ArrowLeftRight, Columns2, Eye, EyeOff, FileSearch, GitCompareArrows, Info, Link2, Network, PanelRight, Power, RefreshCcwDot,
-  ScrollText, SquareTerminal, TerminalSquare, Zap, FolderTree,
+  ScrollText, SquareTerminal, TerminalSquare, Zap, FolderTree, Activity, Box,
 } from 'lucide-react'
 import { get, set, useStore, type SessionTab } from '../lib/store'
-import { closeTab, savePrefs, setBottom, toggleSyncBrowsing, updateLayout } from '../lib/actions'
+import { closeTab, editNewSite, openMonitor, savePrefs, setBottom, toggleSyncBrowsing, updateLayout } from '../lib/actions'
+import { openContainers } from './dialogs/ContainersDialog'
 import { compareDirs, terminalHere, runCommandDialog } from '../lib/fileops'
 import { t } from '../lib/i18n'
 import { openSyncDialog } from './dialogs/SyncDialog'
@@ -52,6 +53,12 @@ export function SessionToolbar({ tab }: { tab: SessionTab }) {
       </button>
       <button className="tb-btn icon-only" disabled={!caps?.tunnels} onClick={() => openTunnelDialog(tab.conn)} data-tip={t('toolbar.tunnels')}>
         <Network />
+      </button>
+      <button className="tb-btn icon-only" disabled={!caps?.shell} onClick={() => openMonitor(tab.conn)} data-tip={t('mon.open')}>
+        <Activity />
+      </button>
+      <button className="tb-btn icon-only" disabled={!caps?.tunnels} onClick={() => openContainers({ via: tab.conn, onNewSite: (st) => editNewSite({ ...st, viaConn: undefined, viaSite: get().conns[tab.conn]?.siteId }) })} data-tip={t('ctr.ofServer')}>
+        <Box />
       </button>
       <div className="spacer" />
       <button className={`tb-btn icon-only${showHidden ? ' on' : ''}`} onClick={() => savePrefs({ showHidden: !get().prefs?.showHidden })} data-tip={t('toolbar.hidden')} data-kbd="Ctrl+Alt+H">
