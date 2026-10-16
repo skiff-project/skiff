@@ -56,6 +56,12 @@ func testProtocols(t *testing.T, e *e2e) {
 		ci := e.open(t, e.saveSite(t, s, "skiff").ID)
 		fileOps(t, e, target{id: ci.ID, proto: "ftp", caps: ci.Caps, root: e.remoteRoot(t, ci)})
 	})
+	t.Run("ftps-implicit", func(t *testing.T) {
+		s := testSite("ftp")
+		s.Port, s.FTPS = 9990, "implicit"
+		ci := e.open(t, e.saveSite(t, s, "skiff").ID)
+		fileOps(t, e, target{id: ci.ID, proto: "ftp", caps: ci.Caps, root: e.remoteRoot(t, ci)})
+	})
 	t.Run("ftp-active", func(t *testing.T) {
 		// active mode needs the server to connect back: only check listing works or fails cleanly
 		s := testSite("ftp")

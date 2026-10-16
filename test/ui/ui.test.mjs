@@ -10,7 +10,7 @@ import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
 import { chromium } from 'playwright'
 import { spawn, execSync } from 'node:child_process'
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, copyFileSync, chmodSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -29,15 +29,38 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 let skiff, browser, page
 const pageErrors = []
 
-async function rpc(method, params = {}) {
-  const r = await fetch(`${BASE}/api/rpc/${method}`, {
+// rpcAt calls the API of the Skiff started on base with SKIFF_DEV_TOKEN=token.
+async function rpcAt(base, token, method, params = {}) {
+  const r = await fetch(`${base}/api/rpc/${method}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Skiff': '1', Cookie: 'skiff_session=ui' },
+    headers: { 'Content-Type': 'application/json', 'X-Skiff': '1', Cookie: `skiff_session=${token}` },
     body: JSON.stringify(params),
   })
   const b = await r.json()
   if (!r.ok) throw new Error(`${method}: ${b?.error?.message}`)
   return b.result
+}
+const rpc = (method, params) => rpcAt(BASE, 'ui', method, params)
+
+// startSkiff starts the Skiff under test (again, keeping its configuration).
+async function startSkiff() {
+  skiff = spawn(SKIFF, [], {
+    env: {
+      ...process.env, HOME, SKIFF_HOME: join(TMP, 'config'), SKIFF_NO_WINDOW: '1', SKIFF_PORT: String(PORT), SKIFF_DEV_TOKEN: 'ui',
+      SKIFF_UI_DIR: join(ROOT, 'frontend/dist'), SSH_AUTH_SOCK: '', XDG_DATA_HOME: join(HOME, '.local/share'),
+      SKIFF_SSH_SYSTEM_CONFIG: 'none',
+    },
+    stdio: 'ignore',
+  })
+  await until('Skiff to start', async () => (await fetch(`${BASE}/api/auth/status`)).ok)
+}
+
+// stop ends a Skiff process like closing the application does.
+async function stop(proc) {
+  if (proc.exitCode !== null || proc.signalCode !== null) return
+  const exited = new Promise((r) => proc.once('exit', r))
+  proc.kill()
+  await exited
 }
 
 const conns = async () => rpc('conn.list')
@@ -149,15 +172,7 @@ before(async () => {
     'Host ui-box', '    HostName 127.0.0.1', '    Port 2222', '    User skiff',
     '    StrictHostKeyChecking accept-new', '    HostKeyAlias ui-box-key', '    ForwardAgent yes', '',
   ].join('\n'))
-  skiff = spawn(SKIFF, [], {
-    env: {
-      ...process.env, HOME, SKIFF_HOME: join(TMP, 'config'), SKIFF_NO_WINDOW: '1', SKIFF_PORT: String(PORT), SKIFF_DEV_TOKEN: 'ui',
-      SKIFF_UI_DIR: join(ROOT, 'frontend/dist'), SSH_AUTH_SOCK: '', XDG_DATA_HOME: join(HOME, '.local/share'),
-      SKIFF_SSH_SYSTEM_CONFIG: 'none',
-    },
-    stdio: 'ignore',
-  })
-  await until('Skiff to start', async () => (await fetch(`${BASE}/api/auth/status`)).ok)
+  await startSkiff()
   const prefs = await rpc('prefs.get')
   await rpc('prefs.set', { ...prefs, language: 'fr', theme: 'light', confirmTransfer: false, restoreTabs: false })
   browser = await chromium.launch()
@@ -723,6 +738,40 @@ step('connexion perdue puis reconnexion', async () => {
   await until('reconnected', async () => !!(await sftp()))
 })
 
+step('rouvrir les onglets au démarrage', async () => {
+  await page.keyboard.press('Control+,')
+  const d = dialog()
+  await d.locator('nav.vtabs').getByRole('button', { name: 'Panneaux', exact: true }).click()
+  await d.locator('label', { hasText: 'Rouvrir les sessions de la dernière fois' }).click()
+  await until('preference saved', async () => (await rpc('prefs.get')).restoreTabs === true)
+  await page.keyboard.press('Escape')
+  // the quick connection goes to other folders; "Site UI" stays open
+  const dir = `${REMOTE}/reprise`
+  await rpc('fs.mkdir', { conn: (await sftp()).id, path: dir })
+  await rpc('fs.createFile', { conn: (await sftp()).id, path: `${dir}/temoin.txt`, content: 'x' })
+  await toSession()
+  await nav(1, dir)
+  await nav(0, join(LOCAL, 'site'))
+  await until('tabs saved with their folders', async () => {
+    const tabs = (await rpc('prefs.get')).lastTabs || []
+    return tabs.some((t) => t.url && t.remote === dir && t.local === join(LOCAL, 'site')) && tabs.some((t) => t.siteId === 'site-ui')
+  })
+  // quit, then start again
+  await page.goto('about:blank')
+  await stop(skiff)
+  await startSkiff()
+  await page.goto(`${BASE}/?token=ui`)
+  // the password of the quick connection is not saved: it is asked again
+  await dialog().locator('input[type=password]').fill('skiff')
+  await button(dialog(), 'OK').click()
+  await until('sessions reopened', async () => (await conns()).filter((c) => c.state === 'connected').length === 2)
+  await page.locator('.tab', { hasText: 'Site UI' }).waitFor()
+  await toSession()
+  await row(1, 'temoin.txt').waitFor()
+  await row(0, 'index.html').waitFor()
+  assert.equal(await pane(1).locator('.crumb.last').innerText(), 'reprise')
+})
+
 step('mode web : connexion et déconnexion', async () => {
   const port = PORT + 1000
   const web = spawn(SKIFF, ['serve', '--no-tls', '--listen', `127.0.0.1:${port}`, '--user', 'alex', '--password-env', 'WEBPW'], {
@@ -747,6 +796,66 @@ step('mode web : connexion et déconnexion', async () => {
   } finally {
     web.kill()
   }
+})
+
+step('mode portable : configuration à côté du binaire', async () => {
+  const dir = join(TMP, 'portable')
+  const exe = join(dir, 'skiff')
+  const data = join(dir, 'skiff-data')
+  const home = join(TMP, 'portable-home')
+  mkdirSync(dir, { recursive: true })
+  mkdirSync(home, { recursive: true })
+  copyFileSync(SKIFF, exe)
+  chmodSync(exe, 0o755)
+  writeFileSync(join(dir, 'skiff.portable'), '')
+  const port = PORT + 2000
+  const base = `http://127.0.0.1:${port}`
+  const env = {
+    ...process.env, HOME: home, SKIFF_NO_WINDOW: '1', SKIFF_PORT: String(port), SKIFF_DEV_TOKEN: 'portable',
+    SKIFF_UI_DIR: join(ROOT, 'frontend/dist'), SSH_AUTH_SOCK: '', SKIFF_SSH_SYSTEM_CONFIG: 'none',
+  }
+  delete env.SKIFF_HOME
+  delete env.XDG_CONFIG_HOME
+  const run = async (check) => {
+    const proc = spawn(exe, [], { env, stdio: 'ignore' })
+    try {
+      await until('portable Skiff', async () => (await fetch(`${base}/api/auth/status`)).ok)
+      await check()
+    } finally {
+      await stop(proc)
+    }
+  }
+  // "skiff.portable" next to the binary: the configuration goes to "skiff-data"
+  await run(async () => {
+    const info = await rpcAt(base, 'portable', 'app.info')
+    assert.equal(info.portable, true)
+    assert.equal(info.configDir, data)
+    const ctx = await browser.newContext({ locale: 'fr-FR' })
+    try {
+      const p = await ctx.newPage()
+      p.on('pageerror', (e) => pageErrors.push(e.message))
+      await p.goto(`${base}/?token=portable`)
+      await p.locator('.welcome').waitFor()
+      await p.keyboard.press('Control+,')
+      const d = p.locator('.dialog').last()
+      await d.getByText('(mode portable)', { exact: false }).waitFor()
+      assert.ok((await d.innerText()).includes(data), 'configuration folder shown')
+      await d.locator('nav.vtabs').getByRole('button', { name: 'Apparence', exact: true }).click()
+      await button(d, 'Sombre').click()
+      await until('preference saved', async () => (await rpcAt(base, 'portable', 'prefs.get')).theme === 'dark')
+    } finally {
+      await ctx.close()
+    }
+  })
+  assert.ok(existsSync(join(data, 'settings.json')), 'settings written next to the binary')
+  assert.ok(!existsSync(join(home, '.config', 'Skiff')), 'nothing written in the user configuration folder')
+  // the "skiff-data" folder alone is enough
+  rmSync(join(dir, 'skiff.portable'))
+  await run(async () => {
+    const info = await rpcAt(base, 'portable', 'app.info')
+    assert.equal(info.portable, true)
+    assert.equal((await rpcAt(base, 'portable', 'prefs.get')).theme, 'dark')
+  })
 })
 
 step('aucune erreur JavaScript', () => {

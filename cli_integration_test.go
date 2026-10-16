@@ -410,6 +410,52 @@ func TestCLISSHConfig(t *testing.T) {
 	}
 }
 
+// TestCLIAgent logs in from a script with a key that only a real ssh-agent
+// holds. The key is certified by the test server's authority, so nothing is
+// added to authorized_keys (the API tests change it at the same time).
+func TestCLIAgent(t *testing.T) {
+	c := newCLI(t)
+	dir, err := os.MkdirTemp("", "skiff-agent") // short path for the socket
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+	sock := filepath.Join(dir, "agent.sock")
+	agent := exec.Command("ssh-agent", "-D", "-a", sock)
+	if err := agent.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { agent.Process.Kill(); agent.Wait() }()
+	for i := 0; i < 100; i++ {
+		if _, err := os.Stat(sock); err == nil {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	ca, key := filepath.Join(dir, "ca"), filepath.Join(dir, "id_cli")
+	os.WriteFile(ca, []byte(remote(t, "cat /config/ssh_ca/user_ca")), 0o600)
+	for _, args := range [][]string{
+		{"ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", key},
+		{"ssh-keygen", "-q", "-s", ca, "-I", "cli@e2e", "-n", "skiff", key + ".pub"},
+		{"env", "SSH_AUTH_SOCK=" + sock, "ssh-add", key}, // the key and its certificate
+	} {
+		if out, err := exec.Command(args[0], args[1:]...).CombinedOutput(); err != nil {
+			t.Fatalf("%s: %v %s", args[0], err, out)
+		}
+	}
+	for _, f := range []string{key, key + ".pub", key + "-cert.pub"} {
+		os.Remove(f)
+	}
+	script := []string{"run", "-c", "open sftp://skiff@127.0.0.1:2222/ -hostkey=*", "-c", "pwd", "-c", "exit"}
+	if out, code := c.run("", script...); code == 0 {
+		t.Errorf("logged in without the agent: %s", out)
+	}
+	c.env = append(c.env, "SSH_AUTH_SOCK="+sock)
+	if out, code := c.run("", script...); code != 0 || !strings.Contains(out, "/config") {
+		t.Errorf("open with the agent: %d %s", code, out)
+	}
+}
+
 func TestCLIServe(t *testing.T) {
 	c := newCLI(t)
 	// no password and no terminal: refuse to start

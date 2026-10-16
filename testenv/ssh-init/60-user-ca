@@ -1,0 +1,11 @@
+#!/usr/bin/with-contenv bash
+# A user certificate authority for the certificate tests: sshd trusts the
+# keys it signs (TrustedUserCAKeys). The tests read its private key over SFTP
+# and sign their own keys with ssh-keygen.
+if [[ ! -f /config/ssh_ca/user_ca ]]; then
+  mkdir -p /config/ssh_ca
+  ssh-keygen -q -t ed25519 -N '' -C 'skiff test user CA' -f /config/ssh_ca/user_ca
+  chown -R "${USER_NAME}" /config/ssh_ca
+fi
+grep -q '^TrustedUserCAKeys' /config/sshd/sshd_config ||
+  echo 'TrustedUserCAKeys /config/ssh_ca/user_ca.pub' >> /config/sshd/sshd_config

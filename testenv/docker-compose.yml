@@ -1,5 +1,7 @@
 # Local test servers for every protocol Skiff supports.
 #   docker compose -f testenv/docker-compose.yml up -d
+# SSH 2222 (+ legacy algorithms only on 2223), FTP 2121 (explicit TLS),
+# FTPS 9990 (implicit TLS), WebDAV 8080, S3 9000.
 # Credentials: skiff / skiff (S3 access key skiffadmin, secret skiffsecret)
 services:
   ssh:
@@ -12,9 +14,24 @@ services:
       - PASSWORD_ACCESS=true
       - SUDO_ACCESS=false
     volumes:
-      - ./ssh-init:/custom-cont-init.d:ro # enables TCP forwarding (tunnels, jump hosts)
+      # TCP forwarding (tunnels, jump hosts), user certificate authority
+      - ./ssh-init:/custom-cont-init.d:ro
     ports:
       - "2222:2222"
+  ssh-legacy:
+    # an old server: SHA-1 key exchanges, ssh-rsa host key, CBC ciphers only
+    image: lscr.io/linuxserver/openssh-server:latest
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - USER_NAME=skiff
+      - USER_PASSWORD=skiff
+      - PASSWORD_ACCESS=true
+      - SUDO_ACCESS=false
+    volumes:
+      - ./ssh-legacy-init:/custom-cont-init.d:ro
+    ports:
+      - "2223:2222"
   ftp:
     image: stilliard/pure-ftpd:latest
     environment:
@@ -29,6 +46,13 @@ services:
     ports:
       - "2121:21"
       - "30000-30009:30000-30009"
+  ftps-implicit:
+    # FTPS with implicit TLS (vsftpd, home /home/skiff seen as /)
+    build: ./ftps-implicit
+    init: true # vsftpd crashes as PID 1 when a session ends
+    ports:
+      - "9990:990"
+      - "30010-30019:30010-30019"
   webdav:
     image: rclone/rclone:latest
     command: serve webdav /data --addr :8080 --user skiff --pass skiff

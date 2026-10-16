@@ -1,0 +1,6 @@
+#!/usr/bin/with-contenv bash
+# The tests fail to log in on purpose (wrong key, no agent, wrong certificate):
+# without this, sshd (PerSourcePenalties, OpenSSH 9.8+) refuses every
+# connection from the host for a while afterwards.
+grep -q '^PerSourcePenalties' /config/sshd/sshd_config ||
+  echo 'PerSourcePenalties no' >> /config/sshd/sshd_config

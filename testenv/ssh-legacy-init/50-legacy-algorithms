@@ -1,0 +1,14 @@
+#!/usr/bin/with-contenv bash
+# An old server: SHA-1 key exchanges, the ssh-rsa (SHA-1) host key signature,
+# CBC ciphers and HMAC-SHA1 only. Skiff reaches it only with "allow legacy
+# algorithms" (or the algorithms added in ssh_config). The tests fail to
+# connect on purpose: no PerSourcePenalties, which would then refuse the host.
+sed -i '/^# legacy algorithms/,$d' /config/sshd/sshd_config
+cat >> /config/sshd/sshd_config <<'END'
+# legacy algorithms
+HostKeyAlgorithms ssh-rsa
+KexAlgorithms diffie-hellman-group14-sha1,diffie-hellman-group1-sha1
+Ciphers aes128-cbc,3des-cbc
+MACs hmac-sha1
+PerSourcePenalties no
+END

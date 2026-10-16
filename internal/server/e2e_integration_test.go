@@ -451,9 +451,13 @@ func TestE2E(t *testing.T) {
 		{"jumpHosts", testJumpHosts},
 		{"proxies", testProxies},
 		{"keys", testKeys},
+		{"agent", testAgent},
+		{"certificates", testCertificates},
 		{"hostKeys", testHostKeys},
+		{"legacyAlgorithms", testLegacyAlgorithms},
 		{"sshConfig", testSSHConfig},
 		{"tls", testTLS},
+		{"implicitFTPS", testImplicitFTPS},
 		{"security", testSecurity},
 		{"connections", testConnections},
 	}
