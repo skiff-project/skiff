@@ -768,6 +768,27 @@ scene('archives', async () => {
   await nav(1, '/config/www')
 })
 
+scene('ports', async () => {
+  await openTab('Site vitrine')
+  await tip('Ports du serveur').click()
+  await dialog().locator('[data-port="3000"]').waitFor()
+  await shot('ports', { el: dialog() })
+  await closeDialogs()
+})
+
+scene('espace-disque', async () => {
+  await openTab('Site vitrine')
+  await nav(1, '/config')
+  await page.keyboard.press('Control+k')
+  await page.locator('.palette input').fill('prend de la place ici')
+  await page.keyboard.press('Enter')
+  await V('.usage .usage-row').first().waitFor()
+  await sleep(400)
+  await shot('espace-disque')
+  await page.locator('.tab.active .tab-close').click()
+  await nav(1, '/config/www')
+})
+
 scene('moniteur', async () => {
   await openTab('Site vitrine')
   await tip('Moniteur du serveur').click()

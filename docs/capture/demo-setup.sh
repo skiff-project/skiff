@@ -162,7 +162,7 @@ touch -d "2026-10-15 07:05" "$SITE/contact.html"
 
 # ---- remote content (Docker test servers) --------------------------------
 docker exec testenv-ssh-1 sh -c '
-  cd /config && rm -rf www backups releases big.bin main.go notes.md photos clitest skiff-test-* skiff-sync.bin 2>/dev/null
+  cd /config && rm -rf www backups releases big.bin main.go notes.md photos clitest skiff-test-* skiff-sync.bin e2e-* ui-* 2>/dev/null
   mkdir -p www/css www/js www/images backups releases
   printf "<!doctype html><title>Atelier Lumière</title><h1>Version en ligne</h1>\n" > www/index.html
   printf "<!doctype html><title>Contact</title><h1>Contact</h1>\n" > www/contact.html
@@ -187,8 +187,10 @@ docker exec testenv-ssh-1 sh -c '
   touch -d "2026-06-20 11:00" www/promo-ete.html
 '
 docker cp "$ICON" testenv-ssh-1:/config/www/images/logo.png
-# systemd on the SSH server, for the services window (Alpine has none)
+# systemd on the SSH server, for the services window (Alpine has none),
+# and an internal web page on 127.0.0.1:3000 for the ports window
 docker exec -i -u 0 testenv-ssh-1 sh -s install < "$(dirname "$0")/../../testenv/fake-systemd.sh"
+docker exec -i -u skiff testenv-ssh-1 sh -s start < "$(dirname "$0")/../../testenv/fake-web.sh"
 
 docker exec testenv-ssh-1 sh -c 'chown -R skiff:users /config/www /config/backups /config/releases /config/docker-compose.yml /config/LISEZMOI.md /config/logs/access.log 2>/dev/null; touch -d "2026-10-02 18:40" /config/www/images/logo.png'
 

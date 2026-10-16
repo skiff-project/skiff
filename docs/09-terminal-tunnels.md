@@ -159,7 +159,7 @@ Pour une session SFTP ou SCP vers un serveur Linux, le bouton **Moniteur du serv
 
 Les boutons d'une ligne de processus envoient **TERM** (**Arrêter**, le processus peut se terminer proprement) ou **KILL** (**Forcer l'arrêt**), après confirmation. Ils agissent avec les droits de l'utilisateur de la session.
 
-La fréquence se règle de 1 à 10 secondes ; **Pause** fige l'affichage. Les mesures s'arrêtent quand l'onglet n'est pas affiché et reprennent après une reconnexion. Un serveur sans `/proc` (macOS, BSD) affiche « the monitor needs a Linux server ».
+La loupe d'un disque montre [ce qui y prend de la place](05-fichiers.md#513-quest-ce-qui-prend-de-la-place-). La fréquence se règle de 1 à 10 secondes ; **Pause** fige l'affichage. Les mesures s'arrêtent quand l'onglet n'est pas affiché et reprennent après une reconnexion. Un serveur sans `/proc` (macOS, BSD) affiche « the monitor needs a Linux server ».
 
 ## 9.7 Services du serveur
 
@@ -203,6 +203,24 @@ Les lignes qui ressemblent à une **erreur** (`error`, `failed`, `fatal`, `denie
 L'affichage reste en bas tant que vous ne remontez pas ; en remontant pour lire, il ne bouge plus, et **Aller à la fin** y revient. Les 20 000 dernières lignes sont gardées. Fermer l'onglet arrête le suivi sur le serveur.
 
 ![Seulement les erreurs et les alertes](images/journal-direct-erreurs.png)
+
+## 9.9 Ports du serveur
+
+**Ports du serveur** (icône de port réseau dans la barre d'outils de la session, la palette, ou **Ports du serveur…** dans la boîte des tunnels) liste les ports TCP sur lesquels le serveur écoute, lus par `ss`, `netstat` ou `/proc/net/tcp` par la connexion :
+
+![Ports du serveur](images/ports.png)
+
+| Colonne | Contenu |
+|---|---|
+| Port | Avec le service habituel du port (HTTP, MySQL / MariaDB, PostgreSQL, Redis…) |
+| Programme | Le programme qui écoute et son PID, et les adresses. Seuls les programmes du compte connecté sont affichés : en root, tous. |
+| Portée | **Ouvert à tous** (toutes les adresses : joignable de l'extérieur sauf pare-feu), **Serveur seul** (`127.0.0.1`, `::1`) ou **Une adresse** |
+
+**Ouvrir** affiche dans le navigateur de cet ordinateur une page web servie par le serveur, même quand elle n'écoute que sur `127.0.0.1` : une application Node sur le port 3000, phpMyAdmin, un tableau de bord d'administration… Skiff crée aussitôt un [tunnel](#93-tunnels-redirections-de-ports) vers ce port sur un port libre de cet ordinateur, puis ouvre `http://127.0.0.1:<port>/` (`https` pour 443 et 8443). Un tunnel déjà ouvert vers le même port est réutilisé ; il apparaît dans le panneau **Tunnels**, où il s'arrête. Rien n'est ouvert sur le réseau du serveur.
+
+**Ouvrir** n'est pas proposé pour les services qui ne sont pas des pages web (SSH, bases de données, Redis, courrier, DNS…). Pour eux, **Créer un tunnel vers ce port** fait le tunnel et copie son adresse locale (par exemple pour un client MySQL de cet ordinateur), et **Copier l'adresse sur le serveur** copie `127.0.0.1:3306`.
+
+Le navigateur est celui du système ; la variable d'environnement `SKIFF_BROWSER` en désigne un autre (`SKIFF_BROWSER=firefox`). En [mode web](14-mode-web.md), les tunnels partent de la machine qui fait tourner Skiff : **Ouvrir** n'y est pas proposé.
 
 ---
 

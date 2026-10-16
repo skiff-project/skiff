@@ -17,6 +17,8 @@ Clic droit sur un fichier ou un dossier (ou `Maj+F10`, touche Menu) :
 | **Éditer avec un éditeur externe** | `Maj+F4` | Ouvre le fichier dans votre éditeur, avec renvoi automatique ([§ 8.4](08-edition.md#84-éditeur-externe)) |
 | **Afficher** | `F3` | Ouvre un fichier texte dans l'éditeur en lecture seule ; pour une image, une vidéo, un son ou un PDF, ouvre le [panneau d'aperçu](04-interface.md#49-panneau-daperçu) |
 | **Ouvrir avec l'application par défaut** | | Télécharge si besoin et ouvre avec l'application associée du système |
+| **Ouvrir comme projet** | | Un dossier : le [projet](08-edition.md#87-projets--modifier-un-dossier-sans-rien-installer-sur-le-serveur) |
+| **Qu'est-ce qui prend de la place ?** | | Un dossier : ses éléments par taille ([§ 5.13](#513-quest-ce-qui-prend-de-la-place-)) |
 | **Suivre en direct** | | Ouvre la fin du fichier et chaque ligne ajoutée ([§ 9.8](09-terminal-tunnels.md#98-suivre-un-journal-en-direct)) |
 | **Extraire…** | | Archive zip, tar, tar.gz, tar.bz2 ou tar.xz : l'ouvre sur place ([§ 5.12](#512-compresser-et-extraire)) |
 | **Compresser…** | | Met la sélection dans une archive zip, tar.gz ou tar ([§ 5.12](#512-compresser-et-extraire)) |
@@ -52,6 +54,8 @@ Clic droit dans la zone vide d'un panneau :
 | **Actualiser** | `Ctrl+R` | Relit le dossier |
 | **Tout sélectionner** | `Ctrl+A` | |
 | **Sélectionner des fichiers** | | Sous-menu : sélectionner / désélectionner par masque (`Num +` / `Num −`), inverser (`Num *`), même extension |
+| **Ouvrir ce dossier comme projet** | `Ctrl+Maj+E` | [Projet](08-edition.md#87-projets--modifier-un-dossier-sans-rien-installer-sur-le-serveur) |
+| **Qu'est-ce qui prend de la place ici ?** | | [§ 5.13](#513-quest-ce-qui-prend-de-la-place-) |
 | **Ouvrir un terminal ici** | | [Terminal](09-terminal-tunnels.md) dans ce dossier |
 | **Rechercher dans ce dossier** | | [Recherche de fichiers](10-recherche-journal.md#101-rechercher-des-fichiers) |
 | **Synchroniser ce dossier** | | [Synchronisation](07-synchronisation.md) |
@@ -210,6 +214,19 @@ Le nom proposé est celui de l'élément (ou du dossier, pour plusieurs élémen
 - **Ici, dans ce dossier** : les fichiers de même nom sont remplacés.
 
 Rien n'est écrit hors du dossier de destination : une archive dont un chemin en sortirait (`../`, chemin absolu) est refusée, ou ce chemin est ramené dans le dossier par le `tar` du serveur. Sans shell (compte SFTP seul, FTP, WebDAV, S3), les commandes **Compresser…** et **Extraire…** n'apparaissent pas.
+
+## 5.13 Qu'est-ce qui prend de la place ?
+
+Quand le disque d'un serveur se remplit, **Qu'est-ce qui prend de la place ici ?** (clic droit dans la zone vide, sur un dossier, ou la palette ; l'icône de loupe d'un disque du [moniteur](09-terminal-tunnels.md#96-moniteur-du-serveur)) ouvre un onglet qui classe les éléments du dossier par taille :
+
+![Ce qui prend de la place dans un dossier du serveur](images/espace-disque.png)
+
+- En haut, le **disque** du dossier : place utilisée, taille, place libre, et la jauge (orange au-delà de 75 %, rouge au-delà de 90 %).
+- Puis la taille du dossier et, pour chaque élément, sa taille, sa part du dossier et une barre à l'échelle du plus gros. Les fichiers cachés comptent aussi (un `.cache` peut être énorme).
+- Un clic sur un dossier l'ouvre ; le chemin en haut et la flèche **Dossier parent** remontent. Les dossiers déjà vus ne sont pas recomptés ; **Recompter** le fait.
+- Au survol d'une ligne : **Copier le chemin** et **Supprimer** (après confirmation, avec la place libérée). **Afficher dans un panneau de fichiers** ouvre le dossier dans une session.
+
+Sur une connexion SFTP ou SCP avec un shell, `du` compte la place sur le serveur, en une commande, sans sortir du système de fichiers (`du -x`) : rapide même pour des milliers de fichiers. Sinon (FTP, WebDAV, S3, compte SFTP seul, ou cet ordinateur), Skiff additionne la taille des fichiers en les parcourant ; au-delà de 300 000 éléments ou de 2 minutes, le calcul s'arrête et l'onglet le signale. Les dossiers que le compte ne peut pas lire sont comptés à part (« dossiers illisibles ») : connectez-vous en root pour tout mesurer.
 
 ---
 
