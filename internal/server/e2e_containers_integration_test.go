@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -114,6 +115,49 @@ func testContainers(t *testing.T, e *e2e) {
 		}
 	})
 
+	t.Run("startStop", func(t *testing.T) {
+		// a throwaway container of a Compose-like project
+		name := uniq("skiff-e2e-ctr")
+		if out, err := exec.Command("docker", "run", "-d", "--name", name, "--label", "com.docker.compose.project=skiff-e2e", "-p", "127.0.0.1::80", "--entrypoint", "sleep", "rclone/rclone:latest", "600").CombinedOutput(); err != nil {
+			t.Fatalf("docker run: %v %s", err, out)
+		}
+		t.Cleanup(func() { exec.Command("docker", "rm", "-f", name).Run() })
+		var rts []string
+		e.must(t, "containers.runtimes", nil, &rts)
+		if len(rts) == 0 || rts[0] != "docker" {
+			t.Errorf("runtimes %v", rts)
+		}
+		state := func() core.ContainerInfo {
+			var list []core.ContainerInfo
+			e.must(t, "containers.list", map[string]string{"runtime": "docker"}, &list)
+			for _, c := range list {
+				if c.Name == name {
+					return c
+				}
+			}
+			t.Fatalf("%s not listed", name)
+			return core.ContainerInfo{}
+		}
+		if c := state(); !c.Running || c.State != "running" || c.Project != "skiff-e2e" || !strings.Contains(c.Ports, "->80/tcp") {
+			t.Errorf("listed %+v", c)
+		}
+		act := func(a string) { e.must(t, "containers.action", map[string]string{"runtime": "docker", "name": name, "action": a}, nil) }
+		act("stop")
+		if c := state(); c.Running || c.State != "exited" {
+			t.Errorf("after stop %+v", c)
+		}
+		act("start")
+		if c := state(); !c.Running {
+			t.Errorf("after start %+v", c)
+		}
+		act("restart")
+		if c := state(); !c.Running {
+			t.Errorf("after restart %+v", c)
+		}
+		e.mustFail(t, "containers.action", map[string]string{"runtime": "docker", "name": name, "action": "rm"})
+		e.mustFail(t, "containers.action", map[string]string{"runtime": "kubectl", "name": name, "action": "stop"})
+		e.mustFail(t, "containers.action", map[string]string{"runtime": "docker", "name": "skiff-no-such-container", "action": "start"})
+	})
 	t.Run("dockerOverSSH", func(t *testing.T) {
 		ssh := e.connect(t, "sftp")
 		home := ssh.Home
@@ -125,6 +169,7 @@ ps) echo '{"Names":"web","Image":"nginx:1.27","Status":"Up 2 hours","State":"run
 exec) shift; while [ "$1" = "-i" ] || [ "$1" = "-it" ]; do shift; done
     [ "$1" = "-u" ] && shift 2
     echo "$1" >> "$HOME/fake-docker.log"; shift; exec "$@" ;;
+start|stop|restart) echo "$1 $2" >> "$HOME/fake-docker.log" ;;
 esac
 `
 		e.put(t, ssh.ID, home+"/fake-docker", fake)
@@ -134,6 +179,18 @@ esac
 		e.must(t, "containers.list", map[string]string{"runtime": "docker", "command": home + "/fake-docker", "via": ssh.ID}, &list)
 		if len(list) != 2 || list[0].Name != "web" || !list[0].Running || list[1].Running || list[0].Image != "nginx:1.27" {
 			t.Fatalf("list %+v", list)
+		}
+		// start a container of the server, and the runtimes found there
+		e.must(t, "containers.action", map[string]string{"runtime": "docker", "command": home + "/fake-docker", "via": ssh.ID, "name": "old", "action": "start"}, nil)
+		if log := e.readText(t, ssh.ID, home+"/fake-docker.log"); !strings.Contains(log, "start old") {
+			t.Errorf("not started on the server: %q", log)
+		}
+		var rts []string
+		e.must(t, "containers.runtimes", map[string]string{"via": ssh.ID}, &rts)
+		for _, r := range rts {
+			if r != "docker" && r != "podman" && r != "kubectl" {
+				t.Errorf("runtimes of the server %v", rts)
+			}
 		}
 		site := config.Site{Protocol: "container", Host: "web", ContainerRuntime: "docker", ContainerCommand: home + "/fake-docker", ViaConn: ssh.ID}
 		var ci core.ConnInfo

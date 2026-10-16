@@ -960,7 +960,38 @@ step('moniteur du serveur', async () => {
 })
 
 step('conteneurs de cet ordinateur', async () => {
-  await page.locator('.tab.home').click()
+  // a stopped container of a Compose-like project
+  const name = `skiff-ui-${process.pid}`
+  execSync(`docker rm -f ${name} >/dev/null 2>&1; docker create --name ${name} --stop-timeout 1 --label com.docker.compose.project=skiff-ui --entrypoint sleep rclone/rclone:latest 600 >/dev/null`)
+  try {
+    await page.locator('.tab.home').click()
+    await page.locator('.action-card', { hasText: 'Conteneurs' }).click()
+    const d = dialog()
+    assert.ok(await d.getByRole('button', { name: 'Docker', exact: true }).isEnabled(), 'Docker found')
+    const mine = d.locator(`[data-container="${name}"]`)
+    await mine.waitFor()
+    await d.locator('.ctr-group-head', { hasText: 'Projet Compose skiff-ui' }).waitFor()
+    assert.match(await mine.locator('.ctr-state').innerText(), /Créé|Arrêté/)
+    // the search keeps only matching containers
+    await d.locator('input[placeholder^="Rechercher"]').fill('skiff-ui')
+    await until('filtered', async () => (await d.locator('.ctr-row').count()) === 1)
+    // start it, stop it from its menu
+    await mine.getByRole('button', { name: 'Démarrer' }).click()
+    await until('started', async () => (await mine.locator('.ctr-state').innerText()).includes('En marche'))
+    assert.match(await mine.locator('.ctr-status').innerText(), /^depuis /)
+    await mine.locator('[data-tip="Plus"]').click()
+    await page.locator('.menu-item', { hasText: 'Arrêter' }).click()
+    await until('stopped', async () => (await mine.locator('.ctr-state').innerText()).includes('Arrêté'), 20000)
+    // save it as a site: the editor opens with the container
+    await mine.locator('[data-tip="Plus"]').click()
+    await page.locator('.menu-item', { hasText: 'Enregistrer comme site' }).click()
+    const se = page.locator('.site-editor')
+    await until('site draft', async () => (await se.locator('.field', { hasText: 'Conteneur' }).locator('input').first().inputValue()) === name)
+    await page.locator('.se-head').getByRole('button', { name: 'Annuler', exact: true }).click()
+  } finally {
+    execSync(`docker rm -f ${name} >/dev/null 2>&1 || true`)
+  }
+  // the files of a running container, from the menu of the site list
   await moreMenu().click()
   await page.locator('.menu-item', { hasText: 'Conteneurs de cet ordinateur' }).click()
   const ctr = dialog().locator('[data-container="testenv-ssh-1"]')

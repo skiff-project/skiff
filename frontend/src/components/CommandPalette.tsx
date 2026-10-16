@@ -90,6 +90,7 @@ export function CommandPalette() {
     cmd('wsave', t('ws.save'), Copy, async () => { const n = await prompt({ title: t('ws.title'), label: t('ws.name'), value: '' }); if (n) saveWorkspace(n) })
     cmd('keygen', t('prefs.generateKey'), KeyRound, () => openKeygen())
     cmd('installkey', t('keys.installTitle'), KeyRound, () => openInstallKey({ conn: s?.conn }))
+    cmd('localctr', t('ctr.titleLocal'), Box, () => openContainers(), undefined, !get().info?.localTerminal)
     cmd('lock', t('prefs.lockNow'), Lock, () => call('security.lock'), undefined, !(get().info?.hasMaster && !get().info?.locked))
     cmd('prefs', t('prefs.title'), Settings, () => openPreferences(), 'Ctrl+,')
     cmd('theme', t('toolbar.theme'), Moon, () => savePrefs({ theme: document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark' }))

@@ -298,6 +298,26 @@ func (s *Server) registerRPC() {
 		}
 		return c.ListContainers(ctx, p.Runtime, p.Command, p.Via, p.Context, p.Namespace)
 	})
+	method(s, "containers.runtimes", func(ctx context.Context, p struct {
+		Via string `json:"via,omitempty"`
+	}) ([]string, error) {
+		if p.Via == "" && !s.localExecAllowed() {
+			return nil, errLocalContainers
+		}
+		return c.ContainerRuntimes(ctx, p.Via)
+	})
+	method(s, "containers.action", func(ctx context.Context, p struct {
+		Runtime string `json:"runtime"`
+		Command string `json:"command,omitempty"`
+		Via     string `json:"via,omitempty"`
+		Name    string `json:"name"`
+		Action  string `json:"action"` // start, stop, restart
+	}) (ok, error) {
+		if p.Via == "" && !s.localExecAllowed() {
+			return ok{}, errLocalContainers
+		}
+		return yes, c.ContainerAction(ctx, p.Runtime, p.Command, p.Via, p.Name, p.Action)
+	})
 
 	// ---- server monitor ----
 	method(s, "monitor.sample", func(ctx context.Context, p struct {

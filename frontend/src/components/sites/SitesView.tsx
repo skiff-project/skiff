@@ -456,14 +456,20 @@ function Welcome({ onNew, recent, onSelect }: { onNew: () => void; recent: SiteV
           <Download />
           <span>{t('sites.import')}</span>
         </button>
-        <button className="action-card" onClick={() => openKeygen()}>
+        <button className="action-card" onClick={() => openKeygen()} data-tip={t('prefs.generateKey')}>
           <KeyRound />
-          <span>{t('prefs.generateKey')}</span>
+          <span>{t('welcome.keygen')}</span>
         </button>
         {info?.localTerminal && (
           <button className="action-card" onClick={() => openTerminal('local')}>
             <SquareTerminal />
             <span>{t('welcome.localTerminal')}</span>
+          </button>
+        )}
+        {info?.localTerminal && (
+          <button className="action-card" onClick={() => openContainers()}>
+            <Box />
+            <span>{t('welcome.containers')}</span>
           </button>
         )}
       </div>

@@ -385,7 +385,7 @@ export interface TaskRun {
   stats?: { files: number; bytes: number; deleted: number; compared: number; upToDate?: boolean; commands?: number }
 }
 export interface TaskView extends Task { next?: string; last?: TaskRun; running: boolean }
-export interface ContainerInfo { name: string; image?: string; status?: string; running: boolean; namespace?: string; containers?: string[] }
+export interface ContainerInfo { name: string; image?: string; status?: string; running: boolean; state?: string; project?: string; ports?: string; namespace?: string; containers?: string[] }
 export interface Shell { id: string; name: string; kind: 'shell' | 'repl'; path: string; args?: string[]; default?: boolean }
 export interface Snippet { id: string; name: string; command: string; run: boolean }
 export interface KeychainKey { id: string; name: string; type: string; fingerprint: string; publicKey: string; added: string }

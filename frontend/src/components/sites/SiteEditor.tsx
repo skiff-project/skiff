@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   Cable, Folder, Globe, KeyRound, Network, NotebookPen, Plug, Plus, Save, Server, Settings2, Shield, Trash2, Waypoints, X, Cloud,
-  Clock, Copy, FileCog,
+  Clock, Copy, FileCog, Box,
 } from 'lucide-react'
 import { toast, errorToast, useStore } from '../../lib/store'
 import { call } from '../../lib/api'
@@ -47,6 +47,34 @@ export function SiteEditor({ site, isNew, onSaved, onDeleted, onCancel }: { site
   const view = site as SiteView
   const ssh = s.protocol === 'sftp' || s.protocol === 'scp'
   const isCtr = s.protocol === 'container'
+  // Choose…: the containers of this computer, or of the SSH site, connected
+  // for the time of the choice if no session is open on it
+  const [picking, setPicking] = useState(false)
+  const pickContainer = async () => {
+    let via = ''
+    let temp = ''
+    if (s.viaSite) {
+      const open = Object.values(useStore.getState().conns).find((c) => c.siteId === s.viaSite && c.state === 'connected')
+      if (open) via = open.id
+      else {
+        setPicking(true)
+        try {
+          temp = via = (await call<{ id: string }>('conn.open', { siteId: s.viaSite })).id
+        } catch (e) {
+          errorToast(t('ctr.pick'), e)
+          return
+        } finally {
+          setPicking(false)
+        }
+      }
+    }
+    await openContainers({
+      via: via || undefined,
+      runtime: s.containerRuntime || 'docker',
+      onPick: (c, r, k8s) => up({ host: c.name, containerRuntime: r, name: s.name || c.name, k8sNamespace: c.namespace || k8s.namespace || undefined, k8sContext: k8s.context || undefined, k8sContainer: c.containers?.[0] || undefined }),
+    })
+    if (temp) call('conn.close', { conn: temp }).catch(() => {})
+  }
   const sshSites = sites.filter((x) => x.id !== s.id && (x.protocol === 'sftp' || x.protocol === 'scp'))
   const sshConfigOn = useStore((st) => st.sshConfig?.enabled ?? false)
   const report = useSshReport(ssh ? s : null, sshConfigOn)
@@ -223,7 +251,7 @@ export function SiteEditor({ site, isNew, onSaved, onDeleted, onCancel }: { site
                     <label>{s.containerRuntime === 'kubectl' ? t('ctr.pod') : t('ctr.name')}</label>
                     <div className="row">
                       <input className="input grow" value={s.host} placeholder={s.containerRuntime === 'kubectl' ? 'api-7f9c4d' : 'web'} onChange={(e) => up({ host: e.target.value })} spellCheck={false} autoFocus={isNew} />
-                      {!s.viaSite && <button className="btn" onClick={() => openContainers({ runtime: s.containerRuntime || 'docker', onPick: (c, r, k8s) => up({ host: c.name, containerRuntime: r, name: s.name || c.name, k8sNamespace: c.namespace || k8s.namespace || undefined, k8sContext: k8s.context || undefined, k8sContainer: c.containers?.[0] || undefined }) })}>{t('ctr.pick')}</button>}
+                      <button className="btn" disabled={picking} onClick={pickContainer}>{picking ? <span className="spinner" /> : <Box />} {t('ctr.pick')}</button>
                     </div>
                   </div>
                   {s.containerRuntime === 'kubectl' ? (
