@@ -14,11 +14,11 @@ Cette documentation décrit chaque fonctionnalité, écran par écran. Les captu
 | 2 | [Premiers pas](02-premiers-pas.md) | Écran d'accueil, connexion rapide, première connexion, visite de l'interface |
 | 3 | [Gestionnaire de sites](03-sites.md) | Sites, dossiers, couleurs, récents, espaces de travail, toutes les options de connexion, configuration OpenSSH (`~/.ssh/config`), import, export, URL et code de session |
 | 4 | [Interface et navigation](04-interface.md) | Onglets, barre d'outils, panneaux, fil d'Ariane, favoris, historique, arborescence, filtre, sélection, aperçu, comparaison de dossiers, navigation synchronisée |
-| 5 | [Opérations sur les fichiers](05-fichiers.md) | Menus contextuels, renommer, créer, supprimer, corbeille, liens, propriétés et droits, sommes de contrôle, presse-papiers, glisser-déposer, commandes |
+| 5 | [Opérations sur les fichiers](05-fichiers.md) | Menus contextuels, renommer, créer, supprimer, corbeille, liens, propriétés et droits, sommes de contrôle, presse-papiers, glisser-déposer, commandes, archives |
 | 6 | [Transferts](06-transferts.md) | Copier et déplacer, options de transfert, file d'attente, écrasement, reprise, erreurs, transferts serveur à serveur |
 | 7 | [Synchronisation](07-synchronisation.md) | Synchroniser, aperçu des changements, garder le dossier distant à jour, tâches planifiées |
 | 8 | [Édition, diff et aperçu](08-edition.md) | Éditeur intégré, conflits, recherche, éditeur externe, diff visuel, projets, versions précédentes |
-| 9 | [Terminal, tunnels, proxys et rebonds](09-terminal-tunnels.md) | Terminal SSH et local, redirections de ports, SOCKS, hôtes de rebond, proxys, moniteur du serveur |
+| 9 | [Terminal, tunnels, proxys et rebonds](09-terminal-tunnels.md) | Terminal SSH et local, redirections de ports, SOCKS, hôtes de rebond, proxys, moniteur du serveur, services, journaux en direct |
 | 10 | [Recherche, journal et palette](10-recherche-journal.md) | Recherche de fichiers, journal de session, informations serveur, palette de commandes |
 | 11 | [Sécurité](11-securite.md) | Clés d'hôte, certificats TLS, mots de passe enregistrés, mot de passe maître, verrouillage, générateur de clés SSH |
 | 12 | [Préférences](12-preferences.md) | Les quatorze sections des préférences, thèmes, densité, langue, configuration OpenSSH, synchronisation entre appareils |

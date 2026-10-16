@@ -161,6 +161,49 @@ Les boutons d'une ligne de processus envoient **TERM** (**Arrêter**, le process
 
 La fréquence se règle de 1 à 10 secondes ; **Pause** fige l'affichage. Les mesures s'arrêtent quand l'onglet n'est pas affiché et reprennent après une reconnexion. Un serveur sans `/proc` (macOS, BSD) affiche « the monitor needs a Linux server ».
 
+## 9.7 Services du serveur
+
+Pour une session SFTP ou SCP vers un serveur Linux qui utilise **systemd** (Debian, Ubuntu, Fedora, Rocky, Arch…), le bouton **Services du serveur** (roue dentée dans la barre d'outils de la session, ou la palette) liste ses services : nginx, php-fpm, mariadb, ssh, cron… Rien n'est installé : Skiff utilise `systemctl` et `journalctl` par la connexion.
+
+![Services du serveur](images/services.png)
+
+- En haut : **Tous**, **En marche**, **En échec**, **Arrêtés**, avec leur nombre, et la recherche par nom ou description. Les services en échec viennent en premier ; à l'ouverture, le premier en échec est choisi.
+- Chaque ligne montre l'état (**En marche**, **En échec**, **Arrêté**, **Démarre**…), le nom et la description ; l'éclair signale un service qui démarre avec le serveur.
+- À droite, le service choisi :
+  - **Démarrer**, ou **Redémarrer**, **Recharger** (relit sa configuration sans couper) et **Arrêter** ;
+  - **Démarrer avec le serveur** (activer ou désactiver le service au démarrage) ;
+  - depuis quand il tourne ou est arrêté, son PID, sa mémoire, ses redémarrages automatiques, le résultat et le code de sortie d'un service en échec, son fichier ;
+  - les **dernières lignes de son journal**, pour voir tout de suite pourquoi il est en échec ;
+  - **Journal en direct**, qui ouvre son journal dans un onglet qui se met à jour ([§ 9.8](#98-suivre-un-journal-en-direct)).
+
+Démarrer, arrêter ou activer un service demande les droits de **root** : connecté avec un autre compte, Skiff affiche « Seul root peut faire ça : connectez-vous au serveur avec un compte root ». Lire le journal de tous les services demande d'être root ou membre du groupe `systemd-journal` (ou `adm`) ; sinon un message le rappelle.
+
+Un serveur sans systemd (Alpine avec OpenRC, la plupart des conteneurs, certains NAS) affiche « Ce serveur n'utilise pas systemd » : utilisez le [terminal](#91-terminal-ssh).
+
+## 9.8 Suivre un journal en direct
+
+Clic droit sur un fichier → **Suivre en direct** ouvre un onglet qui montre la fin du fichier (les 500 dernières lignes) puis chaque ligne ajoutée, comme `tail -f` : idéal pour `access.log`, `error.log` ou le journal d'une application pendant un test. Le journal d'un service s'ouvre de la même façon depuis les [services du serveur](#97-services-du-serveur).
+
+![Un journal suivi en direct](images/journal-direct.png)
+
+- Sur une connexion avec un shell, `tail -F` (ou `journalctl -f` pour un service) tourne sur le serveur : les lignes arrivent aussitôt, et le suivi continue après une rotation du fichier.
+- Sans shell (compte SFTP seul, FTP, WebDAV, S3, fichier local), Skiff regarde la taille du fichier chaque seconde et lit ce qui a été ajouté. Si le fichier raccourcit (remplacé ou vidé), la lecture reprend à son début et une ligne le signale.
+
+Les lignes qui ressemblent à une **erreur** (`error`, `failed`, `fatal`, `denied`, `exception`… et les codes HTTP 5xx d'un journal d'accès) sont en rouge, les **alertes** (`warning`, `timeout`… et les codes 4xx) en orange. Dans la barre :
+
+| Élément | Effet |
+|---|---|
+| État | **En direct** (vert), **En pause**, **Arrêté** (avec l'erreur s'il y en a une) |
+| **N'afficher que les lignes avec…** | Filtre sur un texte, sans arrêter le suivi |
+| **Erreurs et alertes** | Seulement les lignes en rouge et en orange, avec leur nombre |
+| **Pause** / **Reprendre** | Fige l'affichage ; les lignes reçues pendant la pause sont gardées et ajoutées à la reprise |
+| **Suivre à nouveau** | Relance un suivi arrêté (connexion perdue, fichier supprimé) |
+| **Retour à la ligne**, **Copier les lignes affichées**, **Effacer** | |
+
+L'affichage reste en bas tant que vous ne remontez pas ; en remontant pour lire, il ne bouge plus, et **Aller à la fin** y revient. Les 20 000 dernières lignes sont gardées. Fermer l'onglet arrête le suivi sur le serveur.
+
+![Seulement les erreurs et les alertes](images/journal-direct-erreurs.png)
+
 ---
 
 [← Édition, diff et aperçu](08-edition.md) · [Sommaire](README.md) · [Recherche, journal et palette →](10-recherche-journal.md)

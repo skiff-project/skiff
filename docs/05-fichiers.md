@@ -17,6 +17,9 @@ Clic droit sur un fichier ou un dossier (ou `Maj+F10`, touche Menu) :
 | **Éditer avec un éditeur externe** | `Maj+F4` | Ouvre le fichier dans votre éditeur, avec renvoi automatique ([§ 8.4](08-edition.md#84-éditeur-externe)) |
 | **Afficher** | `F3` | Ouvre un fichier texte dans l'éditeur en lecture seule ; pour une image, une vidéo, un son ou un PDF, ouvre le [panneau d'aperçu](04-interface.md#49-panneau-daperçu) |
 | **Ouvrir avec l'application par défaut** | | Télécharge si besoin et ouvre avec l'application associée du système |
+| **Suivre en direct** | | Ouvre la fin du fichier et chaque ligne ajoutée ([§ 9.8](09-terminal-tunnels.md#98-suivre-un-journal-en-direct)) |
+| **Extraire…** | | Archive zip, tar, tar.gz, tar.bz2 ou tar.xz : l'ouvre sur place ([§ 5.12](#512-compresser-et-extraire)) |
+| **Compresser…** | | Met la sélection dans une archive zip, tar.gz ou tar ([§ 5.12](#512-compresser-et-extraire)) |
 | **Télécharger** / **Envoyer** / **Copier vers l'autre panneau** | `F5` | Copie vers le dossier de l'autre panneau ([Transferts](06-transferts.md)) |
 | **Déplacer vers l'autre panneau** | `F6` | Déplace vers le dossier de l'autre panneau |
 | **Copier sous…** | `Maj+F5` | Copie avec la boîte des options de transfert |
@@ -182,6 +185,31 @@ Options de chaque commande : **Une fois par fichier** (sinon une seule fois pour
 ![Résultat d'une commande](images/commande-resultat.png)
 
 La boîte affiche la sortie standard et la sortie d'erreur, puis le **Code de sortie**. En FTP, la commande est envoyée telle quelle au serveur (par exemple `SITE CHMOD 640 fichier.txt`) et la boîte affiche sa réponse. **Copier** copie la sortie. Le panneau est actualisé après la commande. Pour une session interactive, utilisez le [terminal](09-terminal-tunnels.md).
+
+## 5.12 Compresser et extraire
+
+Les archives se font et s'ouvrent **là où sont les fichiers**, sans rien télécharger : sur un serveur SFTP ou SCP avec un shell (et dans un conteneur), par ses propres commandes `tar`, `zip` et `unzip` ; sur cet ordinateur, par Skiff. Pratique pour sauvegarder un site avant une mise à jour, ou déployer une archive envoyée d'un coup.
+
+**Compresser…** (clic droit sur un ou plusieurs fichiers et dossiers) met la sélection dans une archive, dans le même dossier :
+
+![Compresser la sélection](images/archive-compresser.png)
+
+| Format | Pour |
+|---|---|
+| **ZIP** | S'ouvre partout, Windows compris. Sur un serveur sans `zip`, Skiff utilise Python 3 ; sans l'un ni l'autre, il propose TAR.GZ. |
+| **TAR.GZ** | L'habituel sur les serveurs Linux ; garde les droits des fichiers |
+| **TAR** | Sans compression : rapide, garde les droits |
+
+Le nom proposé est celui de l'élément (ou du dossier, pour plusieurs éléments) ; changer de format change son extension. Une archive existante n'est jamais remplacée.
+
+**Extraire…** (clic droit sur une archive `.zip`, `.tar`, `.tar.gz`, `.tgz`, `.tar.bz2` ou `.tar.xz`) l'ouvre :
+
+![Extraire une archive](images/archive-extraire.png)
+
+- **Dans un nouveau dossier** (par défaut), du nom de l'archive : rien n'est mélangé aux fichiers déjà là ;
+- **Ici, dans ce dossier** : les fichiers de même nom sont remplacés.
+
+Rien n'est écrit hors du dossier de destination : une archive dont un chemin en sortirait (`../`, chemin absolu) est refusée, ou ce chemin est ramené dans le dossier par le `tar` du serveur. Sans shell (compte SFTP seul, FTP, WebDAV, S3), les commandes **Compresser…** et **Extraire…** n'apparaissent pas.
 
 ---
 

@@ -35,6 +35,9 @@ Le clic droit sur un onglet de session propose **Reconnecter**, **Dupliquer la s
 | **Projet** | `Ctrl+Maj+E` | Ouvre le dossier du panneau actif comme [projet](08-edition.md#87-projets--modifier-un-dossier-sans-rien-installer-sur-le-serveur) : arborescence, fichiers en onglets, recherche, terminal |
 | **Exécuter une commande** | `Ctrl+Maj+X` | [Commande ponctuelle](05-fichiers.md#511-exécuter-une-commande) sur le serveur |
 | **Tunnels** | | [Redirection de ports](09-terminal-tunnels.md#93-tunnels-redirections-de-ports) |
+| **Moniteur du serveur** | | Processeur, mémoire, disques et processus en direct ([§ 9.6](09-terminal-tunnels.md#96-moniteur-du-serveur)) |
+| **Services du serveur** | | Les services systemd : démarrer, arrêter, journal ([§ 9.7](09-terminal-tunnels.md#97-services-du-serveur)) |
+| **Conteneurs de ce serveur** | | Docker, Podman, Kubernetes sur le serveur ([§ 15.7](15-protocoles.md#157-conteneurs-docker-podman-kubernetes)) |
 | Œil barré : **Afficher les fichiers cachés** | `Ctrl+Alt+H` | Affiche ou masque les fichiers commençant par un point |
 | **Arborescence des dossiers** | | [§ 4.7](#47-arborescence-des-dossiers) |
 | **Panneau d'aperçu** | `Ctrl+Maj+P` | [§ 4.9](#49-panneau-daperçu) |

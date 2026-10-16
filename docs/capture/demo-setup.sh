@@ -171,7 +171,12 @@ docker exec testenv-ssh-1 sh -c '
   printf "body{margin:0}\n" > www/css/style.css
   printf "console.log(1)\n" > www/js/app.js
   printf "User-agent: *\nAllow: /\n" > www/robots.txt
-  for i in $(seq 1 400); do echo "203.0.113.$((i % 250)) - - [15/Oct/2026:09:$((i % 60)):00 +0200] \"GET /index.html HTTP/2\" 200 5120"; done > logs/access.log
+  for i in $(seq 1 400); do
+    c=200; p=/index.html
+    [ $((i % 17)) = 0 ] && c=404 && p=/ancienne-page.html
+    [ $((i % 53)) = 0 ] && c=500 && p=/contact.php
+    echo "203.0.113.$((i % 250)) - - [15/Oct/2026:09:$((i % 60)):00 +0200] \"GET $p HTTP/2\" $c 5120"
+  done > logs/access.log
   head -c 6000000 /dev/urandom > backups/site-2026-10-01.tar.gz
   head -c 5800000 /dev/urandom > backups/site-2026-09-01.tar.gz
   printf "services:\n  web:\n    image: nginx:stable\n    ports: [\"80:80\"]\n    volumes: [\"./www:/usr/share/nginx/html:ro\"]\n" > docker-compose.yml
@@ -182,6 +187,9 @@ docker exec testenv-ssh-1 sh -c '
   touch -d "2026-06-20 11:00" www/promo-ete.html
 '
 docker cp "$ICON" testenv-ssh-1:/config/www/images/logo.png
+# systemd on the SSH server, for the services window (Alpine has none)
+docker exec -i -u 0 testenv-ssh-1 sh -s install < "$(dirname "$0")/../../testenv/fake-systemd.sh"
+
 docker exec testenv-ssh-1 sh -c 'chown -R skiff:users /config/www /config/backups /config/releases /config/docker-compose.yml /config/LISEZMOI.md /config/logs/access.log 2>/dev/null; touch -d "2026-10-02 18:40" /config/www/images/logo.png'
 
 docker exec testenv-ftp-1 sh -c '
