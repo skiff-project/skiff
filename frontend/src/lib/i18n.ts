@@ -212,6 +212,11 @@ const en: Dict = {
   'site.sessionToken': 'Session token',
   'site.anonymous': 'Anonymous login',
   'site.auth': 'Authentication',
+  'site.chooseKey': 'Choose',
+  'site.chooseKeyTip': 'Choose a key of ~/.ssh',
+  'site.noKeys': 'No key in ~/.ssh',
+  'site.keyFileClear': 'None: try the usual keys',
+  'site.keychainAuto': 'The {n} key(s) of the Skiff keychain are tried with every server',
   'site.keyFile': 'Private key file',
   'site.keyFileHint': 'OpenSSH or PuTTY .ppk. Default keys in ~/.ssh are tried automatically.',
   // OpenSSH configuration
@@ -1302,6 +1307,11 @@ const fr: Dict = {
   'site.sessionToken': 'Jeton de session',
   'site.anonymous': 'Connexion anonyme',
   'site.auth': 'Authentification',
+  'site.chooseKey': 'Choisir',
+  'site.chooseKeyTip': 'Choisir une clé de ~/.ssh',
+  'site.noKeys': 'Aucune clé dans ~/.ssh',
+  'site.keyFileClear': 'Aucune : essayer les clés habituelles',
+  'site.keychainAuto': 'Les {n} clé(s) du trousseau Skiff sont essayées avec tous les serveurs',
   'site.keyFile': 'Fichier de clé privée',
   'site.keyFileHint': 'OpenSSH ou PuTTY .ppk. Les clés par défaut de ~/.ssh sont essayées automatiquement.',
   // Configuration OpenSSH

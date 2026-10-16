@@ -11,11 +11,12 @@ import { copyToClipboard } from '../../lib/fileops'
 import { displayPath } from '../../lib/actions'
 import { PasswordMeter } from './MasterPassword'
 
+/** Resolves with the path of the saved private key, if one was generated. */
 export function openKeygen() {
-  return openDialog((close) => <Keygen close={close} />)
+  return openDialog<string>((close) => <Keygen close={close} />)
 }
 
-function Keygen({ close }: { close: () => void }) {
+function Keygen({ close: closeDialog }: { close: (path?: string) => void }) {
   const info = useStore((s) => s.info)
   const conns = useStore(useShallow((s) => Object.values(s.conns).filter((c) => (c.protocol === 'sftp' || c.protocol === 'scp') && c.state === 'connected')))
   const [type, setType] = useState('ed25519')
@@ -29,6 +30,7 @@ function Keygen({ close }: { close: () => void }) {
   const [keychain, setKeychain] = useState(false)
   const [busy, setBusy] = useState(false)
   const [target, setTarget] = useState(conns[0]?.id || '')
+  const close = () => closeDialog(res?.path)
 
   const gen = async () => {
     setBusy(true)

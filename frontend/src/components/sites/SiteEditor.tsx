@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
-  Cable, FileKey2, Folder, Globe, KeyRound, Network, NotebookPen, Plug, Plus, Save, Server, Settings2, Shield, Trash2, Waypoints, X, Cloud,
+  Cable, Folder, Globe, KeyRound, Network, NotebookPen, Plug, Plus, Save, Server, Settings2, Shield, Trash2, Waypoints, X, Cloud,
   Clock, Copy, FileCog,
 } from 'lucide-react'
 import { toast, errorToast, useStore } from '../../lib/store'
@@ -12,6 +12,7 @@ import { ask } from '../dialogs/common'
 import { copyToClipboard } from '../../lib/fileops'
 import { openContainers, RUNTIME_LABEL } from '../dialogs/ContainersDialog'
 import { SshConfigOptions, SshEffective, SshWarnings, useSshReport } from './SshConfig'
+import { KeyFileInput } from './KeyFileInput'
 
 export function newSiteDraft(): Site {
   return {
@@ -264,10 +265,7 @@ export function SiteEditor({ site, isNew, onSaved, onDeleted, onCancel }: { site
               {ssh && (
                 <div className="field">
                   <label>{t('site.keyFile')}</label>
-                  <div className="row">
-                    <FileKey2 style={{ width: 16, color: 'var(--faint)' }} />
-                    <input className="input mono" value={s.keyFile || ''} placeholder={detected?.keyFiles?.[0] ? displayPath('local', detected.keyFiles[0]) : '~/.ssh/id_ed25519'} onChange={(e) => up({ keyFile: e.target.value })} spellCheck={false} />
-                  </div>
+                  <KeyFileInput icon value={s.keyFile || ''} placeholder={detected?.keyFiles?.[0] ? displayPath('local', detected.keyFiles[0]) : '~/.ssh/id_ed25519'} onChange={(v) => up({ keyFile: v })} />
                   <span className="hint">{t('site.keyFileHint')}</span>
                 </div>
               )}
@@ -464,7 +462,7 @@ export function SiteEditor({ site, isNew, onSaved, onDeleted, onCancel }: { site
               </div>
               <div className="form-section">
                 <h4>{t('site.auth')}</h4>
-                <div className="field"><label>{t('site.keyFile')}</label><input className="input mono" value={s.keyFile || ''} placeholder={t('site.keyFilePlaceholder')} onChange={(e) => up({ keyFile: e.target.value })} /></div>
+                <div className="field"><label>{t('site.keyFile')}</label><KeyFileInput value={s.keyFile || ''} placeholder={t('site.keyFilePlaceholder')} onChange={(v) => up({ keyFile: v })} /></div>
                 {pwField(t('site.passphrase'), 'passphrase', view.hasPassphrase)}
                 <label className="switch"><input type="checkbox" checked={s.useAgent} onChange={(e) => up({ useAgent: e.target.checked })} /> {t('site.useAgent')}</label>
                 <label className="switch"><input type="checkbox" checked={!!s.forwardAgent} onChange={(e) => up({ forwardAgent: e.target.checked })} /> {t('site.forwardAgent')}</label>
@@ -559,7 +557,7 @@ function JumpRow({ j, index, sites, hasPassword, onChange, onPassword, onRemove 
             <input className="input" placeholder={t('site.user')} value={j.user || ''} onChange={(e) => onChange({ ...j, user: e.target.value })} />
             <input className="input" type="password" placeholder={hasPassword && pw === undefined ? t('site.passwordSaved') : t('site.password')} value={pw ?? ''} onChange={(e) => { setPw(e.target.value); onPassword(e.target.value) }} />
           </div>
-          <input className="input mono" placeholder={t('site.keyFile')} value={j.keyFile || ''} onChange={(e) => onChange({ ...j, keyFile: e.target.value })} />
+          <KeyFileInput compact placeholder={t('site.keyFile')} value={j.keyFile || ''} onChange={(v) => onChange({ ...j, keyFile: v })} />
         </div>
       )}
     </div>
