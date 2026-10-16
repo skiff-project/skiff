@@ -13,7 +13,7 @@ L'onglet **Sites**, toujours en première position, sert d'écran d'accueil. Une
 | Barre latérale | Recherche de sites, espaces de travail, sites **récents** et arbre de **tous les sites** (voir [Gestionnaire de sites](03-sites.md)) |
 | Champ de connexion rapide | Tapez une URL (`sftp://utilisateur@hôte:22/chemin`) puis `Entrée` ou **Connexion** |
 | **Nouveau site** | Ouvre un formulaire de site vide |
-| **Importer…** | Importe les sessions de WinSCP, PuTTY, FileZilla, OpenSSH ou un fichier (voir [Import](03-sites.md#34-importer-des-sites)) |
+| **Importer…** | Importe les sessions de WinSCP, PuTTY, FileZilla, OpenSSH ou un fichier (voir [Import](03-sites.md#35-importer-des-sites)) |
 | **Générer une paire de clés…** | Ouvre le [générateur de clés SSH](11-securite.md#115-générateur-de-clés-ssh) |
 | **Terminal local** | Ouvre un terminal sur l'ordinateur (voir [Terminal](09-terminal-tunnels.md#92-terminal-local)) |
 | **Récents** | Les cinq derniers sites utilisés, avec un bouton de connexion |

@@ -12,7 +12,7 @@ Cette documentation décrit chaque fonctionnalité, écran par écran. Les captu
 |---|---|---|
 | 1 | [Installation et démarrage](01-installation.md) | Plateformes, compilation, premier lancement, dossier de configuration, mode portable |
 | 2 | [Premiers pas](02-premiers-pas.md) | Écran d'accueil, connexion rapide, première connexion, visite de l'interface |
-| 3 | [Gestionnaire de sites](03-sites.md) | Sites, dossiers, couleurs, récents, espaces de travail, toutes les options de connexion, import, export, URL et code de session |
+| 3 | [Gestionnaire de sites](03-sites.md) | Sites, dossiers, couleurs, récents, espaces de travail, toutes les options de connexion, configuration OpenSSH (`~/.ssh/config`), import, export, URL et code de session |
 | 4 | [Interface et navigation](04-interface.md) | Onglets, barre d'outils, panneaux, fil d'Ariane, favoris, historique, arborescence, filtre, sélection, aperçu, comparaison de dossiers, navigation synchronisée |
 | 5 | [Opérations sur les fichiers](05-fichiers.md) | Menus contextuels, renommer, créer, supprimer, corbeille, liens, propriétés et droits, sommes de contrôle, presse-papiers, glisser-déposer, commandes |
 | 6 | [Transferts](06-transferts.md) | Copier et déplacer, options de transfert, file d'attente, écrasement, reprise, erreurs, transferts serveur à serveur |
@@ -21,7 +21,7 @@ Cette documentation décrit chaque fonctionnalité, écran par écran. Les captu
 | 9 | [Terminal, tunnels, proxys et rebonds](09-terminal-tunnels.md) | Terminal SSH et local, redirections de ports, SOCKS, hôtes de rebond, proxys |
 | 10 | [Recherche, journal et palette](10-recherche-journal.md) | Recherche de fichiers, journal de session, informations serveur, palette de commandes |
 | 11 | [Sécurité](11-securite.md) | Clés d'hôte, certificats TLS, mots de passe enregistrés, mot de passe maître, verrouillage, générateur de clés SSH |
-| 12 | [Préférences](12-preferences.md) | Les douze sections des préférences, thèmes, densité, langue |
+| 12 | [Préférences](12-preferences.md) | Les treize sections des préférences, thèmes, densité, langue, configuration OpenSSH |
 | 13 | [Scripts et ligne de commande](13-scripts-cli.md) | CLI, scripts compatibles WinSCP, console interactive, `keygen`, `import` |
 | 14 | [Mode web distant](14-mode-web.md) | `skiff serve`, authentification, TLS, confinement, déploiement |
 | 15 | [Protocoles](15-protocoles.md) | Particularités de SFTP, SCP, FTP/FTPS, WebDAV et S3, URL de session |

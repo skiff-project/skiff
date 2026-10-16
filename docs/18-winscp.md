@@ -57,6 +57,7 @@ Ce chapitre aide les habitués de WinSCP à retrouver chaque fonction dans Skiff
 - **Diff visuel** entre deux fichiers, sur n'importe quelles connexions.
 - **Palette de commandes** (`Ctrl+K`), **espaces de travail**, panneau d'**aperçu**.
 - **Mode web distant** : la même interface dans un navigateur.
+- **Configuration OpenSSH** (`~/.ssh/config`) lue directement, sur chaque système, comme par la commande `ssh` : alias, clés, rebonds, proxy, tunnels, politique de clés d'hôte.
 - Import des sessions **FileZilla**, **PuTTY** et **OpenSSH** (`ProxyJump` et redirections compris), en plus de WinSCP.
 - Interface en **français et en anglais**, thème sombre.
 

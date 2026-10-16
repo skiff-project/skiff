@@ -17,6 +17,7 @@ La barre latérale contient, de haut en bas :
 - les **Espaces de travail** ([§ 3.3](#33-espaces-de-travail)) ;
 - les **Récents** : les cinq derniers sites utilisés, avec une pastille verte pour ceux qui sont connectés ;
 - **Tous les sites**, rangés en dossiers et sous-dossiers. Chaque site affiche sa couleur, son nom, `utilisateur@hôte:port` et un badge de protocole (`SFTP`, `SCP`, `FTP`, `FTPS`, `DAV`, `S3`). Le nombre à droite d'un dossier est le nombre de sites qu'il contient.
+- **Config OpenSSH** : les hôtes déclarés dans votre `~/.ssh/config`, prêts à l'emploi sans rien enregistrer ([§ 3.4](#34-configuration-openssh-ssh_config)).
 
 | Action | Effet |
 |---|---|
@@ -39,7 +40,7 @@ La barre latérale contient, de haut en bas :
 | **Dupliquer** | Crée une copie du site, nommée « … (copie) », mots de passe compris |
 | **Renommer** | Change le nom du site |
 | **Copier l'URL de session** | Copie l'URL du site (sans mot de passe) |
-| **Générer URL / code…** | Ouvre le [générateur d'URL et de code](#36-url-et-code-de-session) |
+| **Générer URL / code…** | Ouvre le [générateur d'URL et de code](#37-url-et-code-de-session) |
 | **Déplacer vers le dossier** | Range le site dans un dossier existant ou à la **(racine)** |
 | **Supprimer** | Supprime le site |
 
@@ -188,6 +189,8 @@ Les tunnels définis ici sont rattachés au site. Chaque ligne indique le type (
 | **Shell (SCP)** et **Commande de listage (SCP)** | Shell utilisé pour les commandes SCP et commande de listage forcée (`ls -la`) |
 | **Autoriser les anciens algorithmes (vieux serveurs)** | Active les algorithmes obsolètes (`diffie-hellman-group1-sha1`, `ssh-rsa`, `3des-cbc`…) pour les vieux équipements |
 
+En haut de la section, **Appliquer la configuration OpenSSH à ce site** (activé par défaut) laisse `~/.ssh/config` compléter les champs vides du site, et la liste en dessous montre ce qui en est tiré ([§ 3.4](#34-configuration-openssh-ssh_config)).
+
 ### FTP
 
 ![Section FTP](images/site-ftp.png)
@@ -238,7 +241,93 @@ Un espace de travail mémorise un ensemble d'onglets de session (site, dossier d
 - **Ouvrir** : double-clic sur l'espace, bouton de connexion à sa droite, ou palette `Ctrl+K`.
 - **Supprimer** : clic droit → **Supprimer**.
 
-## 3.4 Importer des sites
+## 3.4 Configuration OpenSSH (ssh_config)
+
+Skiff lit la configuration du client OpenSSH comme la commande `ssh` : un hôte décrit dans `~/.ssh/config` s'ouvre dans Skiff par son nom, avec les mêmes réglages (adresse réelle, port, utilisateur, clés, rebonds, proxy, tunnels…), sans rien importer ni ressaisir.
+
+### Fichiers lus selon le système
+
+| Système | Fichier utilisateur (lu en premier) | Fichier système (lu ensuite) |
+|---|---|---|
+| **Windows 10 et 11** | `%USERPROFILE%\.ssh\config`, soit `C:\Users\vous\.ssh\config` | `%ProgramData%\ssh\ssh_config`, soit `C:\ProgramData\ssh\ssh_config` |
+| **macOS** | `~/.ssh/config` | `/etc/ssh/ssh_config` |
+| **Linux, BSD** | `~/.ssh/config` | `/etc/ssh/ssh_config` (et ses `Include`, par exemple `/etc/ssh/ssh_config.d/*.conf`) |
+
+Ce sont les fichiers de la commande `ssh` de chaque système (OpenSSH de Windows, Git pour Windows et WSL côté Windows utilisent aussi `%USERPROFILE%\.ssh`). Le fichier utilisateur peut être remplacé par un autre dans **Préférences → SSH** ([§ 12.7](12-preferences.md#127-ssh)).
+
+Les règles d'OpenSSH s'appliquent :
+
+- pour chaque paramètre, **la première valeur obtenue l'emporte** : le fichier utilisateur passe avant le fichier système, et un bloc précis doit donc précéder un bloc `Host *` ;
+- `IdentityFile`, `CertificateFile`, `LocalForward`, `RemoteForward` et `DynamicForward` peuvent être donnés plusieurs fois et s'additionnent ;
+- `ProxyJump` et `ProxyCommand` s'excluent : le premier rencontré gagne ;
+- blocs `Host` avec les motifs `*`, `?` et les négations `!` ;
+- blocs `Match` avec les critères `host`, `originalhost`, `user`, `localuser`, `exec`, `localnetwork`, `tagged`, `all`, `canonical` et `final`, éventuellement niés par `!` ;
+- `Include` (jokers acceptés, chemins relatifs à `~/.ssh` pour le fichier utilisateur et au dossier du fichier système sinon), y compris à l'intérieur d'un bloc `Host` ou `Match` ;
+- jetons `%h`, `%p`, `%r`, `%n`, `%u`, `%d`, `%C`, `%L`, `%l`, `%k`, `%j`, `%i` et `%%`, variables `${VAR}` et `~` dans les chemins ; guillemets et chemins Windows (`IdentityFile "C:\Users\vous\.ssh\clé perso"`) ;
+- comme `ssh` depuis la version 9.6, une commande (`ProxyCommand`, `Match exec`) n'est jamais lancée pour un nom d'hôte ou d'utilisateur contenant des caractères du shell.
+
+Les fichiers sont relus à chaque connexion : modifiez-les, Skiff suit sans redémarrer.
+
+### Les hôtes dans la liste des sites
+
+La section **Config OpenSSH**, sous vos sites, liste les hôtes déclarés dans le fichier utilisateur (les motifs comme `Host *.lan` ne sont pas des hôtes et n'y figurent pas). Cliquez sur un hôte pour voir ce que la connexion utilisera et d'où vient chaque valeur :
+
+![Un hôte de ~/.ssh/config et ses paramètres détectés](images/openssh-hote.png)
+
+| Zone | Contenu |
+|---|---|
+| **Connexion** | Hôte et port réels, utilisateur, clés essayées (et l'agent SSH), hôtes de rebond, commande proxy, tunnels ouverts à la connexion |
+| Avertissements | Par exemple un `IdentityFile` qui n'existe pas |
+| **Paramètres détectés** | Chaque valeur obtenue, avec le fichier et la ligne d'où elle vient, et son statut : **appliqué**, **site** (remplacé par le réglage du site, valeur barrée) ou **ignoré** (fonction que Skiff n'a pas, par exemple `ForwardAgent` ou `ControlMaster`) |
+
+Un double-clic, `Entrée` ou **Connexion** ouvre la session ; **Ouvrir dans un terminal** ouvre aussi un terminal SSH. **Créer un site** prépare un site dont l'hôte est l'alias : la configuration continue de s'appliquer et vous n'ajoutez que ce qui est propre à Skiff (couleur, dossiers d'ouverture, mot de passe enregistré…). Le clic droit propose les mêmes actions et **Copier le nom** :
+
+![Menu d'un hôte OpenSSH](images/openssh-menu.png)
+
+L'alias fonctionne partout où un nom d'hôte est accepté : la connexion rapide (qui propose les alias pendant la saisie), le champ **Nom d'hôte** d'un site, un hôte de rebond, et la ligne de commande (`skiff sftp://recette`, `open recette` dans un script, voir [Scripts](13-scripts-cli.md#sessions)).
+
+### Le site passe en premier
+
+Comme les options de la ligne de commande de `ssh`, **un réglage fait dans Skiff l'emporte toujours** : la configuration OpenSSH ne remplit que ce que le site laisse vide. Pour les réglages qui ont une valeur par défaut dans Skiff (délai de connexion, keepalive), la configuration s'applique tant que le site garde cette valeur par défaut.
+
+| Paramètre `ssh_config` | Effet dans Skiff | Le site l'emporte quand… |
+|---|---|---|
+| `HostName` | Adresse réelle du serveur | — |
+| `Port` | Port | le champ **Port** est rempli |
+| `User` | Nom d'utilisateur (à défaut de tout, le nom de l'utilisateur local, comme `ssh`) | le champ **Nom d'utilisateur** est rempli |
+| `IdentityFile` | Clés essayées, à la place des clés par défaut de `~/.ssh` | le champ **Fichier de clé privée** est rempli |
+| `IdentitiesOnly` | N'offre que les clés de l'agent qui correspondent à ces fichiers | — |
+| `CertificateFile` | Certificats OpenSSH associés aux clés | — |
+| `IdentityAgent` | Socket de l'agent (ou tube nommé sous Windows, par exemple `\\.\pipe\openssh-ssh-agent`) ; `none` désactive l'agent | **Utiliser l'agent SSH** est décoché |
+| `PubkeyAuthentication`, `PasswordAuthentication`, `KbdInteractiveAuthentication`, `PreferredAuthentications` | Méthodes d'authentification autorisées et leur ordre | une clé est donnée dans le site / **clavier-interactif** est décoché |
+| `ProxyJump` | Chaîne de rebonds ; chaque rebond est lui-même résolu par la configuration (le premier peut avoir son propre `ProxyJump` ou `ProxyCommand`) | le site a des **Hôtes de rebond** ou un **Proxy** |
+| `ProxyCommand` | Commande proxy locale (`nc`, `ssh -W`, `cloudflared`…) | idem |
+| `HostKeyAlias`, `StrictHostKeyChecking`, `UserKnownHostsFile`, `GlobalKnownHostsFile` | Vérification de la clé du serveur ([§ 11.1](11-securite.md#111-clés-dhôte-ssh)) | une empreinte est épinglée dans le site |
+| `ConnectTimeout` | Délai de connexion | le délai n'est plus de 15 s |
+| `ServerAliveInterval`, `ServerAliveCountMax` | Keepalive et nombre de réponses manquées avant la coupure | le keepalive n'est plus de 30 s |
+| `AddressFamily` | IPv4 (`inet`) ou IPv6 (`inet6`) | **Version IP** n'est pas sur Auto |
+| `Ciphers`, `KexAlgorithms`, `MACs`, `HostKeyAlgorithms` | Algorithmes (listes avec `+`, `-` et `^` acceptées ; ceux que Skiff ne connaît pas sont écartés) | **Autoriser les anciens algorithmes** est coché |
+| `LocalForward`, `RemoteForward`, `DynamicForward` | Tunnels ouverts à la connexion, visibles dans le panneau **Tunnels** | le site a ses propres **Redirections de ports** |
+| `Tag` | Utilisé par `Match tagged` | — |
+
+Les autres mots-clés sont affichés **ignoré**. `ProxyUseFdpass` n'est pas pris en charge : un hôte qui en a besoin (comme ceux de `systemd-ssh-proxy`) renvoie une erreur claire.
+
+### Dans l'éditeur de site
+
+Pour un site SFTP ou SCP, Skiff cherche la configuration de l'hôte pendant la saisie. Les champs vides montrent en grisé la valeur qui sera utilisée (utilisateur, port, clé) et un encadré résume ce qui s'applique :
+
+![Configuration détectée dans l'éditeur de site](images/openssh-site-detecte.png)
+
+**Détails** ouvre la section **SSH**, où l'interrupteur **Appliquer la configuration OpenSSH à ce site** et la liste complète des paramètres se trouvent. Ici, le nom d'utilisateur saisi dans le site remplace celui du fichier (statut **site**) :
+
+![La section SSH : configuration OpenSSH du site](images/openssh-site-ssh.png)
+
+### Désactiver la lecture
+
+- pour un site : décochez **Appliquer la configuration OpenSSH à ce site** (section **SSH**) ;
+- pour tout Skiff : décochez **Lire la configuration OpenSSH** dans **Préférences → SSH** ([§ 12.7](12-preferences.md#127-ssh)) ; la section **Config OpenSSH** disparaît alors de la liste des sites.
+
+## 3.5 Importer des sites
 
 **⋯ → Importer…** (ou **Importer…** sur l'écran d'accueil) ouvre l'assistant d'import. Skiff détecte les sources présentes sur l'ordinateur :
 
@@ -250,7 +339,7 @@ Un espace de travail mémorise un ensemble d'onglets de session (site, dossier d
 | **WinSCP (registre)** | Les mêmes informations, lues dans le registre de Windows |
 | **PuTTY** | Sessions SSH (registre sous Windows, `~/.putty/sessions` ailleurs) |
 | **FileZilla** | `sitemanager.xml`, mots de passe compris |
-| **OpenSSH (~/.ssh/config)** | Blocs `Host` : `HostName`, `User`, `Port`, `IdentityFile`, `ProxyJump` (devient une chaîne de rebonds) et `LocalForward`/`RemoteForward`/`DynamicForward` (deviennent des tunnels) |
+| **OpenSSH (~/.ssh/config)** | Un site par bloc `Host`, avec les valeurs que `ssh` utiliserait (`Host *`, `Match` et `Include` compris) : `HostName`, `User`, `Port`, `IdentityFile`, `ProxyJump` (devient une chaîne de rebonds), `ProxyCommand`, `ConnectTimeout`, `ServerAliveInterval`, `AddressFamily` et `LocalForward`/`RemoteForward`/`DynamicForward` (deviennent des tunnels). Inutile pour se connecter : Skiff lit déjà ce fichier ([§ 3.4](#34-configuration-openssh-ssh_config)) ; l'import en fait des copies indépendantes du fichier. |
 | **Export Skiff (JSON)** | Un fichier exporté par Skiff |
 | **URL de session (une par ligne)** | Une liste d'URL `sftp://…`, `ftps://…` |
 
@@ -260,7 +349,7 @@ Pour les sources qui demandent un fichier, glissez-le dans la zone prévue, cliq
 
 Cochez les sites à importer, choisissez le dossier de destination (**Importer dans le dossier**, « Importés » par défaut) puis **Importer N site(s)**. Un triangle orange signale un site dont le mot de passe n'a pas pu être récupéré. La même opération existe en ligne de commande : `skiff import` (voir [Scripts](13-scripts-cli.md#136-skiff-import)).
 
-## 3.5 Exporter des sites
+## 3.6 Exporter des sites
 
 **⋯ → Exporter…** produit la liste des sites dans quatre formats : **Skiff JSON**, **WinSCP.ini**, **OpenSSH config** et **URLs**.
 
@@ -268,7 +357,7 @@ Cochez les sites à importer, choisissez le dossier de destination (**Importer d
 
 **Copier** place le texte dans le presse-papiers, **Enregistrer** le télécharge (`skiff-sites.json`, `.ini`, `.config` ou `.txt`). Les mots de passe ne sont **jamais** exportés.
 
-## 3.6 URL et code de session
+## 3.7 URL et code de session
 
 **Générer URL / code…** (menu contextuel d'un site) produit, prêts à copier :
 

@@ -22,6 +22,8 @@ Si la connexion échoue, l'onglet affiche l'erreur, avec **Réessayer** et **Fer
 | `subsystem request failed` | SFTP désactivé sur le serveur | Skiff bascule tout seul sur SCP ; sinon choisissez le protocole SCP |
 | `x509: certificate signed by unknown authority` | Certificat auto-signé | Voir [Certificats TLS](11-securite.md#112-certificats-tls) |
 | `the master password is required…` | Mots de passe verrouillés | [Déverrouillez](11-securite.md#114-mot-de-passe-maître) avec le mot de passe maître |
+| `… StrictHostKeyChecking is yes` | Clé d'hôte inconnue et `StrictHostKeyChecking yes` dans `~/.ssh/config` | Connectez-vous une fois avec `ssh`, ou changez ce réglage pour cet hôte (voir [Clés d'hôte](11-securite.md#111-clés-dhôte-ssh)) |
+| `ProxyUseFdpass is not supported` | L'hôte passe par une commande proxy qui transmet un descripteur (par exemple `systemd-ssh-proxy`) | Hôte réservé à `ssh` ; désactivez la configuration OpenSSH pour ce site s'il s'agit d'un autre serveur |
 
 Le [journal de session](10-recherche-journal.md#102-journal-de-session) détaille chaque étape ; passez le niveau à **debug** pour voir aussi les réponses du serveur.
 
@@ -60,6 +62,9 @@ Activez **Forcer l'adresse IP pour les connexions passives**, ou passez en mode 
 
 **Je veux naviguer en root sur un serveur où je n'ai qu'un compte sudo.**
 Dans le site, **SSH → Commande du serveur SFTP** : `sudo /usr/lib/openssh/sftp-server` (sudo doit être possible sans mot de passe pour cette commande ; le chemin varie selon la distribution, par exemple `/usr/libexec/openssh/sftp-server`).
+
+**Un hôte de mon `~/.ssh/config` n'apparaît pas ou se connecte avec de mauvais réglages.**
+Ouvrez **Préférences → SSH** : la lecture doit être activée et le fichier utilisateur marqué **trouvé**. Seuls les hôtes sans joker (`Host serveur`, pas `Host *.lan`) sont listés, mais tous s'appliquent. Cliquez sur l'hôte (ou ouvrez la section **SSH** du site) : chaque paramètre y est affiché avec la ligne d'où il vient. N'oubliez pas que la première valeur trouvée l'emporte : placez `Host *` à la fin du fichier, et qu'un réglage fait dans le site remplace celui du fichier (voir [Configuration OpenSSH](03-sites.md#34-configuration-openssh-ssh_config)).
 
 **Où sont mes réglages ?**
 Dans le [dossier de configuration](01-installation.md#14-dossier-de-configuration), affiché en bas des préférences.

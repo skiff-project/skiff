@@ -53,7 +53,7 @@ Les tunnels font passer des connexions réseau à travers une session SSH. **Tun
 
 Pour chaque tunnel : le type et le libellé, l'adresse d'écoute (avec un bouton pour la copier), la destination, la session utilisée avec le nombre de connexions en cours et au total, le trafic reçu et envoyé, et **Arrêter**. **Nouveau tunnel** ouvre la boîte de création. Les tunnels s'arrêtent quand leur session se ferme.
 
-Pour qu'un tunnel s'ouvre à chaque connexion, définissez-le dans le site (**Redirection de ports**, case **Auto**, voir [Sites](03-sites.md#redirection-de-ports-ssh)). Les `LocalForward`, `RemoteForward` et `DynamicForward` d'un `~/.ssh/config` importé deviennent de tels tunnels.
+Pour qu'un tunnel s'ouvre à chaque connexion, définissez-le dans le site (**Redirection de ports**, case **Auto**, voir [Sites](03-sites.md#redirection-de-ports-ssh)). Les `LocalForward`, `RemoteForward` et `DynamicForward` de la [configuration OpenSSH](03-sites.md#34-configuration-openssh-ssh_config) d'un hôte s'ouvrent aussi à la connexion, tant que le site n'a pas ses propres redirections (et deviennent des tunnels du site à l'import).
 
 ## 9.4 Hôtes de rebond
 
@@ -68,7 +68,8 @@ Particularités :
 - les clés d'hôte de chaque rebond sont vérifiées comme pour une connexion directe ;
 - les rebonds servent à **tous les protocoles** : un FTP, un WebDAV ou un S3 accessible seulement depuis le réseau interne est joint à travers le tunnel SSH ;
 - le nombre de rebonds est indiqué dans les [informations serveur](10-recherche-journal.md#103-informations-serveur-et-protocole) ;
-- un `ProxyJump` de `~/.ssh/config` est converti en chaîne de rebonds à l'import.
+- un rebond peut être un alias de `~/.ssh/config` : son adresse, son port, son utilisateur et ses clés viennent alors du fichier ;
+- sans rebond ni proxy dans le site, le `ProxyJump` (ou `ProxyCommand`) de la [configuration OpenSSH](03-sites.md#34-configuration-openssh-ssh_config) de l'hôte s'applique tel quel ; à l'import, il devient une chaîne de rebonds.
 
 ## 9.5 Proxys
 

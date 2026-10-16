@@ -119,11 +119,8 @@ printf '# Notes\n\n- Renouveler le certificat TLS en novembre\n- Migrer les sauv
 head -c 32000000 /dev/urandom > "$HOME_DIR/Téléchargements/sauvegarde-photos.tar.gz"
 head -c 2400000 /dev/urandom > "$HOME_DIR/Téléchargements/catalogue-2027.zip"
 
-# ---- SSH config (import demo) --------------------------------------------
+# ---- SSH config (OpenSSH hosts and import demo) ---------------------------
 cat > "$HOME_DIR/.ssh/config" <<'EOF'
-Host *
-    ServerAliveInterval 30
-
 Host bastion
     HostName bastion.example.com
     User alex
@@ -134,11 +131,17 @@ Host recette
     User deploy
     ProxyJump bastion
     LocalForward 5432 db.internal:5432
+    ForwardAgent yes
 
 Host nas
     HostName 192.168.1.20
     User alex
     Port 2200
+
+Host *
+    ServerAliveInterval 20
+    IdentityFile ~/.ssh/id_ed25519
+    AddKeysToAgent yes
 EOF
 
 # varied timestamps

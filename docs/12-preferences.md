@@ -2,7 +2,7 @@
 
 [← Sécurité](11-securite.md) · [Sommaire](README.md) · [Scripts et ligne de commande →](13-scripts-cli.md)
 
-**Préférences** (`Ctrl+,`, roue dentée en haut à droite, ou palette) ouvre une fenêtre en douze sections. Chaque modification s'applique **immédiatement** et est enregistrée dans `settings.json` : il n'y a pas de bouton « Appliquer ». Le bas de la fenêtre rappelle le **Dossier de configuration**.
+**Préférences** (`Ctrl+,`, roue dentée en haut à droite, ou palette) ouvre une fenêtre en treize sections. Chaque modification s'applique **immédiatement** et est enregistrée dans `settings.json` : il n'y a pas de bouton « Appliquer ». Le bas de la fenêtre rappelle le **Dossier de configuration**.
 
 ## 12.1 Apparence
 
@@ -93,7 +93,19 @@ Les options de transfert par défaut, identiques à celles de la [boîte de tran
 | **Curseur clignotant** | |
 | **Copier à la sélection** | Copie le texte dès qu'il est sélectionné |
 
-## 12.7 Confirmations
+## 12.7 SSH
+
+![Préférences : SSH](images/prefs-ssh.png)
+
+| Réglage | Description |
+|---|---|
+| **Lire la configuration OpenSSH (ssh_config)** | Activé par défaut : les hôtes de `~/.ssh/config` apparaissent dans la liste des sites et leurs paramètres complètent les sites SSH (voir [Configuration OpenSSH](03-sites.md#34-configuration-openssh-ssh_config)) |
+| **Fichier utilisateur** | Vide : le fichier de la commande `ssh` de votre système. Indiquez un autre fichier pour le remplacer (les `Include` relatifs restent cherchés dans `~/.ssh`). |
+| **Fichiers lus** | Le fichier utilisateur, le fichier système et ceux qu'ils incluent, avec leur état : **trouvé**, **absent** ou **illisible** |
+
+Emplacements par système : sous Windows `%USERPROFILE%\.ssh\config` puis `%ProgramData%\ssh\ssh_config` ; sous macOS et Linux `~/.ssh/config` puis `/etc/ssh/ssh_config`.
+
+## 12.8 Confirmations
 
 ![Préférences : Confirmations](images/prefs-confirmations.png)
 
@@ -105,7 +117,7 @@ Les options de transfert par défaut, identiques à celles de la [boîte de tran
 | **Confirmer les transferts par glisser-déposer** | non |
 | **Confirmer la fermeture des onglets avec des transferts en cours** | oui |
 
-## 12.8 Sécurité
+## 12.9 Sécurité
 
 ![Préférences : Sécurité](images/prefs-securite.png)
 
@@ -113,13 +125,13 @@ Les options de transfert par défaut, identiques à celles de la [boîte de tran
 - **Clés SSH** : les clés privées de `~/.ssh`, avec **Convertir** (voir [§ 11.6](11-securite.md#116-clés-existantes-et-conversion)), et **Générer une paire de clés…**.
 - **Clés d'hôtes connues** : hôte, type de clé, empreinte, et la corbeille pour oublier une clé.
 
-## 12.9 Commandes personnalisées
+## 12.10 Commandes personnalisées
 
 ![Préférences : Commandes personnalisées](images/prefs-commandes.png)
 
 Chaque commande a un nom, une ligne de commande avec les motifs de WinSCP (rappelés en haut : `!` nom du fichier, `!&` fichiers sélectionnés, `!/` chemin courant, `!@` hôte, `!U` utilisateur, `!?Question?défaut!` demander), et quatre options : **Une fois par fichier**, **Dossiers**, **Commande locale**, **Afficher la sortie**. La corbeille supprime la commande et **Ajouter une commande** en crée une. Voir [§ 5.10](05-fichiers.md#510-commandes-personnalisées).
 
-## 12.10 Journalisation
+## 12.11 Journalisation
 
 ![Préférences : Journalisation](images/prefs-journalisation.png)
 
@@ -128,13 +140,13 @@ Chaque commande a un nom, une ligne de commande avec les motifs de WinSCP (rappe
 | **Écrire les journaux de session dans des fichiers** | Un fichier par session dans le dossier `logs` indiqué en dessous |
 | **Niveau de journal** | **normal** (commandes et évènements) ou **debug** (avec les réponses du serveur) |
 
-## 12.11 Raccourcis clavier
+## 12.12 Raccourcis clavier
 
 ![Préférences : Raccourcis clavier](images/prefs-raccourcis.png)
 
 La liste de tous les raccourcis. Elle est reprise au chapitre [Raccourcis clavier](16-raccourcis.md).
 
-## 12.12 À propos de Skiff
+## 12.13 À propos de Skiff
 
 ![Préférences : À propos](images/prefs-a-propos.png)
 

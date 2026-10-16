@@ -60,6 +60,7 @@ La session du navigateur dure sept jours. Les sites, préférences, mots de pass
 | Terminal local | Désactivé, sauf avec `--allow-local-terminal`. Jamais disponible avec `--root` : un shell ne peut pas être confiné à un dossier. |
 | Commandes locales (commandes personnalisées marquées **Commande locale**) | Désactivées |
 | Import depuis un fichier | Collez le contenu du fichier ou envoyez-le par le navigateur (seul `~/.ssh/config` du serveur est lu directement) |
+| Configuration OpenSSH | Celle **du serveur** (le `~/.ssh/config` de l'utilisateur qui lance `skiff serve`) |
 | Conversion de clés | Indisponible |
 | Corbeille locale | Les suppressions locales sont définitives |
 | Générateur de clés | Les clés sont enregistrées sur le serveur |

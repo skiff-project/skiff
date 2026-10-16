@@ -45,6 +45,7 @@ Skiff reprend les fonctionnalités de WinSCP (interface Commander à deux pannea
 - Vérification des **certificats TLS** avec confiance ponctuelle ou permanente, épinglage d'empreinte
 - **Proxys** SOCKS4/4a, SOCKS5, HTTP CONNECT, Telnet, commande locale (`ProxyCommand`)
 - **Hôtes de rebond** (chaînes `ProxyJump`), utilisables par **tous** les protocoles (FTP/WebDAV/S3 via tunnel SSH)
+- **Configuration OpenSSH lue automatiquement**, comme la commande `ssh` : `~/.ssh/config` puis `/etc/ssh/ssh_config` (sous Windows `%USERPROFILE%\.ssh\config` puis `%ProgramData%\ssh\ssh_config`), avec `Host`, `Match`, `Include` et les jetons `%h %p %r…`. Les hôtes déclarés apparaissent dans la liste des sites ; `HostName`, `User`, `Port`, `IdentityFile`, `ProxyJump`, `ProxyCommand`, `StrictHostKeyChecking`, `HostKeyAlias`, `LocalForward`… complètent ce qu'un site laisse vide, et l'éditeur de site montre chaque valeur détectée avec sa ligne d'origine
 - Algorithmes configurables, mode « algorithmes hérités » pour les vieux serveurs, IPv4/IPv6, délais, keepalive, **reconnexion automatique**
 
 ### Interface

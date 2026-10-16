@@ -296,6 +296,25 @@ scene('sites-menus', async () => {
   await closeDialogs()
 })
 
+scene('openssh', async () => {
+  await sitesTab()
+  const host = page.locator('[data-ssh-host="recette"]')
+  await host.click()
+  await page.locator('.sshcfg-panel .sshcfg-options').waitFor()
+  await shot('openssh-hote')
+  await host.click({ button: 'right' })
+  await shot('openssh-menu')
+  await page.locator('.menu-item', { hasText: 'Créer un site' }).click()
+  const se = page.locator('.site-editor')
+  await se.locator('.sshcfg-detected').waitFor()
+  await shot('openssh-site-detecte', { el: se, pad: 0 })
+  await se.locator('.field', { hasText: "Nom d'utilisateur" }).locator('input').first().fill('admin')
+  await se.locator('.sshcfg-detected button').click()
+  await se.locator('.sshcfg-row[data-status="site"]').waitFor()
+  await shot('openssh-site-ssh', { el: se, pad: 0, wait: 500 })
+  await btnIn(page.locator('.se-head'), 'Annuler').click()
+})
+
 scene('import-export', async () => {
   await sitesTab()
   await page.locator('.sites-side-head .icon-btn').nth(1).click()
@@ -701,7 +720,7 @@ scene('preferences', async () => {
   await dialog().locator('.prefs').waitFor()
   const sections = [
     ['Apparence', 'prefs-apparence'], ['Panneaux', 'prefs-panneaux'], ['Transferts', 'prefs-transferts'], ["File d'attente", 'prefs-file'],
-    ['Éditeur', 'prefs-editeur'], ['Terminal', 'prefs-terminal'], ['Confirmations', 'prefs-confirmations'], ['Sécurité', 'prefs-securite'],
+    ['Éditeur', 'prefs-editeur'], ['Terminal', 'prefs-terminal'], ['SSH', 'prefs-ssh'], ['Confirmations', 'prefs-confirmations'], ['Sécurité', 'prefs-securite'],
     ['Commandes personnalisées', 'prefs-commandes'], ['Journalisation', 'prefs-journalisation'], ['Raccourcis clavier', 'prefs-raccourcis'], ['À propos de Skiff', 'prefs-a-propos'],
   ]
   for (const [label, file] of sections) {

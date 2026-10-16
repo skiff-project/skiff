@@ -160,7 +160,7 @@ Les commandes personnalisées s'exécutent sur la sélection, sur le serveur (SF
 
 ![Sous-menu des commandes personnalisées](images/menu-commandes-personnalisees.png)
 
-Skiff en fournit six, modifiables : **Archiver (tar.gz)**, **Extraire une archive tar**, **Extraire une archive zip**, **Rechercher du texte (grep)**, **Espace disque utilisé** et **Exécuter**. Elles se gèrent dans **Préférences → Commandes personnalisées** ([§ 12.9](12-preferences.md#129-commandes-personnalisées)).
+Skiff en fournit six, modifiables : **Archiver (tar.gz)**, **Extraire une archive tar**, **Extraire une archive zip**, **Rechercher du texte (grep)**, **Espace disque utilisé** et **Exécuter**. Elles se gèrent dans **Préférences → Commandes personnalisées** ([§ 12.9](12-preferences.md#1210-commandes-personnalisées)).
 
 Les motifs de WinSCP sont remplacés avant l'exécution :
 

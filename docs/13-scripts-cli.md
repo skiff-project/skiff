@@ -44,7 +44,7 @@ Dans un fichier de script, les lignes vides et les lignes commençant par `#` ou
 
 | Commande | Description |
 |---|---|
-| `open <url\|site> [options]` | Ouvre une session. L'argument est une [URL de session](15-protocoles.md#157-url-de-session) ou le nom d'un site enregistré (`Production/Site vitrine (SFTP)` ou simplement `Site vitrine (SFTP)`). |
+| `open <url\|site> [options]` | Ouvre une session. L'argument est une [URL de session](15-protocoles.md#157-url-de-session), le nom d'un site enregistré (`Production/Site vitrine (SFTP)` ou simplement `Site vitrine (SFTP)`) ou un hôte de `~/.ssh/config` (`open recette`, comme `ssh recette` : adresse, port, utilisateur, clés et rebonds viennent du fichier, voir [Configuration OpenSSH](03-sites.md#34-configuration-openssh-ssh_config)). |
 | `close [n]` | Ferme la session courante (ou la session `n`) |
 | `session [n]` | Liste les sessions ouvertes, ou rend la session `n` courante. Plusieurs sessions peuvent être ouvertes en même temps. |
 | `exit` (`bye`, `quit`) | Ferme les sessions et termine le script |
@@ -187,7 +187,7 @@ skiff import ssh-config
 skiff import filezilla ~/sitemanager.xml
 ```
 
-Sources : `winscp-ini`, `winscp-registry` (Windows), `putty`, `filezilla`, `ssh-config`, `skiff-json`, `urls`. Chaque site importé est affiché, avec une remarque si son mot de passe n'a pas pu être récupéré. Voir aussi l'[import dans l'interface](03-sites.md#34-importer-des-sites).
+Sources : `winscp-ini`, `winscp-registry` (Windows), `putty`, `filezilla`, `ssh-config`, `skiff-json`, `urls`. Chaque site importé est affiché, avec une remarque si son mot de passe n'a pas pu être récupéré. Voir aussi l'[import dans l'interface](03-sites.md#35-importer-des-sites).
 
 ## 13.7 `skiff keygen`
 
