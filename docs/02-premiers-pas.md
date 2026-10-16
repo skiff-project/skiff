@@ -68,6 +68,8 @@ Pendant la connexion, l'onglet affiche une animation et un bouton **Interrompre*
 
 ![Connexion en cours](images/connexion-en-cours.png)
 
+> **Passer du mot de passe à une clé** : une fois connecté avec le mot de passe, `Ctrl+K` → « Installer une clé publique » dépose une de vos clés (ou une nouvelle, voir **Générer une paire de clés…**) dans `~/.ssh/authorized_keys` du serveur. Les connexions suivantes n'ont plus besoin du mot de passe. Voir [§ 11.6](11-securite.md#installer-une-clé-existante-sur-un-serveur).
+
 ## 2.4 Visite de l'interface
 
 Une fois connecté, l'onglet de session montre l'interface **Commander** : le dossier local à gauche, le serveur à droite.

@@ -155,8 +155,8 @@ La synchronisation s'exécute sans poser de question : une clé d'hôte inconnue
 ![Préférences : Sécurité](images/prefs-securite.png)
 
 - **Mot de passe maître** : définir, changer, supprimer, verrouiller (voir [§ 11.4](11-securite.md#114-mot-de-passe-maître)).
-- **Trousseau Skiff** : les clés gardées par Skiff, avec **Ajouter une clé…**, **Copier la clé publique**, **Renommer** et **Supprimer** (voir [§ 11.7](11-securite.md#117-trousseau-skiff-et-transfert-dagent)).
-- **Clés SSH** : les clés privées de `~/.ssh`, avec **Convertir** (voir [§ 11.6](11-securite.md#116-clés-existantes-et-conversion)), **Au trousseau**, et **Générer une paire de clés…**.
+- **Trousseau Skiff** : les clés gardées par Skiff, avec **Ajouter une clé…**, **Copier la clé publique**, **Installer sur un serveur…**, **Renommer** et **Supprimer** (voir [§ 11.7](11-securite.md#117-trousseau-skiff-et-transfert-dagent)).
+- **Clés SSH** : les clés privées de `~/.ssh`, avec **Copier la clé publique**, **Installer sur un serveur…** ([§ 11.6](11-securite.md#installer-une-clé-existante-sur-un-serveur)), **Convertir** (voir [§ 11.6](11-securite.md#116-clés-existantes-et-conversion)), **Au trousseau**, et **Générer une paire de clés…**.
 - **Clés d'hôtes connues** : hôte, type de clé, empreinte, et la corbeille pour oublier une clé.
 
 ## 12.11 Commandes personnalisées

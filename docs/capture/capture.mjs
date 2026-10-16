@@ -653,6 +653,20 @@ scene('terminal-menu', async () => {
   await page.locator('.tab.active .tab-close').click()
 })
 
+scene('cle-installer', async () => {
+  // a key of ~/.ssh to offer (the keygen scene makes one)
+  if (!(await rpc('keys.list')).some((k) => k.publicKey)) {
+    await rpc('keys.generate', { type: 'ed25519', comment: 'alex@portable', format: 'openssh', saveTo: join(HOME, '.ssh', 'id_ed25519_skiff') })
+  }
+  await openTab('Site vitrine')
+  await page.keyboard.press('Control+k')
+  await page.locator('.palette input').fill('Installer une clé publique')
+  await page.keyboard.press('Enter')
+  await dialog().locator('.code-block').waitFor()
+  await shot('cle-installer', { el: dialog() })
+  await closeDialogs()
+})
+
 scene('moniteur', async () => {
   await openTab('Site vitrine')
   await tip('Moniteur du serveur').click()

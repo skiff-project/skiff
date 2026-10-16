@@ -55,7 +55,7 @@ Pour garder une trace sur disque, activez **Écrire les journaux de session dans
 | **S3** | Endpoint, région, TLS, adressage |
 | **Session** | Date et heure de connexion |
 
-**Copier** copie le tout sous forme de texte, pratique pour un ticket de support.
+**Copier** copie le tout sous forme de texte, pratique pour un ticket de support. Pour une session SFTP ou SCP, **Installer une clé publique…** ajoute une de vos clés au serveur ([§ 11.6](11-securite.md#installer-une-clé-existante-sur-un-serveur)).
 
 ## 10.4 Palette de commandes
 

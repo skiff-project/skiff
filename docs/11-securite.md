@@ -99,6 +99,31 @@ Indiquez la phrase secrète actuelle (si la clé est chiffrée), la phrase secr�
 
 Skiff lit directement les deux formats pour se connecter : la conversion ne sert qu'à échanger des clés avec d'autres logiciels (PuTTY, WinSCP, OpenSSH).
 
+### Installer une clé existante sur un serveur
+
+Pour passer d'un mot de passe à une clé sur un serveur (un VPS, par exemple) : connectez-vous une fois en SFTP ou SCP avec le mot de passe, puis ouvrez **Installer une clé publique**. La boîte ajoute la clé publique à `~/.ssh/authorized_keys` du compte connecté, comme `ssh-copy-id` :
+
+![Installer une clé publique sur le serveur connecté](images/cle-installer.png)
+
+| Champ | Description |
+|---|---|
+| **Clé** | Une clé du **trousseau Skiff** ([§ 11.7](#117-trousseau-skiff-et-transfert-dagent)), une clé de `~/.ssh`, ou **Une autre clé publique (à coller)…** (la clé d'un collègue, d'un autre ordinateur). La clé publique choisie s'affiche dessous, avec **Copier**. |
+| **Serveur** | Une connexion SFTP ou SCP ouverte ; la clé est ajoutée au compte avec lequel elle est connectée. Depuis une session, c'est le serveur de cette session. |
+
+**Installer** crée `~/.ssh` (droits `700`) et `authorized_keys` (droits `600`) si besoin, et n'ajoute pas une clé déjà présente. Seules des opérations sur les fichiers sont utilisées : cela marche aussi pour un compte limité à SFTP.
+
+La clé publique d'une clé de `~/.ssh` vient de son fichier `.pub`, ou de la clé elle-même : une clé OpenSSH récente ou PuTTY `.ppk` contient sa partie publique en clair, même protégée par une phrase secrète, qui n'est donc pas demandée. Seules les anciennes clés PEM chiffrées sans `.pub` ne sont pas proposées (la boîte l'indique).
+
+La boîte s'ouvre depuis :
+
+- **Préférences → Sécurité** : **Installer sur un serveur…** sur chaque clé du trousseau et de `~/.ssh`, à côté de **Copier la clé publique** ;
+- la palette (`Ctrl+K` → « Installer une clé publique ») ;
+- le menu **⋯** de la liste des sites ;
+- **Informations serveur/protocole** d'une session SFTP ou SCP ([§ 10.3](10-recherche-journal.md#103-informations-serveur-et-protocole)) ;
+- le résultat du générateur de clés propose aussi **Installer sur le serveur courant** ([§ 11.5](#115-générateur-de-clés-ssh)).
+
+Vérifiez ensuite qu'une nouvelle connexion passe par la clé (le [journal](10-recherche-journal.md) indique `publickey`) avant de désactiver les mots de passe sur le serveur (`PasswordAuthentication no` dans `/etc/ssh/sshd_config`).
+
 ## 11.7 Trousseau Skiff et transfert d'agent
 
 Le **trousseau Skiff** garde vos clés privées dans Skiff lui-même, chiffrées comme les mots de passe enregistrés : par le mot de passe maître s'il y en a un ([§ 11.4](#114-mot-de-passe-maître)), sinon par la clé locale de l'ordinateur. Pas besoin d'agent SSH sur l'ordinateur, ni de laisser une clé non chiffrée sur le disque.

@@ -60,7 +60,7 @@ La barre latérale contient, de haut en bas :
 
 ![Menu ⋯ de la liste des sites](images/sites-menu-plus.png)
 
-**Nouveau dossier**, **Importer…**, **Exporter…**, **Enregistrer les onglets comme espace de travail…** et **Générer une paire de clés…**.
+**Nouveau dossier**, **Importer…**, **Exporter…**, **Enregistrer les onglets comme espace de travail…**, **Générer une paire de clés…** et **Installer une clé publique…** (sur un serveur connecté, voir [§ 11.6](11-securite.md#installer-une-clé-existante-sur-un-serveur)).
 
 ## 3.2 Créer et modifier un site
 

@@ -158,7 +158,7 @@ touch -d "2026-10-15 07:05" "$SITE/contact.html"
 
 # ---- remote content (Docker test servers) --------------------------------
 docker exec testenv-ssh-1 sh -c '
-  cd /config && rm -rf www backups releases big.bin main.go notes.md photos clitest skiff-test-* 2>/dev/null
+  cd /config && rm -rf www backups releases big.bin main.go notes.md photos clitest skiff-test-* skiff-sync.bin 2>/dev/null
   mkdir -p www/css www/js www/images backups releases
   printf "<!doctype html><title>Atelier Lumière</title><h1>Version en ligne</h1>\n" > www/index.html
   printf "<!doctype html><title>Contact</title><h1>Contact</h1>\n" > www/contact.html
