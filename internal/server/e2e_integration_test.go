@@ -449,6 +449,8 @@ func TestE2E(t *testing.T) {
 		{"find", testFind},
 		{"editors", testEditors},
 		{"projects", testProjects},
+		{"services", testServices},
+		{"archives", testArchives},
 		{"terminals", testTerminals},
 		{"monitor", testMonitor},
 		{"containers", testContainers},
@@ -493,7 +495,7 @@ func TestE2E(t *testing.T) {
 			}
 			return n
 		}(), e.events)
-		for _, ev := range []string{"conn.update", "transfer.update", "log", "prompt", "watch.event", "tunnel.update", "term.update", "find.hits", "sites.changed", "security.changed", "prefs.changed", "edit.update", "task.update", "task.run"} {
+		for _, ev := range []string{"conn.update", "transfer.update", "log", "prompt", "watch.event", "tunnel.update", "term.update", "find.hits", "logs.data", "logs.end", "sites.changed", "security.changed", "prefs.changed", "edit.update", "task.update", "task.run"} {
 			if e.events[ev] == 0 {
 				t.Errorf("event %q never received", ev)
 			}

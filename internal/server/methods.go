@@ -319,6 +319,43 @@ func (s *Server) registerRPC() {
 		return yes, c.ContainerAction(ctx, p.Runtime, p.Command, p.Via, p.Name, p.Action)
 	})
 
+	// ---- services (systemd) and logs followed live ----
+	method(s, "services.list", func(ctx context.Context, p struct {
+		Conn string `json:"conn"`
+	}) ([]core.ServiceInfo, error) {
+		return c.Services(ctx, p.Conn)
+	})
+	method(s, "services.details", func(ctx context.Context, p struct {
+		Conn  string `json:"conn"`
+		Name  string `json:"name"`
+		Lines int    `json:"lines,omitempty"`
+	}) (core.ServiceDetails, error) {
+		return c.ServiceDetails(ctx, p.Conn, p.Name, p.Lines)
+	})
+	method(s, "services.action", func(ctx context.Context, p struct {
+		Conn   string `json:"conn"`
+		Name   string `json:"name"`
+		Action string `json:"action"` // start, stop, restart, reload, enable, disable
+	}) (ok, error) {
+		cctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		defer cancel()
+		return yes, c.ServiceAction(cctx, p.Conn, p.Name, p.Action)
+	})
+	method(s, "logs.follow", func(ctx context.Context, p core.FollowRequest) (string, error) {
+		return c.Follow(p)
+	})
+	method(s, "logs.stop", func(ctx context.Context, p idp) (ok, error) {
+		c.StopFollow(p.ID)
+		return yes, nil
+	})
+	// ---- archives, made and opened where the files are ----
+	method(s, "archive.compress", func(ctx context.Context, p core.CompressRequest) (string, error) {
+		return c.Compress(ctx, p)
+	})
+	method(s, "archive.extract", func(ctx context.Context, p core.ExtractRequest) (ok, error) {
+		return yes, c.Extract(ctx, p)
+	})
+
 	// ---- server monitor ----
 	method(s, "monitor.sample", func(ctx context.Context, p struct {
 		Conn string `json:"conn"`
@@ -685,9 +722,9 @@ func (s *Server) registerRPC() {
 
 	// ---- terminals ----
 	method(s, "term.open", func(ctx context.Context, p struct {
-		Conn string `json:"conn"`
-		Cols int    `json:"cols"`
-		Rows int    `json:"rows"`
+		Conn  string `json:"conn"`
+		Cols  int    `json:"cols"`
+		Rows  int    `json:"rows"`
 		Cwd   string `json:"cwd"`
 		Shell string `json:"shell,omitempty"` // ID from term.shells
 	}) (core.Terminal, error) {

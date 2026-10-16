@@ -75,6 +75,16 @@ export interface TerminalTab {
   embeddedIn?: string // the project tab it is shown in (not in the tab bar)
 }
 
+/** A log followed live: a file, or the journal of a service. */
+export interface LogsTab {
+  id: string
+  kind: 'logs'
+  title: string
+  conn: string
+  path?: string
+  unit?: string
+}
+
 /** A file open in a project. */
 export interface ProjectFile {
   path: string
@@ -116,7 +126,7 @@ export interface SitesTab {
   title: string
 }
 
-export type Tab = SitesTab | SessionTab | EditorTab | DiffTab | TerminalTab | MonitorTab | TasksTab | ProjectTab
+export type Tab = SitesTab | SessionTab | EditorTab | DiffTab | TerminalTab | MonitorTab | TasksTab | ProjectTab | LogsTab
 
 export type BottomTab = 'queue' | 'log' | 'find' | 'watch' | 'tunnels' | 'edits'
 

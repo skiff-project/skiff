@@ -734,6 +734,72 @@ step('projet : arborescence, onglets, recherche, aller au fichier, terminal', as
   await rpc('fs.delete', { conn, paths: [root] })
 })
 
+step('services, journal en direct, compresser et extraire', async () => {
+  const fake = (arg) => execSync(`docker exec -i -u 0 testenv-ssh-1 sh -s ${arg} < ${JSON.stringify(fileURLToPath(new URL('../../testenv/fake-systemd.sh', import.meta.url)))}`)
+  fake('install')
+  const conn = (await sftp()).id
+  try {
+    // the services of the server
+    await tip('Services du serveur').click()
+    const d = dialog()
+    await d.locator('[data-service="php8.2-fpm"].on').waitFor()
+    await d.locator('.svc-logs', { hasText: 'php8.2-fpm[' }).waitFor()
+    await d.locator('[data-service="nginx"]').click()
+    await d.locator('[data-action="stop"]').click()
+    await until('nginx stopped', async () => (await d.locator('[data-service="nginx"] .ctr-state').innerText()) === 'Arrêté')
+    await d.locator('[data-action="start"]').click()
+    await until('nginx started', async () => (await d.locator('[data-service="nginx"] .ctr-state').innerText()) === 'En marche')
+    await d.locator('[data-service="protected"]').click()
+    await d.locator('[data-action="stop"]').click()
+    await page.locator('.toast', { hasText: 'Seul root peut faire ça' }).waitFor()
+    // its journal, live
+    await d.locator('[data-service="nginx"]').click()
+    await d.getByRole('button', { name: 'Journal en direct' }).click()
+    const lv = V('.logs')
+    await lv.locator('.logs-line', { hasText: 'live line 2' }).waitFor()
+    assert.equal(await page.locator('.tab.active .tab-title').innerText(), 'nginx')
+    await lv.getByRole('button', { name: 'Pause' }).click()
+    await lv.locator('.logs-state', { hasText: 'En pause' }).waitFor()
+    await lv.getByRole('button', { name: 'Reprendre' }).click()
+    await closeActiveTab()
+    // a file of the server, live
+    const log = `${REMOTE}/app.log`
+    await rpc('fs.writeText', { conn, path: log, content: 'start\nerror: disk full\nok\n', encoding: 'utf-8', eol: 'LF', force: true })
+    await toSession()
+    await nav(1, REMOTE)
+    await refresh(1)
+    await row(1, 'app.log').click({ button: 'right' })
+    await page.locator('.menu-item', { hasText: 'Suivre en direct' }).click()
+    await V('.logs').locator('.logs-line', { hasText: 'disk full' }).waitFor()
+    execSync(`docker exec testenv-ssh-1 sh -c 'echo "warning: ajoutée en direct" >> ${log}'`)
+    await V('.logs').locator('.logs-line.warn', { hasText: 'ajoutée en direct' }).waitFor()
+    assert.ok(await V('.logs').locator('.logs-line.error', { hasText: 'disk full' }).count(), 'the error is marked')
+    await V('.logs input').fill('ajoutée')
+    await until('filtered', async () => (await V('.logs .logs-line').count()) === 1)
+    await closeActiveTab()
+    // compress a folder on the server, then extract it
+    await rpc('fs.mkdir', { conn, path: `${REMOTE}/arch-ui` })
+    await rpc('fs.writeText', { conn, path: `${REMOTE}/arch-ui/f.txt`, content: 'dans l’archive\n', encoding: 'utf-8', eol: 'LF', force: true })
+    await toSession()
+    await refresh(1)
+    await row(1, 'arch-ui').click({ button: 'right' })
+    await page.locator('.menu-item', { hasText: 'Compresser' }).click()
+    await button(dialog(), 'TAR.GZ').click()
+    assert.equal(await dialog().locator('input').inputValue(), 'arch-ui.tar.gz')
+    await dialog().locator('.dialog-foot').getByRole('button', { name: /Compresser/ }).click()
+    await until('archive made', () => remoteExists(`${REMOTE}/arch-ui.tar.gz`))
+    await refresh(1)
+    await row(1, 'arch-ui.tar.gz').click({ button: 'right' })
+    await page.locator('.menu-item', { hasText: 'Extraire' }).click()
+    await dialog().locator('input').fill('arch-ui-copie')
+    await dialog().getByRole('button', { name: 'Extraire', exact: true }).click()
+    await until('archive extracted', async () => (await remoteText(`${REMOTE}/arch-ui-copie/arch-ui/f.txt`)) === 'dans l’archive\n')
+  } finally {
+    fake('remove')
+    await rpc('fs.delete', { conn, paths: [`${REMOTE}/app.log`, `${REMOTE}/arch-ui`, `${REMOTE}/arch-ui.tar.gz`, `${REMOTE}/arch-ui-copie`] }).catch(() => {})
+  }
+})
+
 step('éditeur externe', async () => {
   const editor = join(TMP, 'editeur.sh')
   writeFileSync(editor, '#!/bin/sh\nsleep 1\necho "ajouté par l\'éditeur externe" >> "$1"\n', { mode: 0o755 })

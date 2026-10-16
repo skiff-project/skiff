@@ -501,7 +501,10 @@ func testKeys(t *testing.T, e *e2e) {
 	}
 	// the listed public keys, even of an encrypted key: what the install
 	// dialog offers
-	sameKey := func(a, b string) bool { f, g := strings.Fields(a), strings.Fields(b); return len(f) > 1 && len(g) > 1 && f[0] == g[0] && f[1] == g[1] }
+	sameKey := func(a, b string) bool {
+		f, g := strings.Fields(a), strings.Fields(b)
+		return len(f) > 1 && len(g) > 1 && f[0] == g[0] && f[1] == g[1]
+	}
 	if !sameKey(formats["id_e2e"].PublicKey, ed.Public) || !strings.HasSuffix(formats["id_e2e"].PublicKey, " e2e@test") {
 		t.Errorf("public key of id_e2e %q, want %q", formats["id_e2e"].PublicKey, ed.Public)
 	}

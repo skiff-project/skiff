@@ -26,7 +26,7 @@ func projectCore(t *testing.T) (*Core, string) {
 		"node_modules/x/index.js":   "TODO in a dependency\n",
 		".git/config":               "[core] TODO\n",
 		"image.png":                 "\x89PNG\x00\x00TODO",
-		"notes/café.txt":       "Un café SERVEUR\n",
+		"notes/café.txt":            "Un café SERVEUR\n",
 		"notes/latin1.txt":          "\xe9t\xe9 server_name\n", // windows-1252
 		"logs/a/b/c/deep/trace.log": "server_name deep\n",
 	}

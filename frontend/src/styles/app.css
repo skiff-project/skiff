@@ -657,3 +657,52 @@
 .versions-heads { display: grid; grid-template-columns: 1fr 1fr; padding: 0 0 4px; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 .versions-merge { flex: 1; min-height: 0; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); }
 .versions-merge .cm-mergeView { height: 100%; }
+
+/* services of a server (systemd) */
+.svc-dialog { gap: 12px; height: 100%; display: flex; flex-direction: column; }
+.svc-bar { display: flex; align-items: center; gap: 10px; }
+.svc-bar .icon-btn .spin { animation: spin 1s linear infinite; }
+.svc-n { margin-left: 6px; padding: 0 6px; border-radius: 999px; background: color-mix(in srgb, var(--muted) 14%, transparent); font-size: var(--fs-xs); color: var(--muted); }
+.svc-n.danger { background: color-mix(in srgb, var(--danger) 16%, transparent); color: var(--danger); }
+.svc-main { flex: 1; display: flex; gap: 12px; min-height: 0; }
+.svc-list { width: 46%; flex: none; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+.svc-row { display: grid; grid-template-columns: 104px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 7px 10px; border-bottom: 1px solid var(--border); cursor: pointer; }
+.svc-row:last-child { border-bottom: 0; }
+.svc-row:hover { background: var(--surface-hover); }
+.svc-row.on { background: var(--accent-soft); }
+.svc-row .badge svg { width: 11px; height: 11px; }
+.svc-names { min-width: 0; }
+.svc-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.svc-desc { font-size: var(--fs-xs); color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.svc-details { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.svc-head { display: flex; align-items: flex-start; gap: 10px; }
+.svc-head h3 { margin: 0; font-size: 18px; }
+.svc-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.svc-props { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; margin: 0; font-size: var(--fs-sm); }
+.svc-props dt { color: var(--muted); }
+.svc-props dd { margin: 0; min-width: 0; }
+.svc-logs-head { font-size: var(--fs-xs); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.svc-logs { flex: 1; min-height: 120px; margin: 0; padding: 8px 10px; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--panel-2); font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* a log followed live */
+.logs { flex: 1; display: flex; flex-direction: column; min-height: 0; background: var(--panel); }
+.logs-bar { flex: none; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 10px; border-bottom: 1px solid var(--border); }
+.logs-bar > svg { width: 15px; height: 15px; flex: none; }
+.logs-what { max-width: 40%; }
+.logs-state { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: var(--fs-xs); white-space: nowrap; color: var(--muted); background: color-mix(in srgb, var(--muted) 12%, transparent); }
+.logs-state .dot { box-shadow: none; }
+.logs-state.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 13%, transparent); }
+.logs-state.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
+.logs-state.danger { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+.logs-filter { width: 260px; }
+.logs-bar .btn .badge { margin-left: 6px; }
+.logs-body { flex: 1; min-height: 0; overflow: auto; padding: 6px 0; font-family: var(--font-mono); font-size: 12px; line-height: 1.55; }
+.logs-line { padding: 0 12px; white-space: pre; }
+.logs-body.wrap .logs-line { white-space: pre-wrap; word-break: break-all; }
+.logs-line:hover { background: var(--surface-hover); }
+.logs-line.error { color: var(--danger); background: color-mix(in srgb, var(--danger) 6%, transparent); }
+.logs-line.warn { color: var(--warn); }
+.logs-empty { padding: 24px; text-align: center; font-family: var(--font-ui); }
+.logs-status { flex: none; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-top: 1px solid var(--border); font-size: var(--fs-xs); color: var(--muted); }
+.logs-status .mini-btn svg { width: 12px; height: 12px; }
+.logs-bar .btn.on { background: var(--accent-soft); border-color: var(--accent-ring); color: var(--accent-text); }

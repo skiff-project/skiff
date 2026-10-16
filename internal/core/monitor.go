@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"regexp"
 	"sort"
 	"strconv"
@@ -148,47 +149,55 @@ func (c *Core) MonitorKill(ctx context.Context, conn string, pid int, signal str
 // container) and returns its standard output; the error carries the
 // standard error.
 func (cn *Conn) sshOutput(ctx context.Context, cmd string) (string, error) {
+	var stdout bytes.Buffer
+	err := cn.execStream(ctx, cmd, &stdout)
+	return stdout.String(), err
+}
+
+// execStream runs a command on the connection's server (or in its
+// container), writing its standard output to stdout as it comes; the
+// error carries the standard error. Cancelling ctx stops the command.
+func (cn *Conn) execStream(ctx context.Context, cmd string, stdout io.Writer) error {
 	s := cn.SSH()
+	var stderr bytes.Buffer
 	if s == nil {
 		cn.mu.Lock()
 		fs, isContainer := cn.fs, cn.container != nil
 		cn.mu.Unlock()
 		ex, ok := fs.(vfs.Executor)
 		if !isContainer || !ok {
-			return "", errors.New("only available for SFTP, SCP and container connections")
+			return errors.New("only available for SFTP, SCP and container connections")
 		}
-		var stdout, stderr bytes.Buffer
-		code, err := ex.Exec(ctx, cmd, nil, &stdout, &stderr)
+		code, err := ex.Exec(ctx, cmd, nil, stdout, &stderr)
 		if err == nil && code != 0 {
 			err = fmt.Errorf("%s (exit status %d)", strings.TrimSpace(stderr.String()), code)
 		}
-		return stdout.String(), err
+		return err
 	}
 	sess, err := s.NewSession()
 	if err != nil {
 		cn.closeIdle() // the server limits sessions per connection
 		if sess, err = s.NewSession(); err != nil {
-			return "", err
+			return err
 		}
 	}
 	defer sess.Close()
-	var stdout, stderr bytes.Buffer
-	sess.Stdout, sess.Stderr = &stdout, &stderr
+	sess.Stdout, sess.Stderr = stdout, &stderr
 	done := make(chan error, 1)
 	go func() { done <- sess.Run(cmd) }()
 	select {
 	case err = <-done:
 	case <-ctx.Done():
 		sess.Close()
-		return "", ctx.Err()
+		return ctx.Err()
 	}
 	if err != nil {
 		if msg := strings.TrimSpace(stderr.String()); msg != "" {
-			return stdout.String(), fmt.Errorf("%s (%v)", msg, err)
+			return fmt.Errorf("%s (%v)", msg, err)
 		}
-		return stdout.String(), err
+		return err
 	}
-	return stdout.String(), nil
+	return nil
 }
 
 func parsePasswd(s string) map[int]string {

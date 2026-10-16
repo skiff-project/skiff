@@ -1,11 +1,12 @@
 import {
   ArrowRightLeft, Calculator, ClipboardCopy, ClipboardPaste, Copy, Download, Edit3, ExternalLink, Eye, FilePlus2, FileSearch, FolderInput,
   FolderPlus, GitCompare, Hash, Info, Link, MousePointerSquareDashed, PenLine, RefreshCcwDot, RotateCw, Scissors, SquareTerminal, Star,
-  Terminal, Trash2, Upload, Wand2, ListChecks, FolderCode,
+  Terminal, Trash2, Upload, Wand2, ListChecks, FolderCode, ScrollText, PackageOpen, FileArchive,
 } from 'lucide-react'
 import { showMenu, type MenuItem } from '../ui/Menu'
 import { get, set, type SessionTab, type Side } from '../../lib/store'
-import { openProject, paneStyle, refreshPane } from '../../lib/actions'
+import { openLogs, openProject, paneStyle, refreshPane } from '../../lib/actions'
+import { archiveKind, openCompress, openExtract } from '../dialogs/ArchiveDialogs'
 import {
   calcSize, compareDirs, copyOrMove, copyPaths, deleteSelected, diffWithOther, editEntry, mkdir, moveToFolder, newFile, newLink, openEntry,
   openWithDefault, properties, runCustomCommand, saveToComputer, selectAll, selectByMask, selected, sessionTab, startRename, terminalHere, viewEntry, other,
@@ -40,6 +41,8 @@ export function fileMenu(tabId: string, side: Side, x: number, y: number) {
   const caps = p.conn === 'local' ? get().info?.localCaps : conn?.caps
   const web = get().info?.mode === 'web'
   const st = paneStyle(p.conn)
+  // archives: by Skiff on this computer, by the shell of the server
+  const canArchive = p.conn === 'local' || !!caps?.shell
   const cmds = (get().prefs?.customCommands || []).filter((c) => (c.applyDirs || entries.every((e) => !e.isDir)) && (c.local || caps?.exec))
   const items: MenuItem[] = [
     { label: one?.isDir ? t('ctx.open') : t('ctx.open'), icon: <ExternalLink />, shortcut: 'Enter', hidden: !one, onClick: () => one && openEntry(tabId, side, one) },
@@ -48,6 +51,10 @@ export function fileMenu(tabId: string, side: Side, x: number, y: number) {
     { label: t('ctx.editExternal'), icon: <PenLine />, shortcut: 'Shift+F4', hidden: !isFile || web, onClick: () => editEntry(tabId, side, 'external') },
     { label: t('ctx.view'), icon: <Eye />, shortcut: 'F3', hidden: !isFile, onClick: () => viewEntry(tabId, side) },
     { label: t('ctx.openWith'), icon: <ExternalLink />, hidden: !isFile || web, onClick: () => one && openWithDefault(p.conn, join(st, p.path, one.name)) },
+    { label: t('logs.follow'), icon: <ScrollText />, hidden: !isFile, onClick: () => one && openLogs(p.conn, { path: join(st, p.path, one.name) }) },
+    { separator: true },
+    { label: t('arc.extract') + '…', icon: <PackageOpen />, hidden: !isFile || !archiveKind(one?.name || '') || !canArchive, onClick: () => one && openExtract(p.conn, p.path, one.name) },
+    { label: t('arc.compress') + '…', icon: <FileArchive />, hidden: !canArchive, onClick: () => openCompress(p.conn, p.path, entries.map((e) => e.name)) },
     { separator: true },
     { label: transferLabel(tab, side, false), icon: <Download />, shortcut: 'F5', onClick: () => copyOrMove(tabId, side, false) },
     { label: t('ctx.moveTo'), icon: <ArrowRightLeft />, shortcut: 'F6', onClick: () => copyOrMove(tabId, side, true) },

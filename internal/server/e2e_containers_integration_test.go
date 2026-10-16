@@ -141,7 +141,9 @@ func testContainers(t *testing.T, e *e2e) {
 		if c := state(); !c.Running || c.State != "running" || c.Project != "skiff-e2e" || !strings.Contains(c.Ports, "->80/tcp") {
 			t.Errorf("listed %+v", c)
 		}
-		act := func(a string) { e.must(t, "containers.action", map[string]string{"runtime": "docker", "name": name, "action": a}, nil) }
+		act := func(a string) {
+			e.must(t, "containers.action", map[string]string{"runtime": "docker", "name": name, "action": a}, nil)
+		}
 		act("stop")
 		if c := state(); c.Running || c.State != "exited" {
 			t.Errorf("after stop %+v", c)

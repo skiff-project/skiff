@@ -8,6 +8,7 @@ import type { AppInfo, ConnInfo, Entry, Job, Prefs, PromptEvent, SiteView, SshCo
 import { setLang, t } from './i18n'
 import { basename, dirname, join, normalize, rel as relPath, tildify } from './paths'
 import { visibleEntries } from './listing'
+import { onLogsEvent } from './logs'
 
 // ---------------------------------------------------------------------------
 // Boot & events
@@ -125,6 +126,11 @@ function onEvent(type: string, data: any) {
       set({ jobs: order.map((id) => by[id]).filter(Boolean) })
       break
     }
+    case 'logs.data':
+    case 'logs.end':
+    case 'logs.note':
+      onLogsEvent(type, data)
+      break
     case 'prompt':
       resyncing?.prompts.set(data.id, data)
       if (!s.prompts.some((p) => p.id === data.id)) set({ prompts: [...s.prompts, data] })
@@ -945,6 +951,14 @@ export async function toggleProjectTerminal(tabId: string, show?: boolean) {
   } catch (e) {
     errorToast(t('term.title'), e)
   }
+}
+
+/** Follows a log live: a file of a connection, or the journal of a service. */
+export function openLogs(conn: string, target: { path?: string; unit?: string }) {
+  const existing = get().tabs.find((x) => x.kind === 'logs' && x.conn === conn && x.path === target.path && x.unit === target.unit)
+  if (existing) return activate(existing.id)
+  const title = target.unit ? target.unit.replace(/\.service$/, '') : basename(paneStyle(conn), target.path || '')
+  addTab({ id: uid('l'), kind: 'logs', title, conn, ...target } as Tab)
 }
 
 /** Opens (or shows) the server monitor of an SSH connection. */

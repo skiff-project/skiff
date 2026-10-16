@@ -9,6 +9,7 @@ import { EditorView } from './editor/EditorView'
 import { DiffView } from './editor/DiffView'
 import { TerminalView } from './terminal/TerminalView'
 import { ProjectView } from './project/ProjectView'
+import { LogsView } from './logs/LogsView'
 import { MonitorView } from './monitor/MonitorView'
 import { TasksView } from './tasks/TasksView'
 import { CommandPalette } from './CommandPalette'
@@ -51,6 +52,7 @@ export function Shell() {
               {tab.kind === 'terminal' && <TerminalView tab={tab} visible={visible} />}
               {tab.kind === 'monitor' && <MonitorView tab={tab} visible={visible} />}
               {tab.kind === 'project' && <ProjectView tab={tab} visible={visible} />}
+              {tab.kind === 'logs' && <LogsView tab={tab} visible={visible} />}
               {tab.kind === 'tasks' && <TasksView />}
             </div>
           )

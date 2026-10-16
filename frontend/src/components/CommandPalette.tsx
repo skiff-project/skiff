@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowRightLeft, Copy, CornerDownLeft, File, FileSearch, Folder, FolderPlus, GitCompareArrows, KeyRound, Link2, Moon, Network, Plug, Plus,
-  RefreshCcwDot, ScrollText, Server, Settings, SquareTerminal, Trash2, Upload, Zap, Eye, Download, Lock, Activity, Box, CalendarClock, FolderCode,
+  RefreshCcwDot, ScrollText, Server, Settings, SquareTerminal, Trash2, Upload, Zap, Eye, Download, Lock, Activity, Box, CalendarClock, FolderCode, Cog,
 } from 'lucide-react'
 import { activeSession, get, set, useStore } from '../lib/store'
 import { activate, connectSite, connectUrl, loadDir, openMonitor, openProject, openTasks, openTerminal, savePrefs, setBottom, toggleSyncBrowsing, attachTerminalTab, openWorkspace, saveWorkspace } from '../lib/actions'
@@ -15,6 +15,7 @@ import { openWatchDialog } from './dialogs/WatchDialog'
 import { openPreferences } from './dialogs/Preferences'
 import { openContainers } from './dialogs/ContainersDialog'
 import { openImportDialog } from './dialogs/ImportDialog'
+import { openServices } from './dialogs/ServicesDialog'
 import { openInstallKey, openKeygen } from './dialogs/KeygenDialog'
 import { openTunnelDialog } from './dialogs/TunnelDialog'
 import { FileIcon } from '../lib/fileicons'
@@ -118,6 +119,7 @@ export function CommandPalette() {
       cmd('project', t('project.openHere'), FolderCode, () => openProject(s.panes[side].conn, s.panes[side].path), 'Ctrl+Shift+E')
       cmd('tunnel', t('tunnel.new'), Network, () => openTunnelDialog(s.conn), undefined, !conns[s.conn]?.caps.tunnels)
       cmd('monitor', t('mon.open'), Activity, () => openMonitor(s.conn), undefined, !conns[s.conn]?.caps.shell)
+      cmd('services', t('svc.open'), Cog, () => openServices(s.conn), undefined, !conns[s.conn]?.caps.shell)
       cmd('containers', t('ctr.ofServer'), Box, () => openContainers({ via: s.conn }), undefined, !conns[s.conn]?.caps.tunnels)
       cmd('hidden', t('toolbar.hidden'), Eye, () => savePrefs({ showHidden: !get().prefs?.showHidden }), 'Ctrl+Alt+H')
       // files in the current folder

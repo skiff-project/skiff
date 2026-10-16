@@ -43,6 +43,7 @@ type Core struct {
 	monitor    monitorState
 	onShutdown []func()
 	shells     shellCache
+	follow     followers
 	finds      sync.Map // id -> context.CancelFunc
 }
 
