@@ -172,6 +172,9 @@ func TestE2EWeb(t *testing.T) {
 			{"keys.convert", map[string]string{"path": "/etc/ssh/ssh_host_ed25519_key", "format": "ppk"}},
 			{"keychain.add", map[string]string{"path": "/etc/ssh/ssh_host_ed25519_key"}},
 			{"containers.list", map[string]string{"runtime": "docker"}},
+			{"app.clipboardRead", nil},
+			{"app.clipboardWrite", map[string]string{"text": "x"}},
+			{"app.openURL", map[string]string{"url": "http://127.0.0.1:1/"}},
 			{"conn.open", map[string]any{"site": map[string]any{"protocol": "container", "host": "x", "containerRuntime": "docker"}}},
 			{"conn.open", map[string]any{"url": "docker://x/"}},
 		} {

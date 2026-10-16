@@ -28,7 +28,7 @@ export function clipboardCopy(tabId: string, side: Side, cut: boolean) {
   clip = { conn: p.conn, dir: p.path, names, cut }
   toast('info', cut ? t('common.cut') : t('common.copy'), names.length === 1 ? names[0] : t('common.items', { n: names.length }), { timeout: 1500 })
   // also put paths on the system clipboard
-  navigator.clipboard?.writeText(names.map((n) => join(paneStyle(p.conn), p.path, n)).join('\n')).catch(() => {})
+  import('./textclip').then(({ writeClipboard }) => writeClipboard(names.map((n) => join(paneStyle(p.conn), p.path, n)).join('\n')))
 }
 
 export async function clipboardPaste(tabId: string, side: Side) {

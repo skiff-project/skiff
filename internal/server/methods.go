@@ -13,6 +13,7 @@ import (
 
 	"skiff/internal/config"
 	"skiff/internal/core"
+	"skiff/internal/desktop"
 	"skiff/internal/devsync"
 	"skiff/internal/importer"
 	"skiff/internal/keys"
@@ -359,6 +360,22 @@ func (s *Server) registerRPC() {
 		Path string `json:"path"`
 	}) (core.DiskUsage, error) {
 		return c.DiskUsage(ctx, p.Conn, p.Path)
+	})
+	// the clipboard of the system, when the webview refuses it to the page
+	// (never in web mode: it is the clipboard of the computer running Skiff)
+	method(s, "app.clipboardRead", func(ctx context.Context, _ empty) (string, error) {
+		if s.web() {
+			return "", errors.New("not available in web mode")
+		}
+		return desktop.ClipboardText()
+	})
+	method(s, "app.clipboardWrite", func(ctx context.Context, p struct {
+		Text string `json:"text"`
+	}) (ok, error) {
+		if s.web() {
+			return ok{}, errors.New("not available in web mode")
+		}
+		return yes, desktop.SetClipboardText(p.Text)
 	})
 	method(s, "app.openURL", func(ctx context.Context, p struct {
 		URL string `json:"url"`

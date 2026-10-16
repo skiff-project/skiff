@@ -37,14 +37,17 @@ func Run(o Options) error {
 		w.Write([]byte(boot))
 	})
 	return wails.Run(&options.App{
-		Title:            o.Title,
-		Width:            1440,
-		Height:           900,
-		MinWidth:         860,
-		MinHeight:        560,
-		BackgroundColour: &options.RGBA{R: 20, G: 22, B: 28, A: 255},
-		AssetServer:      &assetserver.Options{Handler: handler},
+		Title:                    o.Title,
+		Width:                    1440,
+		Height:                   900,
+		MinWidth:                 860,
+		MinHeight:                560,
+		BackgroundColour:         &options.RGBA{R: 20, G: 22, B: 28, A: 255},
+		AssetServer:              &assetserver.Options{Handler: handler},
 		EnableDefaultContextMenu: false,
+		OnStartup: func(ctx context.Context) {
+			setClipboard(func() (string, error) { return runtime.ClipboardGetText(ctx) }, func(s string) error { return runtime.ClipboardSetText(ctx, s) })
+		},
 		OnBeforeClose: func(ctx context.Context) bool {
 			if o.Busy == nil {
 				return false

@@ -407,12 +407,9 @@ export async function properties(tabId: string, side: Side) {
 }
 
 export async function copyToClipboard(text: string) {
-  try {
-    await navigator.clipboard.writeText(text)
-    toast('ok', t('common.copied'), text.length > 120 ? text.slice(0, 120) + '…' : text, { timeout: 2000 })
-  } catch {
-    toast('error', t('common.error'), 'Clipboard not available')
-  }
+  const { writeClipboard } = await import('./textclip')
+  if (await writeClipboard(text)) toast('ok', t('common.copied'), text.length > 120 ? text.slice(0, 120) + '…' : text, { timeout: 2000 })
+  else toast('error', t('common.error'), t('clip.unavailable'))
 }
 
 export function copyPaths(tabId: string, side: Side, kind: 'path' | 'name' | 'url') {

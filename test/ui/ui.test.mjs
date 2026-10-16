@@ -1099,6 +1099,7 @@ step('terminal : choix du shell, Ctrl+C / Ctrl+V, clic droit', async () => {
   const shells = await rpc('term.shells', { conn })
   const sh = shells.find((x) => x.id === 'sh')
   assert.ok(sh, 'sh found on the server')
+  await pane(1).locator('.pane-status').click()
   await tip('Choisir le shell ou l’interpréteur').click()
   await page.locator('.menu-label', { hasText: 'Shells' }).waitFor()
   await page.locator('.menu-item').filter({ has: page.locator('.ellipsis', { hasText: /^sh$/ }) }).click()
@@ -1112,6 +1113,18 @@ step('terminal : choix du shell, Ctrl+C / Ctrl+V, clic droit', async () => {
   await until('pasted text', async () => (await termText(0)).includes('colle-$((6*7))'))
   await page.keyboard.press('Enter')
   await until('pasted with Ctrl+V', async () => (await termText(0)).includes('colle-42'))
+  // a webview that refuses the clipboard to the page (WebKitGTK): Ctrl+V
+  // still pastes, by the paste of the system
+  await setClip('echo refus-$((6*7))')
+  await page.evaluate(() => {
+    const deny = () => Promise.reject(new DOMException('denied', 'NotAllowedError'))
+    window.__clip = { read: navigator.clipboard.readText, write: navigator.clipboard.writeText }
+    navigator.clipboard.readText = deny
+  })
+  await page.keyboard.press('Control+v')
+  await until('pasted without the clipboard API', async () => (await termText(0)).includes('refus-$((6*7))'))
+  await page.keyboard.press('Enter')
+  await page.evaluate(() => { navigator.clipboard.readText = window.__clip.read })
   // Ctrl+C without a selection still interrupts
   await page.keyboard.type('sleep 60\n')
   await sleep(400)

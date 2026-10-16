@@ -89,6 +89,11 @@ func testPorts(t *testing.T, e *e2e) {
 		time.Sleep(50 * time.Millisecond)
 	}
 	e.mustFail(t, "app.openURL", map[string]string{"url": "file:///etc/passwd"})
+	// the clipboard of the system needs the native window (none in tests)
+	if err := e.mustFail(t, "app.clipboardRead", nil); !strings.Contains(err.Error(), "native window") {
+		t.Errorf("clipboard without a window: %v", err)
+	}
+	e.mustFail(t, "app.clipboardWrite", map[string]string{"text": "x"})
 }
 
 func testDiskUsage(t *testing.T, e *e2e) {

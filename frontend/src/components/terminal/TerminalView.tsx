@@ -1,3 +1,4 @@
+import { readClipboard, writeClipboard } from '../../lib/textclip'
 import { useEffect, useRef, useState } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
@@ -56,24 +57,21 @@ export function parseOsc7(data: string): string | null {
   }
 }
 
-/** Copies the selection of a terminal (the browser's own copy as fallback). */
+/** Copies the selection of a terminal; false when there is none. */
 function copySelection(xt: Terminal): boolean {
   const text = xt.getSelection()
   if (!text) return false
-  if (navigator.clipboard?.writeText && window.isSecureContext) {
-    navigator.clipboard.writeText(text).catch(() => {})
-  } else {
-    document.execCommand('copy')
-  }
+  writeClipboard(text).then((ok) => { if (!ok) toast('warn', t('clip.unavailable')) })
   xt.clearSelection()
   return true
 }
 
-/** Pastes the clipboard into a terminal; false when the page may not read it. */
-function pasteInto(xt: Terminal): boolean {
-  if (!navigator.clipboard?.readText || !window.isSecureContext) return false
-  navigator.clipboard.readText().then((txt) => txt && xt.paste(txt)).catch(() => toast('warn', t('term.pasteDenied')))
-  return true
+/** Pastes the clipboard into a terminal (right-click, buttons, Ctrl+Shift+V). */
+function pasteInto(xt: Terminal) {
+  readClipboard().then((txt) => {
+    if (txt === null) toast('warn', t('term.pasteDenied'))
+    else if (txt) xt.paste(txt)
+  })
 }
 
 interface PaneHandle {
@@ -104,6 +102,7 @@ function TermPane({ pane, tabId, reg, fontSize, focused, many, cwd, onFocus, onC
   const fit = useRef<FitAddon | null>(null)
   const theme = useStore((s) => s.prefs?.theme)
   const exited = useStore((s) => s.terminals[pane.termId]?.exited)
+  const nativePaste = useRef(false)
   const cb = useRef({ onCwd, onFocus, onFind })
   cb.current = { onCwd, onFocus, onFind }
 
@@ -169,9 +168,10 @@ function TermPane({ pane, tabId, reg, fontSize, focused, many, cwd, onFocus, onC
       return true
     })
     xt.onSelectionChange(() => {
-      if (get().prefs?.terminal.copyOnSelect && xt.hasSelection()) navigator.clipboard?.writeText(xt.getSelection()).catch(() => {})
+      if (get().prefs?.terminal.copyOnSelect && xt.hasSelection()) writeClipboard(xt.getSelection())
     })
     xt.textarea?.addEventListener('focus', () => cb.current.onFocus())
+    xt.textarea?.addEventListener('paste', () => { nativePaste.current = true })
     xt.attachCustomKeyEventHandler((e) => {
       if (e.type !== 'keydown') return true
       const mod = e.ctrlKey || e.metaKey
@@ -184,9 +184,16 @@ function TermPane({ pane, tabId, reg, fontSize, focused, many, cwd, onFocus, onC
         if (copySelection(xt)) e.preventDefault()
         return false
       }
-      if (mod && !e.altKey && key === 'v' && (e.shiftKey || ctrlKeys)) {
-        // the browser pastes by itself when the page may not read the clipboard
-        if (pasteInto(xt)) e.preventDefault()
+      if (mod && !e.altKey && key === 'v' && !e.shiftKey && ctrlKeys) {
+        // the paste of the system (no permission needed), or ours when it
+        // does not come (some webviews)
+        nativePaste.current = false
+        setTimeout(() => { if (!nativePaste.current) pasteInto(xt) }, 150)
+        return false
+      }
+      if (mod && !e.altKey && key === 'v' && e.shiftKey) {
+        e.preventDefault()
+        pasteInto(xt)
         return false
       }
       if (mod && e.shiftKey && e.key.toLowerCase() === 'f') {
@@ -330,7 +337,7 @@ export function TerminalView({ tab, visible }: { tab: TerminalTab; visible: bool
   const paneMenu = (e: React.MouseEvent, xt: Terminal, p: TermPaneState) => {
     setFocusId(p.termId)
     if (get().prefs?.terminal.rightClick !== 'menu') {
-      if (!copySelection(xt) && !pasteInto(xt)) toast('warn', t('term.pasteDenied'))
+      if (!copySelection(xt)) pasteInto(xt)
       xt.focus()
       return
     }
@@ -338,7 +345,7 @@ export function TerminalView({ tab, visible }: { tab: TerminalTab; visible: bool
     const then = (f: () => void) => () => { f(); xt.focus() }
     showMenu(e.clientX, e.clientY, [
       { label: t('common.copy'), icon: <Copy />, shortcut: ctrlKeys ? 'Ctrl+C' : 'Ctrl+Shift+C', disabled: !xt.hasSelection(), onClick: then(() => copySelection(xt)) },
-      { label: t('common.paste'), icon: <ClipboardPaste />, shortcut: ctrlKeys ? 'Ctrl+V' : 'Ctrl+Shift+V', onClick: then(() => { if (!pasteInto(xt)) toast('warn', t('term.pasteDenied')) }) },
+      { label: t('common.paste'), icon: <ClipboardPaste />, shortcut: ctrlKeys ? 'Ctrl+V' : 'Ctrl+Shift+V', onClick: then(() => pasteInto(xt)) },
       { label: t('term.selectAll'), onClick: then(() => xt.selectAll()) },
       { label: t('term.clear'), onClick: then(() => xt.clear()) },
       { separator: true },
@@ -399,7 +406,7 @@ export function TerminalView({ tab, visible }: { tab: TerminalTab; visible: bool
         <div className="vdivider" />
         <button className="icon-btn sm" data-tip={t('common.search')} data-kbd="Ctrl+Shift+F" onClick={() => setFindOpen(!findOpen)}><Search /></button>
         <button className="icon-btn sm" data-tip={t('common.copy')} data-kbd={ctrlKeys ? 'Ctrl+C' : 'Ctrl+Shift+C'} onClick={() => { const xt = reg.panes.get(focused.termId)?.xt; if (xt) copySelection(xt); refocus() }}><Copy /></button>
-        <button className="icon-btn sm" data-tip={t('common.paste')} data-kbd={ctrlKeys ? 'Ctrl+V' : 'Ctrl+Shift+V'} onClick={() => { const xt = reg.panes.get(focused.termId)?.xt; if (xt && !pasteInto(xt)) toast('warn', t('term.pasteDenied')); refocus() }}><ClipboardPaste /></button>
+        <button className="icon-btn sm" data-tip={t('common.paste')} data-kbd={ctrlKeys ? 'Ctrl+V' : 'Ctrl+Shift+V'} onClick={() => { const xt = reg.panes.get(focused.termId)?.xt; if (xt) pasteInto(xt); refocus() }}><ClipboardPaste /></button>
         <button className="icon-btn sm" data-tip={t('term.fontSmaller')} onClick={() => setFontSize((n) => Math.max(9, n - 1))}><Minus /></button>
         <button className="icon-btn sm" data-tip={t('term.fontLarger')} onClick={() => setFontSize((n) => Math.min(28, n + 1))}><Plus /></button>
         {exited && panes.length === 1 && (

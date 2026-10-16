@@ -45,7 +45,7 @@ Sur macOS, `Cmd+C` et `Cmd+V` font de même. Si vous préférez que `Ctrl+C` et 
 
 ![Menu du clic droit dans le terminal](images/terminal-menu.png)
 
-En [mode web](14-mode-web.md) sur une adresse `http://` autre que `localhost`, le navigateur interdit à la page de lire le presse-papiers : `Ctrl+V` colle toujours, mais pas le clic droit ni le bouton **Coller** (un message le rappelle). Servez Skiff en HTTPS pour les retrouver.
+`Ctrl+V` utilise le collage du système : il marche partout, sans autorisation. Pour le clic droit, le bouton **Coller** et `Ctrl+Maj+V`, l'application lit le presse-papiers du système par sa fenêtre native, même quand celle-ci le refuse à la page (WebKitGTK sous Linux). En [mode web](14-mode-web.md) sur une adresse `http://` autre que `localhost`, le navigateur interdit à la page de lire le presse-papiers : `Ctrl+V` colle toujours, mais pas le clic droit ni le bouton **Coller** (un message le rappelle). Servez Skiff en HTTPS pour les retrouver.
 
 ### Plusieurs terminaux dans un onglet
 
