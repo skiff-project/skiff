@@ -145,10 +145,14 @@ Host *
 EOF
 
 # ---- demo containers (Containers dialog) ---------------------------------
-for c in boutique-web boutique-redis; do
+# a Compose-like project (its label groups it) with a stopped container
+for c in boutique-web boutique-redis boutique-worker; do
   docker rm -f "$c" >/dev/null 2>&1 || true
-  docker run -d --name "$c" --entrypoint sleep rclone/rclone:latest 604800 >/dev/null
 done
+docker run -d --name boutique-web -p 127.0.0.1:18080:80 --label com.docker.compose.project=boutique --entrypoint sleep rclone/rclone:latest 604800 >/dev/null
+docker run -d --name boutique-redis --label com.docker.compose.project=boutique --entrypoint sleep rclone/rclone:latest 604800 >/dev/null
+docker run -d --name boutique-worker --label com.docker.compose.project=boutique --entrypoint sleep rclone/rclone:latest 604800 >/dev/null
+docker stop -t 0 boutique-worker >/dev/null
 
 # varied timestamps
 touch -d "2026-09-28 10:12" "$SITE/a-propos.html" "$SITE/robots.txt" "$SITE/.htaccess"

@@ -14,8 +14,9 @@ L'onglet **Sites**, toujours en première position, sert d'écran d'accueil. Une
 | Champ de connexion rapide | Tapez une URL (`sftp://utilisateur@hôte:22/chemin`) puis `Entrée` ou **Connexion** |
 | **Nouveau site** | Ouvre un formulaire de site vide |
 | **Importer…** | Importe les sessions de WinSCP, PuTTY, FileZilla, OpenSSH ou un fichier (voir [Import](03-sites.md#35-importer-des-sites)) |
-| **Générer une paire de clés…** | Ouvre le [générateur de clés SSH](11-securite.md#115-générateur-de-clés-ssh) |
+| **Nouvelle clé SSH** | Ouvre le [générateur de clés SSH](11-securite.md#115-générateur-de-clés-ssh) |
 | **Terminal local** | Ouvre un terminal sur l'ordinateur (voir [Terminal](09-terminal-tunnels.md#92-terminal-local)) |
+| **Conteneurs** | Liste les conteneurs Docker, Podman et Kubernetes de l'ordinateur pour ouvrir leurs fichiers ou un terminal (voir [Conteneurs](15-protocoles.md#157-conteneurs-docker-podman-kubernetes)) |
 | **Récents** | Les cinq derniers sites utilisés, avec un bouton de connexion |
 | Pied de page | Rappel des raccourcis essentiels : `Ctrl+K` palette, `F5` copier, `F6` déplacer, `Tab` changer de panneau |
 
@@ -68,7 +69,7 @@ Pendant la connexion, l'onglet affiche une animation et un bouton **Interrompre*
 
 ![Connexion en cours](images/connexion-en-cours.png)
 
-> **Passer du mot de passe à une clé** : une fois connecté avec le mot de passe, `Ctrl+K` → « Installer une clé publique » dépose une de vos clés (ou une nouvelle, voir **Générer une paire de clés…**) dans `~/.ssh/authorized_keys` du serveur. Les connexions suivantes n'ont plus besoin du mot de passe. Voir [§ 11.6](11-securite.md#installer-une-clé-existante-sur-un-serveur).
+> **Passer du mot de passe à une clé** : une fois connecté avec le mot de passe, `Ctrl+K` → « Installer une clé publique » dépose une de vos clés (ou une nouvelle, voir **Nouvelle clé SSH**) dans `~/.ssh/authorized_keys` du serveur. Les connexions suivantes n'ont plus besoin du mot de passe. Voir [§ 11.6](11-securite.md#installer-une-clé-existante-sur-un-serveur).
 
 ## 2.4 Visite de l'interface
 

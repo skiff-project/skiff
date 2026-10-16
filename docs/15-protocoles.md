@@ -93,14 +93,35 @@ Un conteneur Docker ou Podman, ou un pod Kubernetes, s'ouvre comme un serveur : 
 
 **Trouver un conteneur** :
 
-- dans une session SFTP ou SCP, le bouton **Conteneurs de ce serveur** (icône de boîte dans la barre d'outils) liste les conteneurs du serveur ;
-- **⋯ → Conteneurs de cet ordinateur** dans la liste des sites, pour ceux de l'ordinateur.
+- **Conteneurs** sur l'écran d'accueil, la palette (`Ctrl+K` → « Conteneurs de cet ordinateur ») ou **⋯ → Conteneurs de cet ordinateur** dans la liste des sites, pour ceux de l'ordinateur ;
+- dans une session SFTP ou SCP, le bouton **Conteneurs de ce serveur** (icône de boîte dans la barre d'outils) liste les conteneurs du serveur.
 
 ![Conteneurs de cet ordinateur](images/conteneurs.png)
 
-La liste montre l'état (pastille verte quand il tourne), l'image et le statut, pour Docker, Podman ou Kubernetes (avec le contexte et l'espace de noms ; vide : tous). **Fichiers** ouvre une session sur le conteneur, l'icône de terminal ouvre en plus un shell dedans (`bash` s'il existe, sinon `sh`), **+** prépare un site pour le retrouver.
+La fenêtre s'ouvre sur le premier moteur installé : Docker, Podman ou Kubernetes. Ceux qui ne sont pas installés sur l'ordinateur ou le serveur sont grisés (une bulle le dit). Le champ **Rechercher** filtre par nom, image, projet ou port.
 
-**Un site de type Conteneur** (protocole **Conteneur** dans l'éditeur de site) garde : le **moteur**, **S'exécute sur** (cet ordinateur ou un site SSH enregistré), le nom du **conteneur** ou du **pod** (**Choisir…** les liste, pour cet ordinateur), l'**utilisateur** des commandes (Docker, Podman), le **contexte**, l'**espace de noms** et le **conteneur du pod** (Kubernetes), et la **commande** du moteur si elle n'est pas dans le `PATH`.
+Les conteneurs d'un même projet **Docker Compose** sont regroupés sous **Projet Compose …** (les pods Kubernetes, par espace de noms), ceux qui tournent en premier. Chaque ligne montre :
+
+| Colonne | Contenu |
+|---|---|
+| État | **En marche** (vert), **Arrêté**, **En pause**, **Redémarre**, **Créé**… ; pour un pod, sa phase (**En attente**, **Terminé**, **En échec**) |
+| Nom | Le nom, puis l'image et les ports publiés (`127.0.0.1:18080->80/tcp`) |
+| Depuis | Depuis quand il tourne (« depuis 5 heures », avec l'état de santé s'il en a un), ou quand il s'est arrêté et son code de sortie (« il y a 2 jours, code 0 ») |
+| Actions | **Fichiers** ouvre une session sur le conteneur, **Terminal** y ouvre en plus un shell (`bash` s'il existe, sinon `sh`) ; pour un conteneur arrêté, **Démarrer** |
+
+Un double-clic sur un conteneur en marche ouvre ses fichiers. Le menu **⋯** de chaque ligne propose aussi :
+
+![Menu ⋯ d'un conteneur](images/conteneurs-menu.png)
+
+- **Redémarrer**, **Arrêter** (`docker stop` : le conteneur a quelques secondes pour s'arrêter proprement) ou **Démarrer**, pour Docker et Podman ; Kubernetes gère seul ses pods ;
+- **Enregistrer comme site…**, qui ouvre l'éditeur de site prérempli pour retrouver le conteneur dans la liste des sites (pour un serveur, quand sa session vient d'un site enregistré) ;
+- **Copier le nom**.
+
+Pour Kubernetes, **Contexte** (vide : le contexte courant) et **Espace de noms** (vide : tous) se règlent au-dessus de la liste, puis **Afficher**.
+
+Quand ça ne marche pas, la fenêtre explique les cas courants : Docker absent, démon arrêté (`sudo systemctl start docker`), utilisateur hors du groupe `docker` (`sudo usermod -aG docker $USER`, puis reconnectez-vous), cluster Kubernetes injoignable. Le message exact du moteur est affiché en dessous.
+
+**Un site de type Conteneur** (protocole **Conteneur** dans l'éditeur de site) garde : le **moteur**, **S'exécute sur** (cet ordinateur ou un site SSH enregistré), le nom du **conteneur** ou du **pod** (**Choisir…** les liste, sur cet ordinateur ou sur le serveur SSH choisi, auquel Skiff se connecte le temps du choix si aucune session n'y est ouverte), l'**utilisateur** des commandes (Docker, Podman), le **contexte**, l'**espace de noms** et le **conteneur du pod** (Kubernetes), et la **commande** du moteur si elle n'est pas dans le `PATH`.
 
 ![Un site de type Conteneur](images/site-conteneur.png)
 

@@ -69,7 +69,7 @@ Un mot de passe maître oublié ne peut pas être récupéré : il faut alors re
 
 ## 11.5 Générateur de clés SSH
 
-**Générer une paire de clés…** (écran d'accueil, menu ⋯ des sites, palette, Préférences → Sécurité) crée une nouvelle clé, comme `ssh-keygen` ou PuTTYgen :
+**Générer une paire de clés…** (**Nouvelle clé SSH** sur l'écran d'accueil, menu ⋯ des sites, palette, Préférences → Sécurité, bouton **Choisir** du fichier de clé d'un site) crée une nouvelle clé, comme `ssh-keygen` ou PuTTYgen :
 
 ![Générateur de clés](images/cles-generateur.png)
 
