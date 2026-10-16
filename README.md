@@ -238,7 +238,7 @@ skiff/
 │   ├── server/               API JSON-RPC, WebSocket (événements, terminaux), streaming, authentification
 │   └── desktop/              fenêtre Wails (WebView2/WKWebView/WebKitGTK) ou repli navigateur
 ├── frontend/                 React 19 + TypeScript + Vite (zustand, TanStack Virtual, CodeMirror 6, xterm.js)
-└── testenv/                  serveurs Docker de test (OpenSSH, Pure-FTPd+TLS, WebDAV, S3)
+└── testenv/                  serveurs Docker de test (OpenSSH, OpenSSH ancien, Pure-FTPd+TLS, vsftpd TLS implicite, WebDAV, S3)
 ```
 
 L'interface communique avec le cœur Go par HTTP et WebSocket. C'est la même interface dans la fenêtre native et en mode web.
@@ -254,7 +254,7 @@ L'interface communique avec le cœur Go par HTTP et WebSocket. C'est la même in
 ./build.sh uitest # tests de bout en bout de l'interface dans un navigateur (Playwright)
 ```
 
-Serveurs de test (`testenv/docker-compose.yml`) : SSH `127.0.0.1:2222`, FTP `127.0.0.1:2121` (TLS explicite), WebDAV `http://127.0.0.1:8080`, S3 `http://127.0.0.1:9000` (`skiffadmin` / `skiffsecret`). Identifiants : `skiff` / `skiff`.
+Serveurs de test (`testenv/docker-compose.yml`) : SSH `127.0.0.1:2222`, SSH ancien `127.0.0.1:2223`, FTP `127.0.0.1:2121` (TLS explicite), FTPS `127.0.0.1:9990` (TLS implicite), WebDAV `http://127.0.0.1:8080`, S3 `http://127.0.0.1:9000` (`skiffadmin` / `skiffsecret`). Identifiants : `skiff` / `skiff`.
 
 ---
 

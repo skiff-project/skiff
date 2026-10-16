@@ -86,7 +86,7 @@ De haut en bas :
 
 ## 2.5 Reprendre là où vous en étiez
 
-- **Rouvrir les sessions de la dernière fois** (Préférences → Panneaux) rouvre au démarrage les onglets de la fermeture précédente, avec leurs dossiers.
+- **Rouvrir les sessions de la dernière fois** (Préférences → Panneaux) rouvre au démarrage les onglets de la fermeture précédente, avec leurs dossiers. Une connexion rapide redemande son mot de passe, qui n'est pas enregistré.
 - **Se reconnecter automatiquement en cas de coupure** (activé par défaut) relance la connexion quand le réseau revient.
 - Les [espaces de travail](03-sites.md#33-espaces-de-travail) enregistrent un ensemble d'onglets pour le rouvrir d'un clic.
 

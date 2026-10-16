@@ -295,7 +295,7 @@ Comme les options de la ligne de commande de `ssh`, **un réglage fait dans Skif
 | `HostName` | Adresse réelle du serveur | — |
 | `Port` | Port | le champ **Port** est rempli |
 | `User` | Nom d'utilisateur (à défaut de tout, le nom de l'utilisateur local, comme `ssh`) | le champ **Nom d'utilisateur** est rempli |
-| `IdentityFile` | Clés essayées, à la place des clés par défaut de `~/.ssh` | le champ **Fichier de clé privée** est rempli |
+| `IdentityFile` | Clés essayées, à la place des clés par défaut de `~/.ssh` ; comme avec `ssh`, le fichier peut être la clé publique (ou une clé privée absente dont le `.pub` existe) quand la clé privée n'est que dans l'agent (clé matérielle, gestionnaire de mots de passe) | le champ **Fichier de clé privée** est rempli |
 | `IdentitiesOnly` | N'offre que les clés de l'agent qui correspondent à ces fichiers | — |
 | `CertificateFile` | Certificats OpenSSH associés aux clés | — |
 | `IdentityAgent` | Socket de l'agent (ou tube nommé sous Windows, par exemple `\\.\pipe\openssh-ssh-agent`) ; `none` désactive l'agent | **Utiliser l'agent SSH** est décoché |
