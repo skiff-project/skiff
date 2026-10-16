@@ -89,6 +89,17 @@ Pendant un glisser-déposer : `Ctrl` (ou `Alt`) force la copie, `Maj` force le d
 | `Alt` + glisser | Sélection rectangulaire |
 | `Échap` | Fermer le panneau de recherche |
 
+### Dans un projet
+
+| Touche | Action |
+|---|---|
+| `Ctrl+Maj+E` | Ouvrir le dossier du panneau actif comme projet |
+| `Ctrl+P` | Aller au fichier |
+| `Ctrl+Maj+F` | Rechercher dans le projet |
+| `Ctrl+Alt+S` | Tout enregistrer |
+| `` Ctrl+` `` | Afficher ou masquer le terminal |
+| `Ctrl+W` | Fermer le fichier affiché |
+
 ## 16.4 Terminal
 
 | Touche | Action |

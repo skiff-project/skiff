@@ -32,6 +32,7 @@ Le clic droit sur un onglet de session propose **Reconnecter**, **Dupliquer la s
 | Éclair : **Garder le dossier distant à jour** | `Ctrl+U` | [Surveillance](07-synchronisation.md#73-garder-le-dossier-distant-à-jour) du dossier local |
 | Maillons : **Navigation synchronisée** | `Ctrl+B` | [§ 4.11](#411-navigation-synchronisée) |
 | **Terminal** : **Ouvrir un terminal** | `Ctrl+T` | [Terminal SSH](09-terminal-tunnels.md#91-terminal-ssh) dans le dossier courant |
+| **Projet** | `Ctrl+Maj+E` | Ouvre le dossier du panneau actif comme [projet](08-edition.md#87-projets--modifier-un-dossier-sans-rien-installer-sur-le-serveur) : arborescence, fichiers en onglets, recherche, terminal |
 | **Exécuter une commande** | `Ctrl+Maj+X` | [Commande ponctuelle](05-fichiers.md#511-exécuter-une-commande) sur le serveur |
 | **Tunnels** | | [Redirection de ports](09-terminal-tunnels.md#93-tunnels-redirections-de-ports) |
 | Œil barré : **Afficher les fichiers cachés** | `Ctrl+Alt+H` | Affiche ou masque les fichiers commençant par un point |

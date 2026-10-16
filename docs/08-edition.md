@@ -98,6 +98,68 @@ Pour faire de l'éditeur externe le choix par défaut de `F4` et du double-clic 
 
 Le [panneau d'aperçu](04-interface.md#49-panneau-daperçu) (`Ctrl+Maj+P`) affiche les images, vidéos, sons, PDF, fichiers Markdown et textes, en local comme sur un serveur, sans ouvrir d'onglet.
 
+## 8.7 Projets : modifier un dossier sans rien installer sur le serveur
+
+Pour travailler sur plusieurs fichiers d'un même dossier (un site, la configuration d'un serveur, des scripts), ouvrez-le comme **projet**. Vous obtenez une vue proche d'un éditeur de code : l'arborescence à gauche, les fichiers en onglets, une recherche dans tous les fichiers et un terminal.
+
+Contrairement à VS Code (Remote SSH), qui installe son propre serveur sur la machine distante, **rien n'est installé ni lancé en permanence sur le serveur**. Skiff lit et enregistre les fichiers par la connexion déjà ouverte. Ça marche donc sur un petit VPS, un compte SFTP seul, un NAS, un conteneur, et aussi en FTP, WebDAV ou S3.
+
+![Un dossier distant ouvert comme projet](images/projet.png)
+
+**Ouvrir un projet** :
+
+- **Projet** dans la barre d'outils de la session (`Ctrl+Maj+E`) : le dossier du panneau actif ;
+- clic droit sur un dossier → **Ouvrir comme projet**, ou sur le fond du panneau → **Ouvrir ce dossier comme projet** ;
+- la palette (`Ctrl+K` → « Ouvrir ce dossier comme projet »).
+
+Le projet s'ouvre dans un onglet qui porte le nom du dossier ; un point y signale des fichiers non enregistrés. Il utilise la connexion de la session : fermer l'onglet de session ne la coupe pas tant que le projet est ouvert. Avec **Rouvrir les sessions de la dernière fois** ([§ 12.2](12-preferences.md#122-panneaux)) ou un [espace de travail](03-sites.md#33-espaces-de-travail), les projets reviennent avec leurs fichiers ouverts.
+
+### Arborescence
+
+Les dossiers se chargent à l'ouverture (clic sur le dossier) ; les fichiers cachés suivent le réglage des panneaux. Un clic ouvre un fichier dans un onglet. L'arborescence se met à jour quand un fichier est créé, renommé ou supprimé, par Skiff ou dans une autre session.
+
+Le clic droit propose **Nouveau fichier**, **Nouveau dossier**, **Rechercher dans ce dossier**, **Renommer**, **Supprimer**, **Copier le chemin** et **Copier le chemin dans le projet** (relatif). Les boutons en haut créent un fichier ou un dossier à la racine, **Tout replier** et **Actualiser**.
+
+### Fichiers en onglets
+
+Chaque fichier s'ouvre avec l'[éditeur intégré](#81-léditeur-intégré) : coloration, encodage, fins de ligne, rechercher et remplacer, [conflits à l'enregistrement](#82-conflits-à-lenregistrement). Un point remplace la croix d'un onglet modifié. `Ctrl+S` enregistre le fichier affiché, **Tout enregistrer** (`Ctrl+Alt+S`) tous les fichiers modifiés, `Ctrl+W` ferme le fichier affiché (pas le projet). Fermer un fichier ou le projet avec des modifications demande s'il faut les enregistrer.
+
+Les droits du fichier sont conservés : un script exécutable le reste après l'enregistrement.
+
+### Rechercher dans le projet
+
+**Rechercher** (`Ctrl+Maj+F`) cherche un texte dans tous les fichiers du projet, ou d'un dossier (**Rechercher dans ce dossier** dans l'arborescence ; la croix revient au projet entier). **Respecter la casse** et **Expression régulière** se règlent à droite du champ. Les résultats sont groupés par fichier, avec la ligne et le texte trouvé surligné ; un clic ouvre le fichier sur l'occurrence.
+
+![Recherche dans tous les fichiers du projet](images/projet-recherche.png)
+
+Sur une connexion SFTP ou SCP avec un shell (et dans un conteneur), la recherche est faite par `find` et `grep` **sur le serveur**, en une commande : rapide même sur un gros dossier, et rien n'est installé. Sinon (compte SFTP seul, FTP, WebDAV, S3, dossier local), Skiff lit les fichiers un par un. La ligne de résumé indique la méthode (« grep » ou « fichiers lus »).
+
+Les fichiers binaires et ceux de plus de 2 Mo sont ignorés, ainsi que les dossiers `.git`, `node_modules`, `vendor`, `__pycache__`, `.venv`, `venv`, `.cache`, `.next`, `.nuxt` et `.terraform` (liste modifiable dans **Préférences → Éditeur**, [§ 12.5](12-preferences.md#125-éditeur)). Les 1 000 premiers résultats sont affichés.
+
+### Aller au fichier
+
+`Ctrl+P` (ou le bouton **Aller au fichier**, un fichier sous une loupe) ouvre un fichier par son nom : tapez quelques lettres, dans l'ordre (`ngc` trouve `nginx.conf`, `cs/st` trouve `css/style.css`). Les fichiers dont le nom commence par ce que vous tapez viennent en premier ; sans rien taper, les fichiers ouverts sont proposés d'abord. Les mêmes dossiers que pour la recherche sont ignorés ; au-delà de 20 000 fichiers, seuls les premiers sont proposés.
+
+![Aller au fichier](images/projet-aller-au-fichier.png)
+
+### Terminal
+
+L'icône de terminal (`` Ctrl+` ``) ouvre un [terminal](09-terminal-tunnels.md#91-terminal-ssh) en bas du projet, dans son dossier, sur la même connexion (et sur cet ordinateur pour un projet local). Le même raccourci le masque et le réaffiche ; il continue de tourner pendant ce temps. Il ferme avec le projet. La séparation se déplace à la souris.
+
+![Le terminal du projet](images/projet-terminal.png)
+
+Le menu **⋯** propose aussi **Afficher le dossier dans un panneau de fichiers**, **Copier le chemin du projet** et **Fermer tous les fichiers**.
+
+## 8.8 Versions précédentes
+
+À chaque enregistrement depuis l'éditeur (fichier seul ou projet), Skiff garde **sur cet ordinateur** une copie du contenu d'avant : les 20 dernières versions de chaque fichier, pendant 30 jours. Rien n'est écrit sur le serveur. Un enregistrement qui ne change rien ne crée pas de copie.
+
+L'icône d'horloge de la barre de l'éditeur (**Versions précédentes**) liste ces copies, la plus récente en haut, et compare celle choisie avec le contenu de l'éditeur. **Restaurer cette version** met ce contenu dans l'éditeur : relisez-le, puis enregistrez (la version remplacée est gardée à son tour).
+
+![Versions précédentes d'un fichier](images/versions-precedentes.png)
+
+Les copies sont dans le dossier de configuration (`history/`), une par fichier et par serveur. Le réglage **Garder les versions précédentes des fichiers enregistrés** (**Préférences → Éditeur**) les arrête. Les fichiers de plus de 10 Mo ne sont pas copiés.
+
 ---
 
 [← Synchronisation](07-synchronisation.md) · [Sommaire](README.md) · [Terminal, tunnels, proxys et rebonds →](09-terminal-tunnels.md)

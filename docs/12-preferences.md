@@ -81,6 +81,8 @@ Les options de transfert par défaut, identiques à celles de la [boîte de tran
 | **Taille de police** | Police de l'éditeur, 9 à 24 px |
 | **Taille maximale des fichiers dans l'éditeur (Mo)** | 20 par défaut |
 | **Retour à la ligne** | Coupe les lignes longues à la largeur de la fenêtre |
+| **Garder les versions précédentes des fichiers enregistrés** | Activé par défaut : une copie avant chaque enregistrement, sur cet ordinateur ([§ 8.8](08-edition.md#88-versions-précédentes)) |
+| **Dossiers ignorés par les projets** | Ni recherchés ni proposés par **Aller au fichier** ([§ 8.7](08-edition.md#87-projets--modifier-un-dossier-sans-rien-installer-sur-le-serveur)), séparés par des espaces. Vide : `.git node_modules vendor __pycache__ .venv venv .cache .next .nuxt .terraform` |
 | **Associations** | Couples masque → commande. **Ajouter** crée une ligne : `*.psd` → `gimp !.!`, `*.log` → `internal` (force l'éditeur intégré) |
 
 ## 12.6 Terminal
