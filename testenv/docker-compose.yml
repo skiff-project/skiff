@@ -11,6 +11,8 @@ services:
       - USER_PASSWORD=skiff
       - PASSWORD_ACCESS=true
       - SUDO_ACCESS=false
+    volumes:
+      - ./ssh-init:/custom-cont-init.d:ro # enables TCP forwarding (tunnels, jump hosts)
     ports:
       - "2222:2222"
   ftp:

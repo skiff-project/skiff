@@ -3,6 +3,7 @@
 /dist/
 frontend/node_modules/
 docs/capture/node_modules/
+test/ui/node_modules/
 frontend/dist/*
 !frontend/dist/.gitkeep
 

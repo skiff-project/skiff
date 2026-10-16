@@ -1,0 +1,7 @@
+#!/usr/bin/with-contenv bash
+# Allow port forwarding so that tunnels and jump hosts can be tested
+# (the image ships with "AllowTcpForwarding no").
+sed -i \
+  -e 's/^#\?AllowTcpForwarding .*/AllowTcpForwarding yes/' \
+  -e 's/^#\?GatewayPorts .*/GatewayPorts clientspecified/' \
+  /config/sshd/sshd_config

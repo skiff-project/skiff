@@ -5,8 +5,10 @@
 #   ./build.sh portable   build without the native webview (fully static)
 #   ./build.sh release    cross-compile every target into dist/
 #   ./build.sh dev        rebuild the UI on change and serve on 127.0.0.1:8484
-#   ./build.sh test       go vet + unit tests + TypeScript typecheck
-#   ./build.sh itest      integration tests against the Docker test servers
+#   ./build.sh test       go vet + unit tests + TypeScript typecheck + translations
+#   ./build.sh itest      end-to-end tests against the Docker test servers:
+#                         every API method, web mode, command line and scripts
+#   ./build.sh uitest     end-to-end tests of the interface in a browser
 #   ./build.sh ui         only build the web UI
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -85,13 +87,23 @@ dev() {
 test_all() {
   $GO vet ./...
   $GO test ./...
-  (cd frontend && $PNPM run typecheck)
+  (cd frontend && $PNPM run typecheck && node scripts/check-i18n.mjs)
+}
+
+testenv() {
+  docker compose -f testenv/docker-compose.yml up -d
+  sleep 5
 }
 
 itest() {
-  docker compose -f testenv/docker-compose.yml up -d
-  sleep 5
-  $GO test -tags integration -count=1 ./internal/core/ -run TestProtocols -v
+  testenv
+  $GO test -tags integration -count=1 -timeout 40m ./internal/core/ ./internal/server/ .
+}
+
+uitest() {
+  build
+  testenv
+  (cd test/ui && $PNPM install && $PNPM exec playwright install chromium && SKIFF_BIN=../../bin/skiff $PNPM test)
 }
 
 case "${1:-build}" in
@@ -101,6 +113,7 @@ case "${1:-build}" in
   dev) dev ;;
   test) test_all ;;
   itest) itest ;;
+  uitest) uitest ;;
   ui) ui ;;
-  *) echo "usage: $0 [build|portable|release|dev|test|itest|ui]"; exit 2 ;;
+  *) echo "usage: $0 [build|portable|release|dev|test|itest|uitest|ui]"; exit 2 ;;
 esac
