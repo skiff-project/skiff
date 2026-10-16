@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { termSocketUrl } from '../../lib/api'
 import { get, toast, useStore, type TerminalTab, type TermPaneState, updateTab } from '../../lib/store'
-import { closeTermPane, followTerminalCwd, loadShells, openTerminal, closeTab, revealTerminalCwd, splitTerminal, terminalPanes } from '../../lib/actions'
+import { closeTermPane, followTerminalCwd, loadShells, openTerminal, closeTab, revealTerminalCwd, splitTerminal, terminalPanes, toggleProjectTerminal } from '../../lib/actions'
 import { shellItems } from '../../lib/shellmenu'
 import { snippetName, t } from '../../lib/i18n'
 import { showMenu, showMenuAt, type MenuItem } from '../ui/Menu'
@@ -403,7 +403,7 @@ export function TerminalView({ tab, visible }: { tab: TerminalTab; visible: bool
         <button className="icon-btn sm" data-tip={t('term.fontSmaller')} onClick={() => setFontSize((n) => Math.max(9, n - 1))}><Minus /></button>
         <button className="icon-btn sm" data-tip={t('term.fontLarger')} onClick={() => setFontSize((n) => Math.min(28, n + 1))}><Plus /></button>
         {exited && panes.length === 1 && (
-          <button className="btn sm primary" onClick={() => { closeTab(tab.id); openTerminal(tab.conn, panes[0].cwd, panes[0].shell) }}><RotateCw /> {t('term.reopen')}</button>
+          <button className="btn sm primary" onClick={async () => { const project = tab.embeddedIn; await closeTab(tab.id); if (project) toggleProjectTerminal(project, true); else openTerminal(tab.conn, panes[0].cwd, panes[0].shell) }}><RotateCw /> {t('term.reopen')}</button>
         )}
       </div>
       <div className={`term-panes ${grid}`} style={grid === 'columns' ? { gridTemplateColumns: `repeat(${panes.length}, minmax(0, 1fr))` } : grid === 'rows' ? { gridTemplateRows: `repeat(${panes.length}, minmax(0, 1fr))` } : undefined}>

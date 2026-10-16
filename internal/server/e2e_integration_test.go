@@ -448,6 +448,7 @@ func TestE2E(t *testing.T) {
 		{"watch", testWatch},
 		{"find", testFind},
 		{"editors", testEditors},
+		{"projects", testProjects},
 		{"terminals", testTerminals},
 		{"monitor", testMonitor},
 		{"containers", testContainers},

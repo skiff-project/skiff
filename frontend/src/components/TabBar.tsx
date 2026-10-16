@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
-import { Activity, CalendarClock, ArrowDownUp, Command, FileDiff, LogOut, Moon, Plus, Settings, SquareTerminal, Sun, X } from 'lucide-react'
-import { get, set, useStore, type Tab } from '../lib/store'
+import { Activity, CalendarClock, ArrowDownUp, Command, FileDiff, LogOut, Moon, Plus, Settings, SquareTerminal, Sun, X, FolderCode } from 'lucide-react'
+import { barTabs, get, set, useStore, type Tab } from '../lib/store'
 import { activate, closeTab, duplicateSession, moveTab, reconnect, savePrefs, setBottom, terminalPanes } from '../lib/actions'
 import { showMenu } from './ui/Menu'
 import { t } from '../lib/i18n'
@@ -18,6 +18,7 @@ function TabIcon({ tab }: { tab: Tab }) {
     return <span className={`tab-dot ${state}`} style={c?.color && state === 'ok' ? { background: c.color } : undefined} />
   }
   if (tab.kind === 'editor') return <FileIcon entry={{ name: tab.title, isDir: false }} size={14} />
+  if (tab.kind === 'project') return <FolderCode className="tab-svg" />
   if (tab.kind === 'terminal') return <SquareTerminal className="tab-svg" />
   if (tab.kind === 'diff') return <FileDiff className="tab-svg" />
   if (tab.kind === 'monitor') return <Activity className="tab-svg" />
@@ -26,7 +27,7 @@ function TabIcon({ tab }: { tab: Tab }) {
 }
 
 export function TabBar() {
-  const tabs = useStore((s) => s.tabs)
+  const tabs = barTabs(useStore((s) => s.tabs))
   const active = useStore((s) => s.activeTab)
   const jobs = useStore((s) => s.jobs)
   const prefs = useStore((s) => s.prefs)
@@ -98,7 +99,7 @@ export function TabBar() {
                 setDropIdx(null)
               }}
               data-dropzone
-              data-tip={tab.kind === 'sites' ? t('tabs.sites') : tab.kind === 'editor' ? tab.path : undefined}
+              data-tip={tab.kind === 'sites' ? t('tabs.sites') : tab.kind === 'editor' ? tab.path : tab.kind === 'project' ? tab.root : undefined}
             >
               {tab.kind === 'sites' ? (
                 <img src="/favicon.svg" alt="" className="tab-logo" />
@@ -106,7 +107,7 @@ export function TabBar() {
                 <>
                   <TabIcon tab={tab} />
                   <span className="tab-title">{tab.title}</span>
-                  {tab.kind === 'editor' && tab.dirty ? (
+                  {(tab.kind === 'editor' && tab.dirty) || (tab.kind === 'project' && tab.files.some((f) => f.dirty)) ? (
                     <span className="tab-dirty" onClick={(e) => { e.stopPropagation(); closeTab(tab.id) }} />
                   ) : (
                     <button

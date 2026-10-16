@@ -72,6 +72,29 @@ export interface TerminalTab {
   split?: 'columns' | 'rows'
   broadcast?: boolean // input goes to every pane
   follow?: boolean // the file panel follows the current folder
+  embeddedIn?: string // the project tab it is shown in (not in the tab bar)
+}
+
+/** A file open in a project. */
+export interface ProjectFile {
+  path: string
+  dirty: boolean
+  /** where to put the cursor (a search result); seq makes a new jump */
+  jump?: { line: number; col: number; len: number; seq: number }
+}
+
+/** A folder opened with its tree, its files in tabs and a terminal. */
+export interface ProjectTab {
+  id: string
+  kind: 'project'
+  title: string
+  conn: string
+  root: string
+  files: ProjectFile[]
+  active?: string // path of the shown file
+  side: 'files' | 'search'
+  terminal?: string // id of its terminal tab
+  showTerminal?: boolean
 }
 
 export interface MonitorTab {
@@ -93,7 +116,7 @@ export interface SitesTab {
   title: string
 }
 
-export type Tab = SitesTab | SessionTab | EditorTab | DiffTab | TerminalTab | MonitorTab | TasksTab
+export type Tab = SitesTab | SessionTab | EditorTab | DiffTab | TerminalTab | MonitorTab | TasksTab | ProjectTab
 
 export type BottomTab = 'queue' | 'log' | 'find' | 'watch' | 'tunnels' | 'edits'
 
@@ -145,6 +168,8 @@ export interface State {
   devsync: import('./types').DevSyncView | null
   /** shells and interpreters found per connection ("local" too) */
   shells: Record<string, import('./types').Shell[]>
+  /** the latest folder changed on a connection (projects refresh their tree) */
+  fsChanged?: { conn: string; dir: string; seq: number }
   /** a task to open in the task editor */
   taskDraft: Partial<import('./types').Task> | null
   previewOpen: boolean
@@ -237,4 +262,9 @@ export function dismissToast(id: number) {
 export function errorToast(title: string, e: any) {
   if (e?.code === 'cancelled') return
   toast('error', title, e?.message || String(e))
+}
+
+/** The tabs of the tab bar (a project's terminal is shown inside it). */
+export function barTabs(tabs: Tab[]): Tab[] {
+  return tabs.filter((x) => !(x.kind === 'terminal' && x.embeddedIn))
 }

@@ -1,5 +1,5 @@
-import { activeSession, get, set } from './store'
-import { activate, closeTab, cycleTab, refreshPane, savePrefs, setActiveSide, setBottom, toggleSyncBrowsing } from './actions'
+import { activeSession, barTabs, get, set } from './store'
+import { activate, closeTab, cycleTab, openProject, refreshPane, savePrefs, setActiveSide, setBottom, toggleSyncBrowsing } from './actions'
 import {
   copyOrMove, deleteSelected, editEntry, mkdir, newFile, properties, startRename, viewEntry, compareDirs, terminalHere, copyPaths,
   goToDialog, runCommandDialog, other,
@@ -42,6 +42,14 @@ export function handleGlobalKey(e: KeyboardEvent) {
     openPreferences()
     return
   }
+  if (mod && e.shiftKey && lower === 'e') {
+    const s = activeSession()
+    if (s) {
+      e.preventDefault()
+      openProject(s.panes[s.active].conn, s.panes[s.active].path)
+    }
+    return
+  }
   if (mod && (key === 'Tab' || key === 'PageDown' || key === 'PageUp')) {
     e.preventDefault()
     cycleTab(key === 'PageUp' || (key === 'Tab' && e.shiftKey) ? -1 : 1)
@@ -61,7 +69,7 @@ export function handleGlobalKey(e: KeyboardEvent) {
     return
   }
   if (e.altKey && /^[1-9]$/.test(key)) {
-    const tab = get().tabs[parseInt(key, 10) - 1]
+    const tab = barTabs(get().tabs)[parseInt(key, 10) - 1]
     if (tab) {
       e.preventDefault()
       activate(tab.id)

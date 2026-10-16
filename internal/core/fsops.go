@@ -683,7 +683,14 @@ func (c *Core) ReadText(ctx context.Context, conn, p, forceEncoding string) (Fil
 	if err != nil {
 		return FileContent{}, err
 	}
-	fc := FileContent{Path: p, Size: int64(len(data)), MTime: e.ModTime}
+	fc := decodeText(data, forceEncoding)
+	fc.Path, fc.MTime = p, e.ModTime
+	return fc, nil
+}
+
+// decodeText finds the encoding, BOM and line endings of a text file.
+func decodeText(data []byte, forceEncoding string) FileContent {
+	fc := FileContent{Size: int64(len(data))}
 	enc := strings.ToLower(forceEncoding)
 	switch {
 	case enc != "" && enc != "auto":
@@ -730,7 +737,7 @@ func (c *Core) ReadText(ctx context.Context, conn, p, forceEncoding string) (Fil
 		text = strings.ReplaceAll(text, "\r", "\n")
 	}
 	fc.Content = text
-	return fc, nil
+	return fc
 }
 
 type WriteText struct {
@@ -745,6 +752,8 @@ type WriteText struct {
 	// alone has a one-second tolerance for protocols without sub-seconds).
 	ExpectSize *int64 `json:"expectSize,omitempty"`
 	Force      bool   `json:"force,omitempty"`
+	// Backup keeps the current content of the file in its history first.
+	Backup bool `json:"backup,omitempty"`
 }
 
 var ErrConflict = errors.New("the file was modified on the server since it was opened")
@@ -793,6 +802,11 @@ func (c *Core) WriteText(ctx context.Context, w WriteText) (vfs.Entry, error) {
 	var mode uint32
 	if e, err := f.Stat(ctx, w.Path); err == nil {
 		mode = e.Mode
+		if w.Backup && !c.Store.Prefs().Editor.NoHistory {
+			if err := c.keepVersion(ctx, f, w.Conn, w.Path, e.Size, data); err != nil {
+				c.warn(w.Conn, "No copy of %s kept before saving: %v", w.Path, err)
+			}
+		}
 	}
 	wc, err := f.Create(ctx, w.Path, vfs.CreateOpts{Size: int64(len(data))})
 	if err != nil {

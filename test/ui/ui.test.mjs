@@ -673,6 +673,67 @@ step('informations serveur et journal', async () => {
   await page.locator('.bottom').getByText('Authenticated', { exact: false }).first().waitFor()
 })
 
+step('projet : arborescence, onglets, recherche, aller au fichier, terminal', async () => {
+  const conn = (await sftp()).id
+  const root = `${REMOTE}/projet-ui`
+  await rpc('fs.mkdir', { conn, path: root })
+  await rpc('fs.mkdir', { conn, path: `${root}/conf` })
+  const write = (p, content) => rpc('fs.writeText', { conn, path: `${root}/${p}`, content, encoding: 'utf-8', eol: 'LF', force: true })
+  await write('conf/nginx.conf', 'server {\n  listen 80;\n  server_name projet.example.com;\n}\n')
+  await write('index.html', '<h1>Projet</h1>\n')
+  await nav(1, REMOTE)
+  await refresh(1)
+  // from the menu of a folder
+  await row(1, 'projet-ui').click({ button: 'right' })
+  await page.locator('.menu-item', { hasText: 'Ouvrir comme projet' }).click()
+  const pv = V('.project')
+  await pv.waitFor()
+  assert.equal(await page.locator('.tab.active .tab-title').innerText(), 'projet-ui')
+  // a file from the tree, edited and saved
+  await pv.locator('.ptree [data-path="conf"]').click()
+  await pv.locator('.ptree [data-path="conf/nginx.conf"]').click()
+  const ed = pv.locator('.project-editor:visible .cm-content')
+  await ed.waitFor()
+  await until('file shown', async () => (await ed.innerText()).includes('server_name'))
+  await ed.click()
+  await page.keyboard.press('Control+End')
+  await page.keyboard.insertText('# modifié par le test\n')
+  await until('dirty', async () => (await pv.locator('.ptab.active .tab-dirty').count()) === 1)
+  await page.keyboard.press('Control+s')
+  await until('saved on the server', async () => (await remoteText(`${root}/conf/nginx.conf`)).includes('# modifié par le test'))
+  assert.equal((await rpc('edit.history', { conn, path: `${root}/conf/nginx.conf` })).length, 1, 'the previous version is kept')
+  // a search in all the files opens the file at the line
+  await page.keyboard.press('Control+Shift+F')
+  await pv.locator('.psearch input').fill('<h1>')
+  await page.keyboard.press('Enter')
+  await pv.locator('.psearch-file[data-file="index.html"] .psearch-line').click()
+  await until('index.html open', async () => (await pv.locator('.ptab.active').getAttribute('data-file')) === 'index.html')
+  // a file by its name
+  await pv.locator('.project-editor:visible .cm-content').click()
+  await page.keyboard.press('Control+p')
+  await page.locator('.quick-open input').fill('ngx')
+  await page.locator('.quick-open .pal-item.hot', { hasText: 'nginx.conf' }).waitFor()
+  await page.keyboard.press('Enter')
+  await until('back to nginx.conf', async () => (await pv.locator('.ptab.active').getAttribute('data-file')) === 'conf/nginx.conf')
+  // Ctrl+W closes the file, not the project
+  await page.keyboard.press('Control+w')
+  await until('file closed', async () => (await pv.locator('.ptab').count()) === 1)
+  // the terminal of the project, in its folder
+  await pv.locator('[data-tip="Terminal"]').click()
+  await pv.locator('.project-term .xterm').waitFor()
+  await sleep(1000)
+  await page.keyboard.type('pwd\n')
+  await until('terminal in the project', async () => (await pv.locator('.project-term .xterm-rows').innerText()).includes('projet-ui'))
+  // closing with an unsaved file asks
+  await pv.locator('.project-editor:visible .cm-content').click()
+  await page.keyboard.insertText('x')
+  await page.locator('.tab.active .tab-dirty').click()
+  await button(dialog(), 'Ne pas enregistrer').click()
+  await until('project closed', async () => (await page.locator('.tab', { hasText: 'projet-ui' }).count()) === 0)
+  assert.ok(!(await rpc('term.list')).some((x) => x.conn === conn && x.title.includes('projet')), 'its terminal is closed')
+  await rpc('fs.delete', { conn, paths: [root] })
+})
+
 step('éditeur externe', async () => {
   const editor = join(TMP, 'editeur.sh')
   writeFileSync(editor, '#!/bin/sh\nsleep 1\necho "ajouté par l\'éditeur externe" >> "$1"\n', { mode: 0o755 })
@@ -794,6 +855,22 @@ step('rouvrir les onglets au démarrage', async () => {
     const tabs = (await rpc('prefs.get')).lastTabs || []
     return tabs.some((t) => t.url && t.remote === dir && t.local === join(LOCAL, 'site')) && tabs.some((t) => t.siteId === 'site-ui')
   })
+  // projects come back too: one on the server of "Site UI", one on this computer
+  await page.locator('.tab', { hasText: 'Site UI' }).click()
+  await V('.commander').waitFor()
+  await pane(1).locator('.pane-status').click()
+  await page.keyboard.press('Control+Shift+E')
+  await V('.project').waitFor()
+  const remoteProject = await page.locator('.tab.active .tab-title').innerText()
+  await toSession()
+  await pane(0).locator('.pane-status').click()
+  await page.keyboard.press('Control+Shift+E')
+  await V('.project .ptree [data-path="index.html"]').click()
+  await until('projects saved', async () => {
+    const tabs = (await rpc('prefs.get')).lastTabs || []
+    return tabs.some((t) => t.project?.local && t.project.root === join(LOCAL, 'site') && t.project.files?.[0] === join(LOCAL, 'site', 'index.html')) &&
+      tabs.some((t) => t.siteId === 'site-ui' && t.project)
+  })
   // quit, then start again
   await page.goto('about:blank')
   await stop(skiff)
@@ -808,6 +885,15 @@ step('rouvrir les onglets au démarrage', async () => {
   await row(1, 'temoin.txt').waitFor()
   await row(0, 'index.html').waitFor()
   assert.equal(await pane(1).locator('.crumb.last').innerText(), 'reprise')
+  // the projects, on the connection of their session (no third one)
+  const local = page.locator('.tab', { has: page.locator('.tab-title', { hasText: /^site$/ }) })
+  await local.click()
+  await V('.ptab[data-file="index.html"]').waitFor()
+  await page.locator('.tab', { has: page.locator('.tab-title', { hasText: new RegExp(`^${remoteProject}$`) }) }).waitFor()
+  assert.equal((await conns()).filter((c) => c.state === 'connected').length, 2, 'the project reuses the connection')
+  for (const title of ['site', remoteProject]) {
+    await page.locator('.tab', { has: page.locator('.tab-title', { hasText: new RegExp(`^${title}$`) }) }).locator('.tab-close').click()
+  }
 })
 
 step('mode web : connexion et déconnexion', async () => {

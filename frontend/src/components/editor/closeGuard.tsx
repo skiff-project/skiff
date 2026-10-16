@@ -13,8 +13,19 @@ export function registerSaver(tabId: string, fn: () => Promise<void>) {
   }
 }
 
+/** Saves what a saver was registered for (a file of a tab). */
+export async function runSaver(id: string) {
+  const fn = savers.get(id)
+  if (fn) await fn()
+}
+
 // confirmCloseEditor resolves true when the tab may close.
-export async function confirmCloseEditor(tab: EditorTab): Promise<boolean> {
+export function confirmCloseEditor(tab: EditorTab): Promise<boolean> {
+  return confirmClose(t('editor.unsavedClose', { name: tab.title }), [tab.id])
+}
+
+/** Asks whether to save files before closing them; true when they may close. */
+export async function confirmClose(message: string, saverIds: string[]): Promise<boolean> {
   const r = await openDialog<'save' | 'discard'>((close) => (
     <Dialog
       size="sm"
@@ -32,13 +43,12 @@ export async function confirmCloseEditor(tab: EditorTab): Promise<boolean> {
         </>
       }
     >
-      {t('editor.unsavedClose', { name: tab.title })}
+      {message}
     </Dialog>
   ))
   if (r === 'discard') return true
   if (r === 'save') {
-    const fn = savers.get(tab.id)
-    if (fn) await fn()
+    for (const id of saverIds) await runSaver(id)
     return true
   }
   return false

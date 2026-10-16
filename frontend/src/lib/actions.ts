@@ -1,7 +1,8 @@
 import { call, EventStream, setUnauthorizedHandler } from './api'
 import {
   get, getTab, newPane, set, toast, errorToast, uid, updatePane, updateTab, useStore,
-  type EditorTab, type MonitorTab, type PaneState, type SessionTab, type Side, type Tab, type TerminalTab, type TermPaneState,
+  type EditorTab, type MonitorTab, type PaneState, type ProjectTab, type SessionTab, type Side, type Tab, type TerminalTab, type TermPaneState,
+  barTabs,
 } from './store'
 import type { AppInfo, ConnInfo, Entry, Job, Prefs, PromptEvent, SiteView, SshConfigInfo, TabState } from './types'
 import { setLang, t } from './i18n'
@@ -64,12 +65,25 @@ export async function boot() {
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyAppearance(get().prefs!))
 }
 
+// the events received while resync waits for its answers: they are newer
+// (a question asked meanwhile must not be lost)
+let resyncing: { prompts: Map<string, PromptEvent>; promptsClosed: Set<string>; conns: Map<string, ConnInfo>; connsClosed: Set<string> } | null = null
+
 async function resync() {
+  const live = { prompts: new Map<string, PromptEvent>(), promptsClosed: new Set<string>(), conns: new Map<string, ConnInfo>(), connsClosed: new Set<string>() }
+  resyncing = live
   try {
-    const [conns, jobs, prompts] = await Promise.all([call<ConnInfo[]>('conn.list'), call<Job[]>('transfer.list'), call<PromptEvent[]>('prompt.pending')])
-    set({ conns: Object.fromEntries(conns.map((c) => [c.id, c])), jobs, prompts })
+    const [conns, jobs, pending] = await Promise.all([call<ConnInfo[]>('conn.list'), call<Job[]>('transfer.list'), call<PromptEvent[]>('prompt.pending')])
+    const prompts = pending.filter((p) => !live.promptsClosed.has(p.id))
+    for (const p of live.prompts.values()) if (!live.promptsClosed.has(p.id) && !prompts.some((x) => x.id === p.id)) prompts.push(p)
+    const byId = Object.fromEntries(conns.map((c) => [c.id, c]))
+    for (const [id, c] of live.conns) byId[id] = c
+    for (const id of live.connsClosed) delete byId[id]
+    set({ conns: byId, jobs, prompts })
   } catch {
     /* offline */
+  } finally {
+    if (resyncing === live) resyncing = null
   }
 }
 
@@ -80,10 +94,12 @@ function onEvent(type: string, data: any) {
   switch (type) {
     case 'conn.update': {
       const c = data as ConnInfo
+      resyncing?.conns.set(c.id, c)
       set({ conns: { ...s.conns, [c.id]: c } })
       break
     }
     case 'conn.closed': {
+      resyncing?.connsClosed.add(data)
       const conns = { ...s.conns }
       delete conns[data]
       set({ conns })
@@ -110,9 +126,11 @@ function onEvent(type: string, data: any) {
       break
     }
     case 'prompt':
+      resyncing?.prompts.set(data.id, data)
       if (!s.prompts.some((p) => p.id === data.id)) set({ prompts: [...s.prompts, data] })
       break
     case 'prompt.close':
+      resyncing?.promptsClosed.add(data)
       set({ prompts: s.prompts.filter((p) => p.id !== data) })
       break
     case 'log': {
@@ -124,6 +142,7 @@ function onEvent(type: string, data: any) {
     }
     case 'fs.changed': {
       const { conn, dir } = data
+      set((st) => ({ fsChanged: { conn, dir, seq: (st.fsChanged?.seq || 0) + 1 } }))
       const key = `${conn}|${dir}`
       clearTimeout(refreshTimers[key])
       refreshTimers[key] = window.setTimeout(() => {
@@ -299,8 +318,22 @@ export async function closeTab(id: string, force = false): Promise<boolean> {
     const r = await confirmCloseEditor(tab)
     if (!r) return false
   }
+  if (tab.kind === 'project') {
+    const dirty = tab.files.filter((f) => f.dirty)
+    if (dirty.length && !force) {
+      const { confirmClose } = await import('../components/editor/closeGuard')
+      const msg = dirty.length === 1 ? t('editor.unsavedClose', { name: basename(paneStyle(tab.conn), dirty[0].path) }) : t('project.unsavedClose', { n: dirty.length })
+      if (!(await confirmClose(msg, dirty.map((f) => projectSaver(tab.id, f.path))))) return false
+    }
+    if (tab.terminal) await closeTab(tab.terminal, true)
+    const users = get().tabs.filter((x) => x.id !== id && (x.kind === 'session' || x.kind === 'project') && x.conn === tab.conn)
+    if (!users.length && tab.conn !== 'local') call('conn.close', { conn: tab.conn }).catch(() => {})
+  }
+  if (tab.kind === 'terminal' && tab.embeddedIn) {
+    updateTab<ProjectTab>(tab.embeddedIn, () => ({ terminal: undefined, showTerminal: false }))
+  }
   if (tab.kind === 'session') {
-    const others = get().tabs.filter((x) => x.id !== id && (x as any).conn === tab.conn && x.kind === 'session')
+    const others = get().tabs.filter((x) => x.id !== id && (x as any).conn === tab.conn && (x.kind === 'session' || x.kind === 'project'))
     if (!others.length && tab.conn) {
       const running = get().jobs.filter((j) => (j.src === tab.conn || j.dst === tab.conn) && ['queued', 'scanning', 'running', 'paused'].includes(j.status))
       if (running.length && get().prefs?.confirmExit && !force) {
@@ -335,9 +368,9 @@ export function moveTab(id: string, toIndex: number) {
 }
 
 export function cycleTab(delta: number) {
-  const s = get()
-  const idx = s.tabs.findIndex((x) => x.id === s.activeTab)
-  const next = s.tabs[(idx + delta + s.tabs.length) % s.tabs.length]
+  const tabs = barTabs(get().tabs)
+  const idx = tabs.findIndex((x) => x.id === get().activeTab)
+  const next = tabs[(idx + delta + tabs.length) % tabs.length]
   if (next) activate(next.id)
 }
 
@@ -361,6 +394,7 @@ function persistTabs() {
         local: tab.panes[localSide].conn === 'local' ? tab.panes[localSide].path : undefined,
       })
     }
+    lastTabs.push(...projectStates())
     if (JSON.stringify(lastTabs) !== JSON.stringify(s.prefs.lastTabs || [])) savePrefs({ lastTabs })
   }, 1500)
 }
@@ -375,6 +409,23 @@ function currentTabStates(): TabState[] {
     const remoteSide: Side = tab.panes.right.conn === tab.conn ? 'right' : 'left'
     const localSide: Side = remoteSide === 'right' ? 'left' : 'right'
     out.push({ siteId: c.siteId, url: c.siteId ? undefined : c.url, remote: tab.panes[remoteSide].path, local: tab.panes[localSide].conn === 'local' ? tab.panes[localSide].path : undefined })
+  }
+  return [...out, ...projectStates()]
+}
+
+/** The project tabs to reopen, with their connection. */
+function projectStates(): TabState[] {
+  const s = get()
+  const out: TabState[] = []
+  for (const tab of s.tabs) {
+    if (tab.kind !== 'project') continue
+    const project = { root: tab.root, files: tab.files.map((f) => f.path), active: tab.active }
+    if (tab.conn === 'local') {
+      out.push({ project: { ...project, local: true } })
+      continue
+    }
+    const c = s.conns[tab.conn]
+    if (c) out.push({ siteId: c.siteId, url: c.siteId ? undefined : c.url, project })
   }
   return out
 }
@@ -392,24 +443,43 @@ export async function saveWorkspace(name: string) {
 export function openWorkspace(name: string) {
   const ws = get().prefs?.workspaces?.find((w) => w.name === name)
   if (!ws) return
-  let first = true
-  for (const st of ws.tabs) {
-    const opts = { remote: st.remote, local: st.local, activate: first }
-    if (st.siteId && get().sites.some((x) => x.id === st.siteId)) connectSite(st.siteId, opts)
-    else if (st.url) connectUrl(st.url, undefined, opts)
-    first = false
-  }
+  restoreTabs(ws.tabs, true)
 }
 
 export function deleteWorkspace(name: string) {
   savePrefs((p) => ({ workspaces: (p.workspaces || []).filter((w) => w.name !== name) }))
 }
 
-async function restoreTabs(list: TabState[]) {
-  for (const st of list) {
-    const opts = { remote: st.remote, local: st.local, activate: false }
+async function restoreTabs(list: TabState[], activateFirst = false) {
+  // a project is reopened on the connection of the sessions of its server
+  const key = (st: TabState) => st.siteId || st.url || ''
+  const projects = list.filter((st) => st.project && !st.project.local)
+  const openProjectsOf = (k: string) => (c: ConnInfo) => {
+    for (const p of projects) if (key(p) === k) openProject(c.id, p.project!.root, p.project!.files, p.project!.active, false)
+  }
+  let first = activateFirst
+  const connect = (st: TabState, afterConnect?: (c: ConnInfo) => void) => {
+    const opts = { remote: st.remote, local: st.local, activate: first, afterConnect }
+    first = false
     if (st.siteId && get().sites.some((x) => x.id === st.siteId)) connectSite(st.siteId, opts)
     else if (st.url) connectUrl(st.url, undefined, opts) // quick connection: the password is asked again
+  }
+  const done = new Set<string>()
+  for (const st of list) {
+    if (st.project) {
+      if (st.project.local) openProject('local', st.project.root, st.project.files, st.project.active, false)
+      continue
+    }
+    const k = key(st)
+    connect(st, done.has(k) ? undefined : openProjectsOf(k))
+    done.add(k)
+  }
+  // projects whose server had no session tab
+  for (const p of projects) {
+    const k = key(p)
+    if (done.has(k)) continue
+    done.add(k)
+    connect({ siteId: p.siteId, url: p.url }, openProjectsOf(k))
   }
 }
 
@@ -781,6 +851,100 @@ export function openDiff(left: { conn: string; path: string }, right: { conn: st
   const lt = basename(paneStyle(left.conn), left.path)
   const rt = basename(paneStyle(right.conn), right.path)
   addTab({ id: uid('d'), kind: 'diff', title: lt === rt ? `${lt} ↔` : `${lt} ↔ ${rt}`, left, right })
+}
+
+// ---------------------------------------------------------------------------
+// Projects: a folder with its tree, its files in tabs and a terminal
+
+/** Shows a folder in a file panel: a session of the connection, or a new one. */
+export function openSessionAt(conn: string, path: string) {
+  const s = get()
+  for (const tab of s.tabs) {
+    if (tab.kind !== 'session' || (conn !== 'local' && tab.conn !== conn)) continue
+    const side: Side = tab.panes.right.conn === conn ? 'right' : tab.panes.left.conn === conn ? 'left' : tab.active
+    if (tab.panes[side].conn !== conn) continue
+    activate(tab.id)
+    navigate(tab.id, side, path)
+    return
+  }
+  const c = s.conns[conn]
+  if (c) openSessionTab(c, { remote: path })
+}
+
+/** The saver of a file of a project (see closeGuard). */
+export const projectSaver = (tabId: string, path: string) => `${tabId}:${path}`
+
+/** Opens a folder as a project (or shows it when it is already open). */
+export function openProject(conn: string, root: string, files: string[] = [], active?: string, activateIt = true) {
+  const existing = get().tabs.find((x) => x.kind === 'project' && x.conn === conn && x.root === root)
+  if (existing) {
+    if (activateIt) activate(existing.id)
+    return
+  }
+  const title = basename(paneStyle(conn), root) || root
+  const tab: ProjectTab = { id: uid('p'), kind: 'project', title, conn, root, files: files.map((path) => ({ path, dirty: false })), active: active || files[0], side: 'files' }
+  addTab(tab, activateIt)
+}
+
+/** Shows a file of a project, opening it first; jump selects a search result. */
+export function openProjectFile(tabId: string, path: string, jump?: { line: number; col: number; len: number }) {
+  updateTab<ProjectTab>(tabId, (tb) => {
+    const files = tb.files.some((f) => f.path === path) ? tb.files : [...tb.files, { path, dirty: false }]
+    return { files: jump ? files.map((f) => (f.path === path ? { ...f, jump: { ...jump, seq: Date.now() } } : f)) : files, active: path }
+  })
+  persistTabs()
+}
+
+export async function closeProjectFile(tabId: string, path: string, force = false) {
+  const tb = getTab<ProjectTab>(tabId)
+  const f = tb?.files.find((x) => x.path === path)
+  if (!tb || !f) return
+  if (f.dirty && !force) {
+    const { confirmClose } = await import('../components/editor/closeGuard')
+    if (!(await confirmClose(t('editor.unsavedClose', { name: basename(paneStyle(tb.conn), path) }), [projectSaver(tabId, path)]))) return
+  }
+  updateTab<ProjectTab>(tabId, (cur) => {
+    const i = cur.files.findIndex((x) => x.path === path)
+    const files = cur.files.filter((x) => x.path !== path)
+    const active = cur.active === path ? files[Math.min(i, files.length - 1)]?.path : cur.active
+    return { files, active }
+  })
+  persistTabs()
+}
+
+/** The files of a project moved or renamed: their tabs follow. */
+export function renameProjectFiles(tabId: string, from: string, to: string) {
+  const style = get().tabs.find((x) => x.id === tabId)?.kind === 'project' ? paneStyle((getTab<ProjectTab>(tabId) as ProjectTab).conn) : 'posix'
+  const sep = style === 'windows' ? '\\' : '/'
+  const move = (p: string) => (p === from ? to : p.startsWith(from + sep) ? to + p.slice(from.length) : p)
+  updateTab<ProjectTab>(tabId, (cur) => ({ files: cur.files.map((f) => ({ ...f, path: move(f.path) })), active: cur.active ? move(cur.active) : cur.active }))
+  persistTabs()
+}
+
+export async function saveAllProject(tabId: string) {
+  const tb = getTab<ProjectTab>(tabId)
+  if (!tb) return
+  const { runSaver } = await import('../components/editor/closeGuard')
+  for (const f of tb.files) if (f.dirty) await runSaver(projectSaver(tabId, f.path))
+}
+
+/** Shows or hides the terminal of a project, opening it in its folder. */
+export async function toggleProjectTerminal(tabId: string, show?: boolean) {
+  const tb = getTab<ProjectTab>(tabId)
+  if (!tb) return
+  if (tb.terminal && get().tabs.some((x) => x.id === tb.terminal)) {
+    updateTab<ProjectTab>(tabId, () => ({ showTerminal: show ?? !tb.showTerminal }))
+    return
+  }
+  if (show === false) return
+  try {
+    const term = await call<{ id: string; title: string }>('term.open', { conn: tb.conn, cols: 120, rows: 12, cwd: tb.root, shell: '' })
+    const tt: TerminalTab = { id: uid('x'), kind: 'terminal', title: term.title, termId: term.id, conn: tb.conn, panes: [{ termId: term.id, conn: tb.conn, title: term.title, cwd: tb.root }], embeddedIn: tabId }
+    set((s) => ({ tabs: [...s.tabs, tt] }))
+    updateTab<ProjectTab>(tabId, () => ({ terminal: tt.id, showTerminal: true }))
+  } catch (e) {
+    errorToast(t('term.title'), e)
+  }
 }
 
 /** Opens (or shows) the server monitor of an SSH connection. */

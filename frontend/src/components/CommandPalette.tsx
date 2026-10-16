@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowRightLeft, Copy, CornerDownLeft, File, FileSearch, Folder, FolderPlus, GitCompareArrows, KeyRound, Link2, Moon, Network, Plug, Plus,
-  RefreshCcwDot, ScrollText, Server, Settings, SquareTerminal, Trash2, Upload, Zap, Eye, Download, Lock, Activity, Box, CalendarClock,
+  RefreshCcwDot, ScrollText, Server, Settings, SquareTerminal, Trash2, Upload, Zap, Eye, Download, Lock, Activity, Box, CalendarClock, FolderCode,
 } from 'lucide-react'
 import { activeSession, get, set, useStore } from '../lib/store'
-import { activate, connectSite, connectUrl, loadDir, openMonitor, openTasks, openTerminal, savePrefs, setBottom, toggleSyncBrowsing, attachTerminalTab, openWorkspace, saveWorkspace } from '../lib/actions'
+import { activate, connectSite, connectUrl, loadDir, openMonitor, openProject, openTasks, openTerminal, savePrefs, setBottom, toggleSyncBrowsing, attachTerminalTab, openWorkspace, saveWorkspace } from '../lib/actions'
 import { prompt } from './dialogs/common'
 import { compareDirs, copyOrMove, deleteSelected, mkdir, newFile, terminalHere, openEntry } from '../lib/fileops'
 import { t } from '../lib/i18n'
@@ -115,6 +115,7 @@ export function CommandPalette() {
       cmd('watch', t('toolbar.keepUpToDate'), Zap, () => openWatchDialog(s.id), 'Ctrl+U')
       cmd('syncbrowse', t('toolbar.syncBrowsing'), Link2, () => toggleSyncBrowsing(s.id), 'Ctrl+B')
       cmd('term', t('toolbar.terminal'), SquareTerminal, () => terminalHere(s.id, side), 'Ctrl+T')
+      cmd('project', t('project.openHere'), FolderCode, () => openProject(s.panes[side].conn, s.panes[side].path), 'Ctrl+Shift+E')
       cmd('tunnel', t('tunnel.new'), Network, () => openTunnelDialog(s.conn), undefined, !conns[s.conn]?.caps.tunnels)
       cmd('monitor', t('mon.open'), Activity, () => openMonitor(s.conn), undefined, !conns[s.conn]?.caps.shell)
       cmd('containers', t('ctr.ofServer'), Box, () => openContainers({ via: s.conn }), undefined, !conns[s.conn]?.caps.tunnels)

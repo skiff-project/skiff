@@ -571,6 +571,31 @@ func (s *Server) registerRPC() {
 		return c.ReadText(ctx, p.Conn, p.Path, p.Encoding)
 	})
 	method(s, "fs.writeText", func(ctx context.Context, p core.WriteText) (vfs.Entry, error) { return c.WriteText(ctx, p) })
+	// ---- projects: a folder with its files, and the history of the edits ----
+	method(s, "project.files", func(ctx context.Context, p struct {
+		Conn string `json:"conn"`
+		Root string `json:"root"`
+	}) (core.ProjectFiles, error) {
+		return c.ProjectFiles(ctx, p.Conn, p.Root)
+	})
+	method(s, "project.search", func(ctx context.Context, p struct {
+		Conn string             `json:"conn"`
+		Root string             `json:"root"`
+		Opts core.SearchOptions `json:"opts"`
+	}) (core.SearchResult, error) {
+		return c.ProjectSearch(ctx, p.Conn, p.Root, p.Opts)
+	})
+	method(s, "edit.history", func(ctx context.Context, p pathReq) ([]core.HistoryVersion, error) {
+		return c.History(p.Conn, p.Path)
+	})
+	method(s, "edit.historyRead", func(ctx context.Context, p struct {
+		Conn     string `json:"conn"`
+		Path     string `json:"path"`
+		ID       string `json:"id"`
+		Encoding string `json:"encoding,omitempty"`
+	}) (core.FileContent, error) {
+		return c.HistoryRead(p.Conn, p.Path, p.ID, p.Encoding)
+	})
 	method(s, "fs.open", func(ctx context.Context, p pathReq) (ok, error) {
 		if s.web() {
 			return ok{}, errors.New("not available in web mode")

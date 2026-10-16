@@ -45,6 +45,11 @@ type EditorPrefs struct {
 	Encoding     string        `json:"encoding"`
 	AutoReload   bool          `json:"autoReload"`
 	Associations []EditorAssoc `json:"associations"`
+	// NoHistory stops keeping the previous versions of saved files.
+	NoHistory bool `json:"noHistory,omitempty"`
+	// ProjectExcludes are the folders a project skips (file list, search),
+	// separated by spaces or commas; empty for the default list.
+	ProjectExcludes string `json:"projectExcludes,omitempty"`
 }
 
 type EditorAssoc struct {
@@ -105,6 +110,16 @@ type TabState struct {
 	URL    string `json:"url,omitempty"`
 	Remote string `json:"remote,omitempty"`
 	Local  string `json:"local,omitempty"`
+	// Project is a project tab, on the same connection (or this computer).
+	Project *ProjectState `json:"project,omitempty"`
+}
+
+// ProjectState is a project tab to reopen.
+type ProjectState struct {
+	Root   string   `json:"root"`
+	Files  []string `json:"files,omitempty"`
+	Active string   `json:"active,omitempty"`
+	Local  bool     `json:"local,omitempty"`
 }
 
 type Workspace struct {

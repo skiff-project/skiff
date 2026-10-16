@@ -189,6 +189,13 @@ function Preferences({ close, initial }: { close: () => void; initial?: string }
                 <div className="field"><label>{t('prefs.maxSize')}</label><input className="input tnum" type="number" min={1} max={200} value={prefs.editor.maxSizeMB} onChange={(e) => up({ editor: { ...prefs.editor, maxSizeMB: parseInt(e.target.value, 10) || 20 } })} /></div>
               </div>
               <label className="switch"><input type="checkbox" checked={prefs.editor.wordWrap} onChange={(e) => up({ editor: { ...prefs.editor, wordWrap: e.target.checked } })} /> {t('prefs.wordWrap')}</label>
+              <label className="switch"><input type="checkbox" checked={!prefs.editor.noHistory} onChange={(e) => up({ editor: { ...prefs.editor, noHistory: !e.target.checked } })} /> {t('prefs.keepHistory')}</label>
+              <span className="hint" style={{ marginTop: -6 }}>{t('prefs.keepHistoryHint')}</span>
+              <div className="field">
+                <label>{t('prefs.projectExcludes')}</label>
+                <input className="input mono" value={prefs.editor.projectExcludes || ''} placeholder=".git node_modules vendor __pycache__ .venv venv .cache .next .nuxt .terraform" onChange={(e) => up({ editor: { ...prefs.editor, projectExcludes: e.target.value } })} spellCheck={false} />
+                <span className="hint">{t('prefs.projectExcludesHint')}</span>
+              </div>
               <div className="form-section">
                 <h4>{t('prefs.associations')}</h4>
                 {(prefs.editor.associations || []).map((a, i) => (

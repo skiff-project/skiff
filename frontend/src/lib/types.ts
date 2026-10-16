@@ -303,7 +303,13 @@ export interface SyncRequest {
 export interface FileContent { path: string; content: string; encoding: string; bom: boolean; eol: string; size: number; mtime: string; binary: boolean; readOnly: boolean }
 
 export interface Bookmark { name: string; path: string; side: 'local' | 'remote' }
-export interface TabState { siteId?: string; url?: string; remote?: string; local?: string }
+export interface TabState { siteId?: string; url?: string; remote?: string; local?: string; project?: ProjectState }
+/** A project tab to reopen: on the connection of the tab state, or on this computer (local). */
+export interface ProjectState { root: string; files?: string[]; active?: string; local?: boolean }
+export interface ProjectFiles { files: string[]; truncated?: boolean }
+export interface SearchMatch { path: string; line: number; col: number; len: number; text: string }
+export interface SearchResult { matches: SearchMatch[]; files: number; truncated?: boolean; method: 'grep' | 'scan' }
+export interface HistoryVersion { id: string; time: string; size: number }
 export interface CustomCommand { id: string; name: string; command: string; local: boolean; perFile: boolean; applyDirs: boolean; recursive: boolean; showOutput: boolean; shortcut?: string }
 
 export interface Prefs {
@@ -334,7 +340,7 @@ export interface Prefs {
     verify: boolean; excludeHidden: boolean; replaceInvalid: boolean; ignorePermErrors: boolean; clearArchive: boolean
   }
   queue: { maxParallel: number; background: boolean; autoPopup: boolean; retryCount: number; retryDelay: number; continueOnError: boolean; segmentSize: number; segments: number }
-  editor: { default: 'internal' | 'external'; externalCmd: string; tabSize: number; wordWrap: boolean; fontSize: number; maxSizeMB: number; encoding: string; autoReload: boolean; associations: { mask: string; command: string }[] }
+  editor: { default: 'internal' | 'external'; externalCmd: string; tabSize: number; wordWrap: boolean; fontSize: number; maxSizeMB: number; encoding: string; autoReload: boolean; associations: { mask: string; command: string }[]; noHistory?: boolean; projectExcludes?: string }
   terminal: { fontSize: number; fontFamily: string; scrollback: number; cursorBlink: boolean; copyOnSelect: boolean; term: string; snippets: Snippet[]
     localShell?: string; copyKeys?: '' | 'ctrl' | 'ctrlShift'; rightClick?: '' | 'copyPaste' | 'menu' }
   logging: { toFile: boolean; level: string; keepDays: number }

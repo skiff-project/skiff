@@ -1,9 +1,9 @@
 import {
   ArrowLeftRight, Columns2, Eye, EyeOff, FileSearch, GitCompareArrows, Info, Link2, Network, PanelRight, Power, RefreshCcwDot,
-  ScrollText, SquareTerminal, TerminalSquare, Zap, FolderTree, Activity, Box, ChevronDown,
+  ScrollText, SquareTerminal, TerminalSquare, Zap, FolderTree, Activity, Box, ChevronDown, FolderCode,
 } from 'lucide-react'
 import { get, set, useStore, type SessionTab } from '../lib/store'
-import { closeTab, editNewSite, openMonitor, savePrefs, setBottom, toggleSyncBrowsing, updateLayout } from '../lib/actions'
+import { closeTab, editNewSite, openMonitor, openProject, savePrefs, setBottom, toggleSyncBrowsing, updateLayout } from '../lib/actions'
 import { openContainers } from './dialogs/ContainersDialog'
 import { showMenuAt } from './ui/Menu'
 import { shellMenu } from '../lib/shellmenu'
@@ -55,6 +55,9 @@ export function SessionToolbar({ tab }: { tab: SessionTab }) {
           <ChevronDown />
         </button>
       </div>
+      <button className="tb-btn" onClick={() => openProject(tab.panes[side].conn, tab.panes[side].path)} data-tip={t('project.openHereTip')} data-kbd="Ctrl+Shift+E">
+        <FolderCode /> <span>{t('project.title')}</span>
+      </button>
       <button className="tb-btn icon-only" disabled={!caps?.exec} onClick={() => runCommandDialog(tab.id, side)} data-tip={t('cmd.run')} data-kbd="Ctrl+Shift+X">
         <TerminalSquare />
       </button>

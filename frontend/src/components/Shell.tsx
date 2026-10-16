@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { get, set, useStore, type SessionTab } from '../lib/store'
+import { barTabs, get, set, useStore, type SessionTab } from '../lib/store'
 import { TabBar } from './TabBar'
 import { SessionView } from './SessionView'
 import { SitesView } from './sites/SitesView'
@@ -8,6 +8,7 @@ import { StatusBar } from './StatusBar'
 import { EditorView } from './editor/EditorView'
 import { DiffView } from './editor/DiffView'
 import { TerminalView } from './terminal/TerminalView'
+import { ProjectView } from './project/ProjectView'
 import { MonitorView } from './monitor/MonitorView'
 import { TasksView } from './tasks/TasksView'
 import { CommandPalette } from './CommandPalette'
@@ -39,7 +40,7 @@ export function Shell() {
         </div>
       )}
       <div className="main">
-        {tabs.map((tab) => {
+        {barTabs(tabs).map((tab) => {
           const visible = tab.id === active
           return (
             <div key={tab.id} className="tab-content" style={{ display: visible ? 'flex' : 'none' }}>
@@ -49,6 +50,7 @@ export function Shell() {
               {tab.kind === 'diff' && <DiffView tab={tab} />}
               {tab.kind === 'terminal' && <TerminalView tab={tab} visible={visible} />}
               {tab.kind === 'monitor' && <MonitorView tab={tab} visible={visible} />}
+              {tab.kind === 'project' && <ProjectView tab={tab} visible={visible} />}
               {tab.kind === 'tasks' && <TasksView />}
             </div>
           )
