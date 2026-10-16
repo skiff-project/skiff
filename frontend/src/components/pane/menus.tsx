@@ -1,11 +1,11 @@
 import {
   ArrowRightLeft, Calculator, ClipboardCopy, ClipboardPaste, Copy, Download, Edit3, ExternalLink, Eye, FilePlus2, FileSearch, FolderInput,
   FolderPlus, GitCompare, Hash, Info, Link, MousePointerSquareDashed, PenLine, RefreshCcwDot, RotateCw, Scissors, SquareTerminal, Star,
-  Terminal, Trash2, Upload, Wand2, ListChecks, FolderCode, ScrollText, PackageOpen, FileArchive,
+  Terminal, Trash2, Upload, Wand2, ListChecks, FolderCode, ScrollText, PackageOpen, FileArchive, HardDrive,
 } from 'lucide-react'
 import { showMenu, type MenuItem } from '../ui/Menu'
 import { get, set, type SessionTab, type Side } from '../../lib/store'
-import { openLogs, openProject, paneStyle, refreshPane } from '../../lib/actions'
+import { openLogs, openProject, openUsage, paneStyle, refreshPane } from '../../lib/actions'
 import { archiveKind, openCompress, openExtract } from '../dialogs/ArchiveDialogs'
 import {
   calcSize, compareDirs, copyOrMove, copyPaths, deleteSelected, diffWithOther, editEntry, mkdir, moveToFolder, newFile, newLink, openEntry,
@@ -47,6 +47,7 @@ export function fileMenu(tabId: string, side: Side, x: number, y: number) {
   const items: MenuItem[] = [
     { label: one?.isDir ? t('ctx.open') : t('ctx.open'), icon: <ExternalLink />, shortcut: 'Enter', hidden: !one, onClick: () => one && openEntry(tabId, side, one) },
     { label: t('project.openAs'), icon: <FolderCode />, hidden: !one?.isDir, onClick: () => one && openProject(p.conn, join(st, p.path, one.name)) },
+    { label: t('usage.analyse'), icon: <HardDrive />, hidden: !one?.isDir, onClick: () => one && openUsage(p.conn, join(st, p.path, one.name)) },
     { label: t('ctx.edit'), icon: <Edit3 />, shortcut: 'F4', hidden: !isFile, onClick: () => editEntry(tabId, side, 'internal') },
     { label: t('ctx.editExternal'), icon: <PenLine />, shortcut: 'Shift+F4', hidden: !isFile || web, onClick: () => editEntry(tabId, side, 'external') },
     { label: t('ctx.view'), icon: <Eye />, shortcut: 'F3', hidden: !isFile, onClick: () => viewEntry(tabId, side) },
@@ -120,6 +121,7 @@ export function backgroundMenu(tabId: string, side: Side, x: number, y: number) 
     },
     { separator: true },
     { label: t('project.openHere'), icon: <FolderCode />, onClick: () => openProject(p.conn, p.path) },
+    { label: t('usage.here'), icon: <HardDrive />, onClick: () => openUsage(p.conn, p.path) },
     { label: t('ctx.terminalHere'), icon: <SquareTerminal />, hidden: !caps?.shell && p.conn !== 'local', onClick: () => terminalHere(tabId, side) },
     { label: t('ctx.findHere'), icon: <FileSearch />, onClick: () => openFindDialog(tabId, side) },
     { label: t('ctx.syncHere'), icon: <RefreshCcwDot />, onClick: () => openSyncDialog(tabId) },

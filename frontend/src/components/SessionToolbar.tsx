@@ -1,10 +1,11 @@
 import {
   ArrowLeftRight, Columns2, Eye, EyeOff, FileSearch, GitCompareArrows, Info, Link2, Network, PanelRight, Power, RefreshCcwDot,
-  ScrollText, SquareTerminal, TerminalSquare, Zap, FolderTree, Activity, Box, ChevronDown, FolderCode, Cog,
+  ScrollText, SquareTerminal, TerminalSquare, Zap, FolderTree, Activity, Box, ChevronDown, FolderCode, Cog, EthernetPort,
 } from 'lucide-react'
 import { get, set, useStore, type SessionTab } from '../lib/store'
 import { closeTab, editNewSite, openMonitor, openProject, savePrefs, setBottom, toggleSyncBrowsing, updateLayout } from '../lib/actions'
 import { openServices } from './dialogs/ServicesDialog'
+import { openPorts } from './dialogs/PortsDialog'
 import { openContainers } from './dialogs/ContainersDialog'
 import { showMenuAt } from './ui/Menu'
 import { shellMenu } from '../lib/shellmenu'
@@ -70,6 +71,9 @@ export function SessionToolbar({ tab }: { tab: SessionTab }) {
       </button>
       <button className="tb-btn icon-only" disabled={!caps?.shell} onClick={() => openServices(tab.conn)} data-tip={t('svc.open')}>
         <Cog />
+      </button>
+      <button className="tb-btn icon-only" disabled={!caps?.shell || !caps?.tunnels} onClick={() => openPorts(tab.conn)} data-tip={t('ports.openDialog')}>
+        <EthernetPort />
       </button>
       <button className="tb-btn icon-only" disabled={!caps?.tunnels} onClick={() => openContainers({ via: tab.conn, onNewSite: (st) => editNewSite({ ...st, viaConn: undefined, viaSite: get().conns[tab.conn]?.siteId }) })} data-tip={t('ctr.ofServer')}>
         <Box />

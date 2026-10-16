@@ -6,6 +6,7 @@ import { t } from '../../lib/i18n'
 import { formatDuration, formatSize, formatSpeed } from '../../lib/format'
 import type { MonitorProc, MonitorSample } from '../../lib/types'
 import { ask } from '../dialogs/common'
+import { openUsage } from '../../lib/actions'
 
 const HISTORY = 60
 
@@ -168,6 +169,7 @@ export function MonitorView({ tab, visible }: { tab: MonitorTab; visible: boolea
                 <span className="mono ellipsis" title={d.fs}>{d.mount}</span>
                 <Bar used={d.used} total={d.total} />
                 <span className="tnum faint">{formatSize(d.used, fmt)} / {formatSize(d.total, fmt)} · {Math.round((d.used / d.total) * 100)} %</span>
+                <button className="icon-btn sm" data-tip={t('usage.analyseDisk')} onClick={() => openUsage(tab.conn, d.mount)}><Search /></button>
               </div>
             ))}
           </div>

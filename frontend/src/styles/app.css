@@ -706,3 +706,46 @@
 .logs-status { flex: none; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-top: 1px solid var(--border); font-size: var(--fs-xs); color: var(--muted); }
 .logs-status .mini-btn svg { width: 12px; height: 12px; }
 .logs-bar .btn.on { background: var(--accent-soft); border-color: var(--accent-ring); color: var(--accent-text); }
+
+/* ports of a server */
+.ports-dialog { gap: 12px; }
+.ports-list { max-height: 56vh; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+.ports-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) 130px 170px; align-items: center; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.ports-row:last-child { border-bottom: 0; }
+.ports-row:hover { background: var(--surface-hover); }
+.ports-port { font-size: 16px; font-weight: 600; text-align: right; }
+.ports-main { min-width: 0; }
+.ports-main .faint { font-size: var(--fs-xs); }
+.ports-svc { margin-left: 8px; font-weight: 500; }
+.ports-scope { display: inline-flex; align-items: center; gap: 5px; justify-self: start; padding: 2px 9px; border-radius: 999px; font-size: var(--fs-xs); white-space: nowrap; color: var(--muted); background: color-mix(in srgb, var(--muted) 12%, transparent); }
+.ports-scope svg { width: 12px; height: 12px; }
+.ports-scope.public { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
+.ports-scope.local { color: var(--ok); background: color-mix(in srgb, var(--ok) 13%, transparent); }
+
+/* what takes room in a folder */
+.usage { flex: 1; display: flex; flex-direction: column; min-height: 0; background: var(--panel); }
+.usage-bar { flex: none; display: flex; align-items: center; gap: 6px; height: 44px; padding: 0 10px; border-bottom: 1px solid var(--border); }
+.usage-bar > svg { width: 16px; height: 16px; flex: none; }
+.usage-bar .icon-btn .spin { animation: spin 1s linear infinite; }
+.usage-crumbs { display: flex; align-items: center; min-width: 0; overflow: hidden; }
+.usage-crumb { display: inline-flex; align-items: center; }
+.usage-crumb svg { width: 13px; height: 13px; }
+.usage-disk { flex: none; padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+.usage-disk-text { display: flex; gap: 8px; font-size: var(--fs-sm); }
+.usage-disk-bar { height: 8px; border-radius: 4px; background: var(--surface); overflow: hidden; }
+.usage-disk-bar > div { height: 100%; background: var(--accent); border-radius: 4px; }
+.usage-disk-bar.warn > div { background: var(--warn); }
+.usage-disk-bar.danger > div { background: var(--danger); }
+.usage-summary { flex: none; display: flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: var(--fs-sm); }
+.usage-list { flex: 1; min-height: 0; overflow: auto; padding-bottom: 12px; }
+.usage-row { display: grid; grid-template-columns: 18px minmax(0, 1.2fr) minmax(0, 2fr) 90px 60px 64px; align-items: center; gap: 10px; height: 34px; padding: 0 14px; font-size: var(--fs-sm); }
+.usage-row:hover { background: var(--surface-hover); }
+.usage-row.dir { cursor: pointer; }
+.usage-row.dir .usage-name { font-weight: 600; }
+.usage-meter { height: 10px; border-radius: 3px; background: var(--surface); overflow: hidden; }
+.usage-meter > div { height: 100%; background: color-mix(in srgb, var(--accent) 70%, transparent); border-radius: 3px; }
+.usage-row:not(.dir) .usage-meter > div { background: color-mix(in srgb, var(--muted) 45%, transparent); }
+.usage-size { text-align: right; font-variant-numeric: tabular-nums; }
+.usage-pct { text-align: right; font-variant-numeric: tabular-nums; font-size: var(--fs-xs); }
+.usage-actions { display: flex; gap: 2px; justify-content: flex-end; visibility: hidden; }
+.usage-row:hover .usage-actions { visibility: visible; }

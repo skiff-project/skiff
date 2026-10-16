@@ -451,6 +451,8 @@ func TestE2E(t *testing.T) {
 		{"projects", testProjects},
 		{"services", testServices},
 		{"archives", testArchives},
+		{"ports", testPorts},
+		{"diskUsage", testDiskUsage},
 		{"terminals", testTerminals},
 		{"monitor", testMonitor},
 		{"containers", testContainers},

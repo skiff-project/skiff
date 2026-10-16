@@ -348,6 +348,26 @@ func (s *Server) registerRPC() {
 		c.StopFollow(p.ID)
 		return yes, nil
 	})
+	// ---- ports of a server, room taken in a folder ----
+	method(s, "ports.list", func(ctx context.Context, p struct {
+		Conn string `json:"conn"`
+	}) ([]core.PortInfo, error) {
+		return c.ListeningPorts(ctx, p.Conn)
+	})
+	method(s, "disk.usage", func(ctx context.Context, p struct {
+		Conn string `json:"conn"`
+		Path string `json:"path"`
+	}) (core.DiskUsage, error) {
+		return c.DiskUsage(ctx, p.Conn, p.Path)
+	})
+	method(s, "app.openURL", func(ctx context.Context, p struct {
+		URL string `json:"url"`
+	}) (ok, error) {
+		if s.web() {
+			return ok{}, errors.New("not available in web mode")
+		}
+		return yes, core.OpenURL(p.URL)
+	})
 	// ---- archives, made and opened where the files are ----
 	method(s, "archive.compress", func(ctx context.Context, p core.CompressRequest) (string, error) {
 		return c.Compress(ctx, p)

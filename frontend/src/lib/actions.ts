@@ -953,6 +953,14 @@ export async function toggleProjectTerminal(tabId: string, show?: boolean) {
   }
 }
 
+/** Shows what takes room in a folder of a connection. */
+export function openUsage(conn: string, path: string) {
+  const existing = get().tabs.find((x) => x.kind === 'usage' && x.conn === conn && x.path === path)
+  if (existing) return activate(existing.id)
+  const where = conn === 'local' ? t('common.local') : get().conns[conn]?.title || conn
+  addTab({ id: uid('u'), kind: 'usage', title: t('usage.tabTitle', { where }), conn, path } as Tab)
+}
+
 /** Follows a log live: a file of a connection, or the journal of a service. */
 export function openLogs(conn: string, target: { path?: string; unit?: string }) {
   const existing = get().tabs.find((x) => x.kind === 'logs' && x.conn === conn && x.path === target.path && x.unit === target.unit)

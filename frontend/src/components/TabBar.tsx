@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Activity, CalendarClock, ArrowDownUp, Command, FileDiff, LogOut, Moon, Plus, Settings, SquareTerminal, Sun, X, FolderCode, ScrollText } from 'lucide-react'
+import { Activity, CalendarClock, ArrowDownUp, Command, FileDiff, LogOut, Moon, Plus, Settings, SquareTerminal, Sun, X, FolderCode, ScrollText, HardDrive } from 'lucide-react'
 import { barTabs, get, set, useStore, type Tab } from '../lib/store'
 import { activate, closeTab, duplicateSession, moveTab, reconnect, savePrefs, setBottom, terminalPanes } from '../lib/actions'
 import { showMenu } from './ui/Menu'
@@ -18,6 +18,7 @@ function TabIcon({ tab }: { tab: Tab }) {
     return <span className={`tab-dot ${state}`} style={c?.color && state === 'ok' ? { background: c.color } : undefined} />
   }
   if (tab.kind === 'editor') return <FileIcon entry={{ name: tab.title, isDir: false }} size={14} />
+  if (tab.kind === 'usage') return <HardDrive className="tab-svg" />
   if (tab.kind === 'logs') return <ScrollText className="tab-svg" />
   if (tab.kind === 'project') return <FolderCode className="tab-svg" />
   if (tab.kind === 'terminal') return <SquareTerminal className="tab-svg" />
@@ -100,7 +101,7 @@ export function TabBar() {
                 setDropIdx(null)
               }}
               data-dropzone
-              data-tip={tab.kind === 'sites' ? t('tabs.sites') : tab.kind === 'editor' ? tab.path : tab.kind === 'project' ? tab.root : tab.kind === 'logs' ? (tab.path || tab.unit) : undefined}
+              data-tip={tab.kind === 'sites' ? t('tabs.sites') : tab.kind === 'editor' ? tab.path : tab.kind === 'project' ? tab.root : tab.kind === 'logs' ? (tab.path || tab.unit) : tab.kind === 'usage' ? tab.path : undefined}
             >
               {tab.kind === 'sites' ? (
                 <img src="/favicon.svg" alt="" className="tab-logo" />

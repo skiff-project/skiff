@@ -85,6 +85,15 @@ export interface LogsTab {
   unit?: string
 }
 
+/** What takes room in a folder (and its sub-folders, one at a time). */
+export interface UsageTab {
+  id: string
+  kind: 'usage'
+  title: string
+  conn: string
+  path: string
+}
+
 /** A file open in a project. */
 export interface ProjectFile {
   path: string
@@ -126,7 +135,7 @@ export interface SitesTab {
   title: string
 }
 
-export type Tab = SitesTab | SessionTab | EditorTab | DiffTab | TerminalTab | MonitorTab | TasksTab | ProjectTab | LogsTab
+export type Tab = SitesTab | SessionTab | EditorTab | DiffTab | TerminalTab | MonitorTab | TasksTab | ProjectTab | LogsTab | UsageTab
 
 export type BottomTab = 'queue' | 'log' | 'find' | 'watch' | 'tunnels' | 'edits'
 

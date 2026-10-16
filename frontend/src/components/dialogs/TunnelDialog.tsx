@@ -1,6 +1,6 @@
 import { useShallow } from 'zustand/react/shallow'
 import { useState } from 'react'
-import { Network } from 'lucide-react'
+import { EthernetPort, Network } from 'lucide-react'
 import { Dialog } from '../ui/Dialog'
 import { openDialog } from '../../lib/dialogs'
 import { call } from '../../lib/api'
@@ -55,6 +55,7 @@ function TunnelDialog({ conn: initial, close }: { conn: string; close: () => voi
       onSubmit={start}
       footer={
         <>
+          <button className="btn ghost" onClick={() => { close(); import('./PortsDialog').then((m) => m.openPorts(initial)) }}><EthernetPort /> {t('ports.seePorts')}</button>
           <div className="spacer" />
           <button className="btn" onClick={close}>{t('common.cancel')}</button>
           <button className="btn primary" onClick={start}>{t('common.start')}</button>

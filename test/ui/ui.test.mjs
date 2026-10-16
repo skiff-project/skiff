@@ -48,7 +48,7 @@ async function startSkiff() {
     env: {
       ...process.env, HOME, SKIFF_HOME: join(TMP, 'config'), SKIFF_NO_WINDOW: '1', SKIFF_PORT: String(PORT), SKIFF_DEV_TOKEN: 'ui',
       SKIFF_UI_DIR: join(ROOT, 'frontend/dist'), SSH_AUTH_SOCK: '', XDG_DATA_HOME: join(HOME, '.local/share'),
-      SKIFF_SSH_SYSTEM_CONFIG: 'none',
+      SKIFF_SSH_SYSTEM_CONFIG: 'none', SKIFF_BROWSER: join(TMP, 'browser.sh'),
     },
     stdio: 'ignore',
   })
@@ -172,6 +172,9 @@ before(async () => {
     'Host ui-box', '    HostName 127.0.0.1', '    Port 2222', '    User skiff',
     '    StrictHostKeyChecking accept-new', '    HostKeyAlias ui-box-key', '    Compression yes', '',
   ].join('\n'))
+  // the browser of the tests writes the addresses it is asked to open
+  writeFileSync(join(TMP, 'browser.sh'), `#!/bin/sh\necho "$1" >> ${JSON.stringify(join(TMP, 'opened.txt'))}\n`)
+  chmodSync(join(TMP, 'browser.sh'), 0o755)
   await startSkiff()
   const prefs = await rpc('prefs.get')
   await rpc('prefs.set', { ...prefs, language: 'fr', theme: 'light', confirmTransfer: false, restoreTabs: false })
@@ -797,6 +800,65 @@ step('services, journal en direct, compresser et extraire', async () => {
   } finally {
     fake('remove')
     await rpc('fs.delete', { conn, paths: [`${REMOTE}/app.log`, `${REMOTE}/arch-ui`, `${REMOTE}/arch-ui.tar.gz`, `${REMOTE}/arch-ui-copie`] }).catch(() => {})
+  }
+})
+
+step('ports du serveur ouverts dans le navigateur, espace disque', async () => {
+  const web = (arg) => execSync(`docker exec -i -u skiff testenv-ssh-1 sh -s ${arg} < ${JSON.stringify(fileURLToPath(new URL('../../testenv/fake-web.sh', import.meta.url)))}`)
+  web('start')
+  const conn = (await sftp()).id
+  try {
+    await tip('Ports du serveur').click()
+    const d = dialog()
+    const row3000 = d.locator('[data-port="3000"]')
+    await row3000.waitFor()
+    assert.match(await row3000.innerText(), /nc[\s\S]*HTTP[\s\S]*Serveur seul/)
+    assert.equal(await d.locator('[data-port="2222"]').getByRole('button', { name: 'Ouvrir' }).count(), 0, 'no browser for SSH')
+    await row3000.getByRole('button', { name: 'Ouvrir' }).click()
+    await page.locator('.toast', { hasText: 'Port 3000 ouvert dans le navigateur' }).waitFor()
+    const url = readFileSync(join(TMP, 'opened.txt'), 'utf8').trim().split('\n').pop()
+    assert.match(url, /^http:\/\/127\.0\.0\.1:\d+\/$/)
+    const page3000 = await (await fetch(url)).text()
+    assert.ok(page3000.includes('Tableau de bord interne'), 'the page through the tunnel')
+    assert.ok((await rpc('tunnel.list')).some((x) => x.dest === '127.0.0.1:3000' && x.running), 'the tunnel is listed')
+    // opened again: the same tunnel
+    await row3000.getByRole('button', { name: 'Ouvrir' }).click()
+    await until('opened twice', async () => readFileSync(join(TMP, 'opened.txt'), 'utf8').trim().split('\n').length === 2)
+    assert.equal(readFileSync(join(TMP, 'opened.txt'), 'utf8').trim().split('\n')[1], url, 'the tunnel is reused')
+    await page.keyboard.press('Escape')
+    for (const x of await rpc('tunnel.list')) if (x.dest === '127.0.0.1:3000') await rpc('tunnel.stop', { id: x.id })
+    // what takes room in a folder of the server
+    const dir = `${REMOTE}/place-ui`
+    await rpc('fs.mkdir', { conn, path: dir })
+    await rpc('fs.mkdir', { conn, path: `${dir}/gros` })
+    await rpc('fs.writeText', { conn, path: `${dir}/gros/a.txt`, content: 'x'.repeat(200000), encoding: 'utf-8', eol: 'LF', force: true })
+    await rpc('fs.writeText', { conn, path: `${dir}/petit.txt`, content: 'y', encoding: 'utf-8', eol: 'LF', force: true })
+    await toSession()
+    await nav(1, dir)
+    await refresh(1)
+    await pane(1).locator('.pane-status').click()
+    await page.keyboard.press('Control+k')
+    await page.locator('.palette input').fill('prend de la place ici')
+    await page.keyboard.press('Enter')
+    const uv = V('.usage')
+    await uv.locator('.usage-row[data-name="gros"]').waitFor()
+    assert.equal(await uv.locator('.usage-row').first().getAttribute('data-name'), 'gros', 'the biggest first')
+    assert.match(await uv.locator('.usage-summary').innerText(), /compté par du sur le serveur/)
+    await uv.locator('.usage-row[data-name="gros"]').click()
+    await uv.locator('.usage-row[data-name="a.txt"]').waitFor()
+    await uv.getByRole('button', { name: 'gros' }).waitFor()
+    await uv.locator('[data-tip="Dossier parent"]').click()
+    await uv.locator('.usage-row[data-name="petit.txt"]').hover()
+    await uv.locator('.usage-row[data-name="petit.txt"] [data-tip="Supprimer"]').click()
+    await button(dialog(), 'Supprimer').click()
+    await until('deleted from the usage view', async () => !(await remoteExists(`${dir}/petit.txt`)) && (await uv.locator('.usage-row[data-name="petit.txt"]').count()) === 0)
+    await closeActiveTab()
+    await nav(1, REMOTE)
+  } finally {
+    web('stop')
+    // a disk usage tab left open by a failure would mislead the next steps
+    for (const tab of await page.locator('.tab', { hasText: 'Espace ·' }).all()) await tab.locator('.tab-close').click().catch(() => {})
+    await rpc('fs.delete', { conn, paths: [`${REMOTE}/place-ui`] }).catch(() => {})
   }
 })
 
