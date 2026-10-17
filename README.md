@@ -1,5 +1,7 @@
 # Skiff
 
+🇬🇧 [English version](README.en.md)
+
 **Client de transfert de fichiers moderne, multiplateforme, en un seul binaire.**
 SFTP · SCP · FTP/FTPS · WebDAV · S3 — une alternative à WinSCP pour Windows, macOS, Linux et FreeBSD.
 
@@ -54,11 +56,12 @@ Skiff reprend les fonctionnalités de WinSCP (interface Commander à deux pannea
 - Onglets de session, d'éditeur, de diff et de terminal, réordonnables, restaurés au démarrage, **espaces de travail**
 - Liste virtualisée (100 000 fichiers sans ralentir), tri naturel, colonnes redimensionnables et adaptatives, recherche par saisie, filtre (masques WinSCP), sélection par masque (`Num +`, `Num −`, `Num *`)
 - **Arborescence des dossiers**, fil d'Ariane éditable, historique, favoris, navigation synchronisée, **comparaison de dossiers**
-- **Glisser-déposer** entre panneaux, vers des dossiers, depuis le système (dossiers compris) et vers le bureau (Chromium/WebView2)
+- **Glisser-déposer** entre panneaux, vers des dossiers, depuis le système (dossiers compris), et vers le bureau : les fichiers locaux partout, les fichiers distants avec les moteurs Chromium (WebView2, Chrome, Edge)
 - Presse-papiers de fichiers (Ctrl+C / X / V), copie de chemins, de noms et d'URL
 - **Aperçu** (images, vidéo, audio, PDF, Markdown, texte), panneau d'informations
 - **Palette de commandes** (Ctrl+K) : commandes, sites, espaces de travail, fichiers, URL de connexion rapide
 - Thèmes clair et sombre, couleur d'accent, trois densités, taille de police, **français et anglais**, barre des touches de fonction
+- Accessible : chaque contrôle a un nom pour les lecteurs d'écran, navigation au clavier, focus visible
 
 ### Transferts
 - File d'attente en arrière-plan, **parallélisme** (par job et global), pause, reprise, annulation, réordonnancement, **nouvelle tentative des fichiers en échec**
@@ -83,7 +86,8 @@ Skiff reprend les fonctionnalités de WinSCP (interface Commander à deux pannea
 
 ### Fonctions en plus de WinSCP
 - **Terminal SSH intégré** (xterm.js) avec reprise de l'historique, recherche et copier/coller, plus un **terminal local** ; plusieurs terminaux par onglet (côte à côte, empilés, en grille), **saisie diffusée** à plusieurs serveurs, **commandes enregistrées**, et le panneau de fichiers qui **suit le dossier courant** (OSC 7)
-- **Moniteur du serveur** : processeur, mémoire, charge, réseau, disques et processus (avec arrêt), lus dans `/proc` sans rien installer
+- **Projets** : modifier les fichiers d'un serveur sans rien y installer, avec arborescence, onglets, recherche, ouverture rapide, terminal et versions précédentes
+- **Moniteur du serveur** : processeur, mémoire, charge, réseau, disques et processus (avec arrêt), lus dans `/proc` sans rien installer ; **services systemd** et journaux en direct ; **ports du serveur** ouverts dans le navigateur par un tunnel automatique ; **espace disque**
 - **Trousseau Skiff** : vos clés privées gardées chiffrées par Skiff, proposées à tous les serveurs, et **transfert d'agent** (`ForwardAgent`) vers les terminaux SSH
 - **Tâches planifiées** : synchronisations et scripts lancés chaque nuit, toutes les heures ou selon une expression cron, avec historique et journal ; `skiff task run` pour le planificateur du système
 - **Synchronisation entre appareils** : sites, mots de passe, trousseau, préférences et clés d'hôte partagés entre vos ordinateurs par un fichier chiffré sur votre propre serveur
@@ -129,7 +133,7 @@ Skiff reprend les fonctionnalités de WinSCP (interface Commander à deux pannea
 
 Détails, premier lancement des installateurs non signés, mise à jour et désinstallation : [chapitre 1 de la documentation](docs/01-installation.md).
 
-**Prérequis pour compiler** : Go ≥ 1.27, Node ≥ 22 et pnpm (uniquement pour compiler l'interface).
+**Prérequis pour compiler** : Go ≥ 1.27.2 (le `go` installé télécharge seul cette version au besoin), Node ≥ 22 et pnpm (uniquement pour compiler l'interface).
 
 ```bash
 ./build.sh      # (ou make) compile l'interface puis le binaire dans bin/skiff
@@ -167,6 +171,7 @@ skiff shell [url-de-session]     console interactive
 skiff keygen [options]           génère (ou convertit, -convert) une paire de clés SSH
 skiff import <source> [fichier]  importe des sessions (winscp-ini, winscp-registry, putty, filezilla, ssh-config)
 skiff url-handler [-register]    liens sftp://, ftp://… ouverts par Skiff (ou non : -remove)
+skiff licenses [-full]           licence de Skiff et des logiciels qu'il inclut
 skiff version
 ```
 
@@ -215,6 +220,9 @@ skiff serve --no-tls --listen 127.0.0.1:8080            # derrière un reverse p
 - L'interface ne reçoit jamais les mots de passe enregistrés (seulement un indicateur « enregistré »).
 - Fenêtre de bureau : serveur sur `127.0.0.1` uniquement, jeton aléatoire par lancement, contrôle de l'en-tête `Host` (anti DNS rebinding), en-tête anti-CSRF, contenus actifs (HTML/SVG) jamais rendus depuis l'origine de l'application.
 - Clés d'hôte SSH et certificats TLS vérifiés de façon interactive, avec épinglage possible.
+- Politique de sécurité du contenu (CSP) : seuls les scripts et les connexions de Skiff lui-même sont permis.
+- Un nom de fichier envoyé par un serveur n'écrit jamais hors du dossier de destination (`../`, `\`, `:` sous Windows).
+- Dépendances contrôlées (`govulncheck`, `pnpm audit`), analyseurs soumis à des données aléatoires (*fuzzing*) ; signaler une faille : [`SECURITY.md`](SECURITY.md).
 
 ---
 
@@ -283,7 +291,13 @@ Serveurs de test (`testenv/docker-compose.yml`) : SSH `127.0.0.1:2222`, SSH anci
 - SFTP en version 3 (la version d'OpenSSH) ; les extensions des versions 4 à 6 ne sont pas utilisées.
 - Le `chmod` FTP dépend du serveur (`SITE CHMOD`), et S3/WebDAV n'ont pas de droits Unix.
 - La file de transferts n'est pas conservée après un redémarrage.
-- Le glisser-déposer d'un fichier distant vers le bureau ne fonctionne qu'avec les moteurs Chromium (WebView2, Chrome, Edge).
+- Le glisser-déposer d'un fichier **distant** vers le bureau ne fonctionne qu'avec les moteurs Chromium (WebView2, Chrome, Edge) : sous Linux et macOS, passer par le panneau local (les fichiers locaux, eux, se glissent partout).
+
+---
+
+## Versions
+
+Les changements de chaque version sont dans [`CHANGELOG.md`](CHANGELOG.md). Skiff suit le versionnage sémantique : toute version 1.x lit la configuration des versions 1.x précédentes.
 
 ---
 

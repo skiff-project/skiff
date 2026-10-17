@@ -1,6 +1,6 @@
 # 1. Installation et démarrage
 
-[← Sommaire](README.md) · [Chapitre suivant →](02-premiers-pas.md)
+[← Sommaire](README.md) · [Chapitre suivant →](02-premiers-pas.md) · 🇬🇧 [English](en/01-installation.md)
 
 ## 1.1 Installer Skiff
 
@@ -33,7 +33,7 @@ La variante portable ne dépend d'aucune bibliothèque : elle sert aussi pour le
 
 ## 1.2 Compiler depuis les sources
 
-Prérequis : Go 1.27 ou plus récent, Node 22 ou plus récent et pnpm (uniquement pour compiler l'interface).
+Prérequis : Go 1.27.2 ou plus récent (une version 1.27 plus ancienne télécharge seule la 1.27.2), Node 22 ou plus récent et pnpm (uniquement pour compiler l'interface).
 
 ```bash
 ./build.sh            # compile l'interface puis bin/skiff (équivalent : make)
@@ -102,6 +102,8 @@ Le chemin exact est affiché en bas de la fenêtre **Préférences** et dans **P
 | `master.json` | Paramètres de dérivation du mot de passe maître (sel, coût Argon2id), sans le mot de passe |
 | `known_hosts` | Clés d'hôte SSH acceptées (format OpenSSH) |
 | `instance.json` | Tant que la fenêtre est ouverte : son adresse locale et la clé qui permet à un second lancement de lui passer une URL (droits 600) |
+| `format.json` | Version du format de la configuration (voir [Mise à jour](#17-mise-à-jour-et-désinstallation)) |
+| `backups/` | Copies des fichiers de la configuration faites avant une migration de son format (les cinq dernières) |
 | `trusted_certs.json` | Certificats TLS auxquels vous avez fait confiance |
 | `keychain.json` | [Trousseau Skiff](11-securite.md#117-trousseau-skiff-et-transfert-dagent) : clés privées chiffrées comme les mots de passe |
 | `tasks.json`, `task-runs.json` | [Tâches planifiées](07-synchronisation.md#74-tâches-planifiées) et leur historique |
@@ -136,6 +138,8 @@ En option `/ini=<dossier>`, la syntaxe de `winscp.com` permet aussi de choisir l
 ## 1.7 Mise à jour et désinstallation
 
 La configuration (sites, mots de passe, préférences) est conservée par les mises à jour et, sauf demande contraire, par la désinstallation.
+
+Toute version 1.x de Skiff lit la configuration des versions 1.x précédentes. Si une version change un jour le format de la configuration, elle copie d'abord ses fichiers dans `backups/<date>-format-<n>`, puis les convertit. Une configuration venue d'avant la 1.0 est sauvegardée ainsi au premier lancement. À l'inverse, une version plus ancienne de Skiff refuse d'ouvrir une configuration d'un format plus récent (« written by a newer version of Skiff ») au lieu d'effacer ce qu'elle ne connaît pas : installez la version récente, ou lancez l'ancienne avec un autre dossier (`SKIFF_HOME`).
 
 | Installé avec | Mettre à jour | Désinstaller |
 |---|---|---|

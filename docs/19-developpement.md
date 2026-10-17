@@ -67,6 +67,18 @@ Les fichiers des installateurs sont dans `build/` :
 | `build/windows/installer.nsi`, `build/windows/icon.ico` | Installateur Windows (NSIS) |
 | `build/darwin/bundle.sh`, `build/darwin/dmg.sh`, `build/darwin/skiff.icns` | `Skiff.app` et son image disque |
 
+### Publier une version
+
+Skiff suit le [versionnage sémantique](https://semver.org/lang/fr/) : un correctif augmente le troisième chiffre (1.0.1), une fonction nouvelle et compatible le deuxième (1.1.0), un changement incompatible le premier. Toute version 1.x lit la configuration des versions 1.x précédentes ; un changement du format de la configuration passe par une migration, précédée d'une sauvegarde ([§ 1.7](01-installation.md#17-mise-à-jour-et-désinstallation)).
+
+1. Dans `CHANGELOG.md`, la section **[Unreleased]** devient `## [1.0.0] — 2026-11-02` (version et date), et une nouvelle section **[Unreleased]** vide la précède.
+2. `python3 build/notices.py` si les dépendances ont changé, puis `./build.sh test`, `./build.sh itest` et `./build.sh uitest`.
+3. Un tag annoté : `git tag -a v1.0.0 -m "Skiff 1.0.0"`, puis `git push origin v1.0.0`.
+
+La CI compile alors les binaires et les installateurs des trois systèmes et publie la release, avec `SHA256SUMS`. La version affichée par Skiff (`skiff version`, **À propos**) vient du tag (`git describe`) ; sans tag, c'est `0.1.0~git.<commit>`.
+
+Une modification du format de la configuration ajoute une migration dans `internal/config/format.go` (`FormatVersion` augmente de 1, `migrations[n]` passe du format n au format n+1) et un test qui part d'un dossier de l'ancien format.
+
 ### Licences
 
 Skiff est sous licence Apache 2.0 (`LICENSE`, `NOTICE`) ; une contribution est faite sous la même licence. `THIRD_PARTY_NOTICES.txt` liste les bibliothèques compilées dans le programme, pour chaque système (`go list`) et pour l'interface (`pnpm licenses`), avec le texte de leur licence et leurs fichiers `NOTICE`. Le programme l'intègre (**À propos**, `skiff licenses`) et les installateurs le copient à côté de `LICENSE`.
@@ -77,6 +89,10 @@ python3 build/notices.py --check   # dans ./build.sh test : échoue si le fichie
 ```
 
 Une nouvelle dépendance doit avoir une licence compatible avec Apache 2.0 (MIT, BSD, ISC, Apache 2.0, MPL 2.0…) ; une bibliothèque GPL ou LGPL liée statiquement ne l'est pas.
+
+### Accessibilité
+
+Un bouton qui ne montre qu'une icône porte une infobulle (`data-tip`) : `frontend/src/lib/a11y.ts` en fait son nom pour les lecteurs d'écran (`aria-label`), donne aux champs d'un `.field` le texte de leur étiquette et indique le choix coché des contrôles segmentés (`aria-pressed`). Le test d'interface « accessibilité » échoue dès qu'un contrôle visible des écrans principaux n'a pas de nom.
 
 ## 19.3 Les tests
 
@@ -90,6 +106,16 @@ Les tests de bout en bout s'exécutent contre les serveurs Docker de `testenv/` 
 | Ligne de commande | `go test -tags integration .` | Compile le binaire et exécute toutes les commandes de script, la compatibilité `winscp.com` (`/script`, `/command`, `/parameter`, `/log`, `/ini`), les modes `batch`, `keepuptodate`, la console (dans un pseudo-terminal), `keygen`, `import`, `serve`, l'ouverture d'un hôte de `~/.ssh/config` par son nom, `skiff task` et l'ouverture d'une URL au démarrage, le second lancement qui passe son lien à la fenêtre ouverte (et le lancement après un plantage), la connexion par une clé que seul un `ssh-agent` détient |
 | Protocoles | `go test -tags integration ./internal/core/` | Opérations de base sur chaque protocole |
 | Interface | `cd test/ui && pnpm test` | Un vrai navigateur pilote l'interface : connexion et clé d'hôte, toutes les opérations sur les fichiers, éditeur et conflits, presse-papiers et glisser-déposer, écrasement, synchronisation, surveillance, recherche, terminal, tunnels, palette, préférences, sites, hôtes de la configuration OpenSSH (paramètres détectés, connexion, éditeur, préférences SSH), terminal divisé (saisie diffusée, commandes enregistrées, suivi du dossier), moniteur, conteneurs, tâches planifiées, trousseau, clés autorisées (remplacement vérifié, retrait), clé installée sur plusieurs sites, liens (Préférences → Système, lien cliqué confirmé, clé d'hôte du lien ignorée), synchronisation entre appareils, import et export, comparaison, favoris, filtre et sélection, arborescence, aperçu, disposition, diff, sommes de contrôle, liens, commandes, propriétés, file de transferts, informations serveur, journal, éditeur externe, onglets, URL et espaces de travail, clés, mot de passe maître, coupure et reconnexion, réouverture des onglets au démarrage (avec leurs dossiers, mot de passe redemandé pour une connexion rapide), mode web, mode portable (fichier `skiff.portable` puis dossier `skiff-data` à côté du binaire, rien dans le dossier de configuration de l'utilisateur). Chaque action est vérifiée par son effet sur le serveur, et aucune erreur JavaScript ne doit survenir. En cas d'échec, une capture est enregistrée (`UI_SHOTS=dossier`). |
+
+Tests à données aléatoires (*fuzzing*) des analyseurs de ce qui vient de l'extérieur ; chacun tourne aussi 30 secondes dans la CI (tâche `security`), avec `govulncheck` et `pnpm audit` :
+
+```bash
+go test -run '^$' -fuzz '^FuzzParseURL$' -fuzztime 1m ./internal/config/
+# FuzzParseAuthorized (keys), FuzzListingLines (vfs/ftpfs), FuzzListings (vfs/scpfs),
+# FuzzSafeName (vfs), FuzzLines (sshconfig), FuzzTokenize (script), FuzzServerOutputs (core)
+```
+
+Une entrée qui fait échouer un test est gardée dans `testdata/fuzz/` du paquet : `go test` la rejoue ensuite à chaque fois.
 
 Le serveur SSH de test est préparé par les scripts de `testenv/ssh-init/` :
 

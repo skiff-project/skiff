@@ -221,6 +221,11 @@ En bas de la fenêtre :
 - à gauche, la **barre des touches de fonction** (`F2` à `F10`), cliquable, masquable dans les préférences ; sur l'onglet Sites, la version de Skiff ;
 - à droite, le protocole et l'état de sécurité de la connexion (bouclier vert : chiffrée), le nombre de surveillances et de tunnels actifs, le **Journal** et **Transferts** avec la vitesse et le temps restant des transferts en cours.
 
+
+## 4.14 Accessibilité
+
+Skiff se pilote au clavier ([Raccourcis clavier](16-raccourcis.md)) et s'annonce aux lecteurs d'écran (NVDA, Narrateur, VoiceOver, Orca) : chaque bouton a un nom, y compris ceux qui ne montrent qu'une icône (le texte de leur infobulle) ; les boîtes de dialogue sont nommées par leur titre ; les onglets, les menus et la liste des fichiers ont leur rôle (élément sélectionné, choix coché) ; les notifications sont lues à leur arrivée, et les erreurs tout de suite. La langue de la page suit celle de l'interface, et le contour du focus reste visible.
+
 ---
 
 [← Gestionnaire de sites](03-sites.md) · [Sommaire](README.md) · [Opérations sur les fichiers →](05-fichiers.md)

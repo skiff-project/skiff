@@ -157,7 +157,8 @@ Choisissez l'algorithme (**MD5**, **SHA1**, **SHA256**, **SHA512** ; MD5 seuleme
 | `Ctrl` (ou `Alt`) pendant le dépôt | Force la copie |
 | `Maj` pendant le dépôt | Force le déplacement |
 | Glisser des fichiers ou dossiers depuis l'Explorateur, le Finder ou le bureau | Les envoie dans le dossier visé (dossiers compris) |
-| Glisser un fichier vers le bureau | Le télécharge (moteurs Chromium : WebView2, Chrome, Edge) |
+| Glisser des fichiers **locaux** vers le bureau ou un autre programme | Les y dépose comme des fichiers (copie par le gestionnaire de fichiers, pièce jointe d'un mail…), sur tous les systèmes |
+| Glisser un fichier **distant** vers le bureau | Le télécharge avec les moteurs Chromium (fenêtre Windows, Chrome et Edge en mode web). Sous Linux et macOS, la fenêtre ne peut pas déposer un fichier distant dans un autre programme : un message l'explique la première fois ; faites-le glisser sur le panneau local, ou copiez-le (`F5`) vers un dossier de l'ordinateur, puis glissez-le depuis celui-ci |
 
 Pendant le survol, un bandeau indique l'action (« Déposer pour envoyer vers… », « Déposer pour copier ici », « Déposer pour déplacer ici »). L'option **Confirmer les transferts par glisser-déposer** (Préférences → Confirmations) affiche la boîte des options avant chaque dépôt.
 
