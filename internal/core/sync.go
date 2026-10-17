@@ -189,6 +189,10 @@ func (c *Core) SyncCompare(ctx context.Context, r SyncRequest) (*SyncPlan, error
 				continue
 			}
 			erel := rel + "/" + e.Name
+			if !nameFits(e.Name, lc.PathStyle, rc.PathStyle) {
+				plan.Errors = append(plan.Errors, fmt.Sprintf("%s: %s", strings.TrimPrefix(erel, "/"), errUnsafeName))
+				continue
+			}
 			if !m.Match(e.Name, erel, e.IsDir, e.Size, e.ModTime) {
 				continue
 			}
@@ -256,6 +260,10 @@ func (c *Core) SyncCompare(ctx context.Context, r SyncRequest) (*SyncPlan, error
 				name = rm.Name
 			}
 			erel := rel + "/" + name
+			if !nameFits(name, lc.PathStyle, rc.PathStyle) {
+				plan.Errors = append(plan.Errors, fmt.Sprintf("%s: %s", strings.TrimPrefix(erel, "/"), errUnsafeName))
+				continue
+			}
 			isDir := (hasL && l.IsDir) || (hasR && rm.IsDir)
 			ref := l
 			if !hasL {
@@ -458,4 +466,18 @@ func (c *Core) SyncExecute(ctx context.Context, planID string, ids []string, opt
 		c.Changed(r.RemoteConn, r.RemoteDir)
 	}
 	return res, nil
+}
+
+// errUnsafeName: a name the other side cannot take as it is.
+var errUnsafeName = errors.New("name not usable on the other side as it is (a separator, or a name of dots), skipped")
+
+// nameFits: name is one file name on both sides, unchanged (a name with a
+// separator would be written elsewhere than the synchronized folder).
+func nameFits(name string, styles ...string) bool {
+	for _, st := range styles {
+		if n, ok := vfs.SafeName(st, name); !ok || n != name {
+			return false
+		}
+	}
+	return true
 }

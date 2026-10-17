@@ -489,11 +489,21 @@ func (j *job) scan(ctx context.Context, src vfs.FS) ([]*task, error) {
 			if o.ExcludeHidden && e.Hidden {
 				continue
 			}
+			// a name with a separator names no file of this folder: a
+			// server sending one tries to write elsewhere
+			if e.Name == "" || e.Name == "." || e.Name == ".." || strings.Contains(e.Name, "/") {
+				j.addError(dir+"/"+e.Name, errUnsafeName)
+				continue
+			}
 			r := rel + "/" + e.Name
 			if !j.fmask.Match(e.Name, r, e.IsDir, e.Size, e.ModTime) {
 				continue
 			}
-			name := j.targetName(e.Name)
+			name, ok := j.targetName(e.Name)
+			if !ok {
+				j.addError(vfs.Join(srcStyle, dir, e.Name), errUnsafeName)
+				continue
+			}
 			sp := vfs.Join(srcStyle, dir, e.Name)
 			dp := vfs.Join(dstStyle, dstDir, name)
 			if e.IsDir {
@@ -516,7 +526,11 @@ func (j *job) scan(ctx context.Context, src vfs.FS) ([]*task, error) {
 		}
 		name := j.req.Names[p]
 		if name == "" {
-			name = j.targetName(vfs.Base(srcStyle, p))
+			var ok bool
+			if name, ok = j.targetName(vfs.Base(srcStyle, p)); !ok {
+				j.addError(p, errUnsafeName)
+				continue
+			}
 		}
 		dp := vfs.Join(dstStyle, j.req.DstDir, name)
 		if e.IsDir {
@@ -550,7 +564,12 @@ func (j *job) isText(name string) bool {
 
 var invalidWin = strings.NewReplacer(`\`, "%5C", ":", "%3A", "*", "%2A", "?", "%3F", `"`, "%22", "<", "%3C", ">", "%3E", "|", "%7C")
 
-func (j *job) targetName(name string) string {
+// errUnsafeName: a name that would write outside of the destination.
+var errUnsafeName = errors.New("unsafe file name (it would be written outside of the destination folder): skipped")
+
+// targetName is the name of a file at the destination: the case and the
+// characters of the options, and never a separator (see vfs.SafeName).
+func (j *job) targetName(name string) (string, bool) {
 	o := j.req.Options
 	switch o.CaseMode {
 	case "lower":
@@ -568,7 +587,7 @@ func (j *job) targetName(name string) string {
 		name = invalidWin.Replace(name)
 		name = strings.TrimRight(name, ". ")
 	}
-	return name
+	return vfs.SafeName(j.dstCaps.PathStyle, name)
 }
 
 func (j *job) ensureDir(ctx context.Context, d vfs.FS, p string) error {

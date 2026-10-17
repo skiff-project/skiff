@@ -171,7 +171,16 @@ func (c *Core) EditExternal(ctx context.Context, conn, remote, editor string) (*
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, err
 	}
-	local := filepath.Join(dir, vfs.Base(f.Caps().PathStyle, remote))
+	// the name of the server, made one file name here
+	style := "posix"
+	if runtime.GOOS == "windows" {
+		style = "windows"
+	}
+	base, ok := vfs.SafeName(style, vfs.Base(f.Caps().PathStyle, remote))
+	if !ok {
+		base = "file"
+	}
+	local := filepath.Join(dir, base)
 	r, err := f.Open(ctx, remote, 0)
 	if err != nil {
 		return nil, err

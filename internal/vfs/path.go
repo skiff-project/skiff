@@ -201,3 +201,21 @@ func ShellQuote(s string) string {
 	}
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
+
+// SafeName makes a name read from a listing usable as one element of a
+// path of this style. A server may send any name: a separator in it would
+// write elsewhere than the destination ("../../.bashrc", "a/../../b"; on
+// Windows a backslash, or a colon: "a:b" is a hidden stream of "a"). They
+// become "_". It reports false for a name that names no file of its own
+// ("", ".", "..", and on Windows names of dots and spaces only).
+func SafeName(style, name string) (string, bool) {
+	r := strings.NewReplacer("/", "_", "\x00", "_")
+	if style == "windows" {
+		r = strings.NewReplacer("/", "_", `\`, "_", ":", "_", "\x00", "_")
+	}
+	n := r.Replace(name)
+	if n == "" || n == "." || n == ".." || (style == "windows" && strings.Trim(n, ". ") == "") {
+		return n, false
+	}
+	return n, true
+}
