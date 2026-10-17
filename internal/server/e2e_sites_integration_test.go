@@ -22,6 +22,8 @@ func testApp(t *testing.T, e *e2e) {
 	if info["mode"] != "desktop" || info["version"] != "test" || info["localHome"] != e.home || info["hasMaster"] != false || info["locked"] != false {
 		t.Fatalf("app.info = %v", info)
 	}
+	var lic Licences
+	e.must(t, "app.licences", nil, &lic) // set by the program (main), empty here
 	var p config.Prefs
 	e.must(t, "prefs.get", nil, &p)
 	if !p.AutoReconnect || p.Transfer.Overwrite != "ask" {

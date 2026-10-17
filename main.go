@@ -25,6 +25,7 @@ Usage:
   skiff task list | run <name>     list the scheduled tasks, or run one now (for the system scheduler)
   skiff desktop-entry [-remove]    install (or remove) the menu entry and the icon (Linux)
   skiff url-handler [-register|-remove]  open (or no longer) the sftp://, ftp://… links with Skiff
+  skiff licenses [-full]           the licence of Skiff (Apache-2.0) and of what it includes
   skiff version                    print the version
 
 WinSCP compatibility:
@@ -64,6 +65,8 @@ func main() {
 		code = cmdDesktopEntry(args[1:])
 	case "url-handler":
 		code = cmdURLHandler(args[1:])
+	case "licenses", "licences", "license", "licence":
+		code = cmdLicenses(args[1:])
 	case "version", "--version", "-v":
 		fmt.Printf("skiff %s\n", version)
 	case "help", "--help", "-h":

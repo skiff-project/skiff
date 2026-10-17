@@ -19,6 +19,7 @@ import { openConvertKey, openInstallKey, openKeygen } from './KeygenDialog'
 import { openKeychainAdd } from './KeychainDialog'
 import { copyToClipboard } from '../../lib/fileops'
 import { ask, prompt } from './common'
+import { openLicences } from './LicencesDialog'
 
 export function openPreferences(section?: string) {
   openDialog((close) => <Preferences close={close} initial={section} />)
@@ -294,7 +295,12 @@ function Preferences({ close, initial }: { close: () => void; initial?: string }
                 <dt>{t('about.mode')}</dt><dd>{t(`about.mode.${info.mode}`)}</dd>
                 <dt>{t('about.config')}</dt><dd className="mono">{displayPath('local', info.configDir)}</dd>
                 <dt>{t('about.agent')}</dt><dd>{info.agent ? '✓' : '—'}</dd>
+                <dt>{t('about.licence')}</dt><dd>Apache-2.0 · © 2026 Laterna</dd>
               </dl>
+              <div className="row" style={{ justifyContent: 'center' }}>
+                <button className="btn" onClick={() => openLicences('skiff')}>{t('about.licenceText')}</button>
+                <button className="btn" onClick={() => openLicences('third')}>{t('about.thirdParty')}</button>
+              </div>
               <p className="faint" style={{ fontSize: 12 }}>SFTP · SCP · FTP/FTPS · WebDAV · S3 — Go + React</p>
             </div>
           )}

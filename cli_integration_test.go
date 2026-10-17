@@ -91,6 +91,14 @@ func TestCLIVersionHelp(t *testing.T) {
 	if out, code := c.run("", "help"); code != 0 || !strings.Contains(out, "skiff serve") || !strings.Contains(out, "/script=") {
 		t.Errorf("help: %d %q", code, out)
 	}
+	// the licence of Skiff and of the software it includes
+	out, code := c.run("", "licenses")
+	if code != 0 || !strings.Contains(out, "Apache License, Version 2.0") || !strings.Contains(out, "github.com/pkg/sftp") || !strings.Contains(out, "@codemirror/view") || strings.Contains(out, "TERMS AND CONDITIONS") {
+		t.Errorf("licenses: %d %.400s", code, out)
+	}
+	if out, _ := c.run("", "licenses", "-full"); !strings.Contains(out, "TERMS AND CONDITIONS") || !strings.Contains(out, "Kirill Simonov") {
+		t.Errorf("licenses -full lacks the texts: %.300s", out)
+	}
 }
 
 func TestCLIScriptCommands(t *testing.T) {

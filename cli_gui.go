@@ -96,7 +96,7 @@ func cmdGUI(args []string) int {
 	}
 	srv := server.New(c, server.Options{
 		Mode: server.Desktop, Version: version, Token: token, Static: static, Logf: log.Printf,
-		HandoffKey: handoff, Icon: appIcon,
+		HandoffKey: handoff, Icon: appIcon, Licences: licences(),
 		Raise: func() {
 			if c.Bus.Subscribers() == 0 {
 				desktop.Reopen(u) // the browser tab was closed

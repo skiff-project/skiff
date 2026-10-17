@@ -107,7 +107,7 @@ func cmdServe(args []string) int {
 	c := core.New(store, core.Options{LocalRoot: *root})
 	defer c.Shutdown()
 	srv := server.New(c, server.Options{
-		Mode: server.Web, Version: version, User: name, PasswordHash: hash,
+		Mode: server.Web, Version: version, User: name, PasswordHash: hash, Licences: licences(),
 		Static: frontend.Dist(), AllowLocalTerminal: *localTerm, Logf: log.Printf,
 	})
 

@@ -1439,6 +1439,16 @@ const en: Dict = {
   'roll.doneInstall': 'Key installed',
   'roll.doneReplace': 'Key replaced',
   'roll.summary': 'Succeeded: {ok} · failed: {failed}',
+  'about.licence': 'Licence',
+  'about.licenceText': 'Licence of Skiff',
+  'about.thirdParty': 'Software included',
+  'lic.title': 'Licences',
+  'lic.skiff': 'Skiff',
+  'lic.thirdParty': 'Software included ({n})',
+  'lic.search': 'Find a component…',
+  'lic.skiffDesc': 'Skiff is free and open source software, under the Apache License 2.0: you may use, change and share it, keeping this licence and its notice.',
+  'lic.thirdDesc': 'Skiff includes these libraries, each under its own licence (MIT, BSD, ISC, Apache-2.0, Unlicense), whose texts follow.',
+  'lic.none': 'Not available in this build.',
 }
 
 const fr: Dict = {
@@ -2878,6 +2888,16 @@ const fr: Dict = {
   'roll.doneInstall': 'Clé installée',
   'roll.doneReplace': 'Clé remplacée',
   'roll.summary': 'Réussis : {ok} · en échec : {failed}',
+  'about.licence': 'Licence',
+  'about.licenceText': 'Licence de Skiff',
+  'about.thirdParty': 'Logiciels inclus',
+  'lic.title': 'Licences',
+  'lic.skiff': 'Skiff',
+  'lic.thirdParty': 'Logiciels inclus ({n})',
+  'lic.search': 'Chercher un composant…',
+  'lic.skiffDesc': 'Skiff est un logiciel libre et open source, sous licence Apache 2.0 : vous pouvez l\'utiliser, le modifier et le partager, en gardant cette licence et sa mention.',
+  'lic.thirdDesc': 'Skiff inclut ces bibliothèques, chacune sous sa propre licence (MIT, BSD, ISC, Apache-2.0, Unlicense), dont les textes suivent.',
+  'lic.none': 'Indisponible dans cette version.',
 }
 
 const dicts: Record<string, Dict> = { en, fr }

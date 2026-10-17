@@ -80,6 +80,7 @@ release() {
   if [ "$(uname -s)" = Linux ] && [ -n "$(native_tags)" ]; then
     CGO_ENABLED=1 $GO build -trimpath -tags "$(native_tags)" -ldflags "$LDFLAGS" -o "dist/skiff-linux-$($GO env GOARCH)-desktop" .
   fi
+  cp LICENSE NOTICE THIRD_PARTY_NOTICES.txt dist/
   (cd dist && sha256sum ./* > SHA256SUMS)
   ls -lh dist
 }
@@ -239,6 +240,8 @@ test_all() {
   $GO vet ./...
   $GO test ./...
   (cd frontend && $PNPM run typecheck && node scripts/check-i18n.mjs)
+  # the notices of the included software follow the dependencies
+  python3 build/notices.py --check
 }
 
 testenv() {

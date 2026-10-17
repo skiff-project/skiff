@@ -60,7 +60,7 @@ VIAddVersionKey /LANG=${LANG_ENGLISH} "ProductName" "Skiff"
 VIAddVersionKey /LANG=${LANG_ENGLISH} "FileDescription" "Skiff installer"
 VIAddVersionKey /LANG=${LANG_ENGLISH} "ProductVersion" "${VERSION}"
 VIAddVersionKey /LANG=${LANG_ENGLISH} "FileVersion" "${VERSION}"
-VIAddVersionKey /LANG=${LANG_ENGLISH} "LegalCopyright" "Laterna"
+VIAddVersionKey /LANG=${LANG_ENGLISH} "LegalCopyright" "© 2026 Laterna — Apache-2.0"
 
 Function .onInit
 !if "${ARCH}" == "arm64"
@@ -86,6 +86,9 @@ Section "Skiff" SecMain
     Rename "$INSTDIR\skiff.exe" "$INSTDIR\skiff.old.exe"
   ${EndIf}
   File "/oname=skiff.exe" "${EXE}"
+  File "/oname=LICENSE.txt" "..\..\LICENSE"
+  File "/oname=NOTICE.txt" "..\..\NOTICE"
+  File "..\..\THIRD_PARTY_NOTICES.txt"
   Delete "$INSTDIR\skiff.old.exe"
   WriteUninstaller "$INSTDIR\uninstall.exe"
   CreateShortcut "$SMPROGRAMS\Skiff.lnk" "$INSTDIR\skiff.exe"
@@ -127,6 +130,9 @@ Section "Uninstall"
     Abort
   ${EndIf}
   Delete "$INSTDIR\skiff.old.exe"
+  Delete "$INSTDIR\LICENSE.txt"
+  Delete "$INSTDIR\NOTICE.txt"
+  Delete "$INSTDIR\THIRD_PARTY_NOTICES.txt"
   Delete "$INSTDIR\uninstall.exe"
   RMDir "$INSTDIR"
   Delete "$SMPROGRAMS\Skiff.lnk"

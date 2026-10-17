@@ -785,3 +785,6 @@
 .roll-row.skipped { opacity: .65; }
 .key-preview { max-height: 84px; }
 .links-table { max-width: 460px; }
+
+/* licences */
+.licence-text { max-height: 56vh; font-size: 11.5px; white-space: pre-wrap; }

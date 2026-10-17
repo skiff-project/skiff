@@ -16,6 +16,8 @@ for icon in "$HERE"/icons/hicolor/*/apps/skiff.png; do
   install -Dm644 "$icon" "$STAGE/usr/share/icons/${icon#"$HERE/icons/"}"
 done
 install -Dm644 "$HERE/copyright" "$STAGE/usr/share/doc/skiff/copyright"
+install -Dm644 "$HERE/../../NOTICE" "$STAGE/usr/share/doc/skiff/NOTICE"
+install -Dm644 "$HERE/../../THIRD_PARTY_NOTICES.txt" "$STAGE/usr/share/doc/skiff/THIRD_PARTY_NOTICES.txt"
 
 mkdir -p "$STAGE/DEBIAN"
 cat > "$STAGE/DEBIAN/control" <<CONTROL

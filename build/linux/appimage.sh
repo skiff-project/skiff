@@ -20,6 +20,9 @@ install -Dm644 "$HERE/skiff.desktop" "$APPDIR/usr/share/applications/skiff.deskt
 for icon in "$HERE"/icons/hicolor/*/apps/skiff.png; do
   install -Dm644 "$icon" "$APPDIR/usr/share/icons/${icon#"$HERE/icons/"}"
 done
+for f in LICENSE NOTICE THIRD_PARTY_NOTICES.txt; do
+  install -Dm644 "$HERE/../../$f" "$APPDIR/usr/share/doc/skiff/$f"
+done
 # the AppImage itself: entry and icon at the top
 sed "s/^StartupNotify=true$/&\nX-AppImage-Version=$VERSION/" "$HERE/skiff.desktop" > "$APPDIR/skiff.desktop"
 cp "$HERE/icons/hicolor/256x256/apps/skiff.png" "$APPDIR/skiff.png"

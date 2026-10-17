@@ -65,6 +65,7 @@ func (s *Server) registerRPC() {
 			"startupLink":   link,
 		}, nil
 	})
+	method(s, "app.licences", func(ctx context.Context, _ empty) (Licences, error) { return s.opts.Licences, nil })
 	// the session URLs given by a second start of Skiff or by the system
 	method(s, "app.takeOpens", func(ctx context.Context, _ empty) ([]instance.Request, error) { return s.takeOpens(), nil })
 	// the sftp://, ftp://… links of the system (not in web mode: they are

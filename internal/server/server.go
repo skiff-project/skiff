@@ -54,6 +54,16 @@ type Options struct {
 	Raise      func()
 	// Icon of the application, for the menu entry the links may need
 	Icon []byte
+	// Licences: the one of Skiff, its notice, and those of the software it
+	// includes (Preferences > About)
+	Licences Licences
+}
+
+// Licences are the texts of the licences, shown in the About section.
+type Licences struct {
+	License    string `json:"license"`
+	Notice     string `json:"notice"`
+	ThirdParty string `json:"thirdParty"`
 }
 
 type Server struct {
