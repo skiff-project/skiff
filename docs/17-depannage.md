@@ -73,7 +73,19 @@ Dans le [dossier de configuration](01-installation.md#14-dossier-de-configuratio
 Quittez Skiff et renommez le dossier de configuration. Pour ne réinitialiser que les clés d'hôte, supprimez `known_hosts` (ou les lignes concernées dans **Préférences → Sécurité**).
 
 **La fenêtre native ne s'ouvre pas sous Linux.**
-Installez `libwebkit2gtk-4.1` (paquet `libwebkit2gtk-4.1-0` sur Debian et Ubuntu), ou utilisez la variante portable, qui ouvre une fenêtre de navigateur.
+Installez `libwebkit2gtk-4.1` (paquet `libwebkit2gtk-4.1-0` sur Debian et Ubuntu), ou utilisez la variante portable, qui ouvre une fenêtre de navigateur. L'AppImage choisit seule entre les deux.
+
+**Windows refuse de lancer l'installateur (« Windows a protégé votre ordinateur »).**
+L'installateur n'est pas encore signé : cliquez sur **Informations complémentaires**, puis sur **Exécuter quand même**.
+
+**macOS refuse d'ouvrir Skiff.**
+L'application n'est pas encore signée par un développeur identifié : ouvrez **Réglages Système → Confidentialité et sécurité** et cliquez sur **Ouvrir quand même** en face de Skiff.
+
+**L'AppImage ne s'ouvre pas (« AppImages require FUSE to run »).**
+Installez FUSE (paquet `fuse3`), ou lancez-la avec l'option `--appimage-extract-and-run`.
+
+**Deux entrées Skiff dans le menu, ou une entrée qui ne marche plus.**
+Lancez `skiff desktop-entry -remove` pour retirer celle que Skiff a ajoutée pour votre utilisateur ; celle du paquet `.deb`, si vous l'avez installé, reste.
 
 ## 17.4 Signaler un problème
 

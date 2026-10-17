@@ -236,6 +236,8 @@ skiff desktop-entry           # ~/.local/share/applications/skiff.desktop et l'i
 skiff desktop-entry -remove   # les retire
 ```
 
+Lancée depuis une AppImage, l'entrée pointe vers le fichier `.AppImage`. Quand le paquet `.deb` est installé, la commande n'ajoute rien (« nothing to do: the package of Skiff installed /usr/share/applications/skiff.desktop ») et retire l'entrée qu'elle avait ajoutée, qui masquerait celle du paquet.
+
 ---
 
 [← Préférences](12-preferences.md) · [Sommaire](README.md) · [Mode web distant →](14-mode-web.md)

@@ -118,11 +118,21 @@ Skiff reprend les fonctionnalités de WinSCP (interface Commander à deux pannea
 
 ## Installation et compilation
 
-**Prérequis** : Go ≥ 1.27, Node ≥ 22 et pnpm (uniquement pour compiler l'interface).
+| Système | Installateur |
+|---|---|
+| Windows 10/11 | `skiff-setup-<version>-windows-amd64.exe` (ou `-arm64`) : pour votre compte, sans droits d'administrateur, menu Démarrer, désinstallation dans Paramètres → Applications |
+| macOS 11+ | `Skiff-<version>-macos.dmg` : glisser Skiff dans Applications (universel Intel / Apple Silicon) |
+| Debian, Ubuntu… | `sudo apt install ./skiff_<version>_amd64.deb` |
+| Autres Linux | `Skiff-<version>-x86_64.AppImage` : `chmod +x`, puis lancer |
+
+Détails, premier lancement des installateurs non signés, mise à jour et désinstallation : [chapitre 1 de la documentation](docs/01-installation.md).
+
+**Prérequis pour compiler** : Go ≥ 1.27, Node ≥ 22 et pnpm (uniquement pour compiler l'interface).
 
 ```bash
 ./build.sh      # (ou make) compile l'interface puis le binaire dans bin/skiff
 ./build.sh release   # compile tous les binaires dans dist/
+./build.sh packages  # les installateurs : .deb, AppImage et Windows sous Linux, .dmg sous macOS
 ```
 
 ### Fenêtre native

@@ -45,6 +45,7 @@ C'est la même interface, et la même API, dans la fenêtre native et en mode we
 ./build.sh            # interface + binaire (bin/skiff), fenêtre native si WebKitGTK est présent
 ./build.sh portable   # binaire sans fenêtre native
 ./build.sh release    # binaires de toutes les plateformes dans dist/
+./build.sh packages   # installateurs (deb, appimage, setup-windows, dmg ; voir le chapitre 1)
 ./build.sh ui         # interface seule (frontend/dist)
 ./build.sh dev        # recompile l'interface à la volée ; Skiff sur http://127.0.0.1:8484/?token=dev
 ./build.sh test       # go vet, tests unitaires, vérification TypeScript et des traductions
@@ -52,7 +53,19 @@ C'est la même interface, et la même API, dans la fenêtre native et en mode we
 ./build.sh uitest     # tests de bout en bout de l'interface dans un navigateur
 ```
 
-Le `Makefile` propose les mêmes cibles.
+Le `Makefile` propose les mêmes cibles. Plusieurs commandes peuvent se suivre (`./build.sh deb appimage`).
+
+Les fichiers des installateurs sont dans `build/` :
+
+| Fichier | Rôle |
+|---|---|
+| `build/appicon.png` | Icône source (1024 × 1024) |
+| `build/icons.py` | Refait les icônes ci-dessous depuis `appicon.png` (nécessite Pillow) |
+| `build/linux/skiff.desktop`, `build/linux/icons/` | Entrée du menu et icônes du paquet `.deb` et de l'AppImage ; un test vérifie que l'entrée est celle que Skiff écrit lui-même |
+| `build/linux/deb.sh`, `build/linux/copyright` | Paquet Debian |
+| `build/linux/appimage.sh`, `build/linux/AppRun` | AppImage ; `AppRun` choisit la fenêtre native ou la variante navigateur |
+| `build/windows/installer.nsi`, `build/windows/icon.ico` | Installateur Windows (NSIS) |
+| `build/darwin/bundle.sh`, `build/darwin/dmg.sh`, `build/darwin/skiff.icns` | `Skiff.app` et son image disque |
 
 ## 19.3 Les tests
 
@@ -73,9 +86,9 @@ Le serveur SSH de test est préparé par les scripts de `testenv/ssh-init/` :
 - `50-tcp-forwarding` autorise la redirection de ports, nécessaire aux tunnels et aux hôtes de rebond ;
 - `60-user-ca` crée au premier démarrage une autorité de certification d'utilisateurs (`/config/ssh_ca/user_ca`) à laquelle sshd fait confiance (`TrustedUserCAKeys`) ; les tests lisent sa clé privée par SFTP pour signer leurs propres clés.
 
-Le serveur « ancien » (`testenv/ssh-legacy-init/`) n'accepte que les échanges de clés `diffie-hellman-group14-sha1` et `diffie-hellman-group1-sha1`, la signature `ssh-rsa`, les chiffrements CBC et `hmac-sha1`. Le serveur FTPS implicite est une image vsftpd construite par `docker compose` (`testenv/ftps-implicit/`).
+Le serveur « ancien » (`testenv/ssh-legacy-init/`) n'accepte que les échanges de clés `diffie-hellman-group14-sha1` et `diffie-hellman-group1-sha1`, la signature `ssh-rsa`, les chiffrements CBC et `hmac-sha1`. Le serveur FTPS implicite est une image vsftpd construite par `docker compose` (`testenv/ftps-implicit/`). Les deux serveurs FTP ont assez de connexions et de ports passifs pour les trois suites `itest`, qui tournent en même temps : vsftpd abandonne une session (`500 OOPS: vsf_sysutil_bind`) quand dix tirages au hasard ne trouvent aucun port passif libre. Après une modification de `testenv/`, recréez les conteneurs : `docker compose -f testenv/docker-compose.yml up -d --build`.
 
-Serveurs de test (`testenv/docker-compose.yml`) : SSH sur `127.0.0.1:2222`, SSH ancien sur `127.0.0.1:2223`, FTP sur `127.0.0.1:2121` (TLS explicite), FTPS sur `127.0.0.1:9990` (TLS implicite, le style du port 990), WebDAV sur `http://127.0.0.1:8080`, S3 sur `http://127.0.0.1:9000` (`skiffadmin` / `skiffsecret`). Identifiants : `skiff` / `skiff`.
+Serveurs de test (`testenv/docker-compose.yml`) : SSH sur `127.0.0.1:2222`, SSH ancien sur `127.0.0.1:2223`, FTP sur `127.0.0.1:2121` (TLS explicite, ports passifs 30000 à 30029), FTPS sur `127.0.0.1:9990` (TLS implicite, le style du port 990, ports passifs 30030 à 30059), WebDAV sur `http://127.0.0.1:8080`, S3 sur `http://127.0.0.1:9000` (`skiffadmin` / `skiffsecret`). Identifiants : `skiff` / `skiff`.
 
 Variables utiles en développement :
 
