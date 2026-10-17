@@ -115,13 +115,16 @@ function MenuList({ x, y, items, root, minWidth, onLeave }: { x: number; y: numb
   }, [hot, visible])
 
   return (
-    <div className="menu" ref={ref} data-root={root ? '' : undefined} style={{ left: pos.x, top: pos.y, minWidth: minWidth ? Math.max(200, minWidth) : undefined }} onMouseLeave={onLeave} onContextMenu={(e) => e.preventDefault()}>
+    <div className="menu" role="menu" ref={ref} data-root={root ? '' : undefined} style={{ left: pos.x, top: pos.y, minWidth: minWidth ? Math.max(200, minWidth) : undefined }} onMouseLeave={onLeave} onContextMenu={(e) => e.preventDefault()}>
       {visible.map((it, i) => {
-        if (it.separator) return <div key={i} className="menu-sep" />
-        if (it.header) return <div key={i} className="menu-label">{it.header}</div>
+        if (it.separator) return <div key={i} className="menu-sep" role="separator" />
+        if (it.header) return <div key={i} className="menu-label" role="presentation">{it.header}</div>
         return (
           <div
             key={i}
+            role="menuitem"
+            aria-disabled={it.disabled || undefined}
+            aria-haspopup={it.submenu ? 'menu' : undefined}
             className={`menu-item${it.danger ? ' danger' : ''}${it.disabled ? ' disabled' : ''}${hot === i ? ' hot' : ''}`}
             onMouseEnter={(e) => {
               setHot(i)

@@ -1,13 +1,13 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { AlertTriangle, ArrowDown, ArrowUp, CornerLeftUp, FolderOpen, Upload } from 'lucide-react'
-import { get, updatePane, useStore, type PaneState, type Side } from '../../lib/store'
+import { get, toast, updatePane, useStore, type PaneState, type Side } from '../../lib/store'
 import { goHistory, goUp, loadDir, paneStyle, refreshPane, savePrefs, setActiveSide } from '../../lib/actions'
 import { commitRename, copyOrMove, deleteSelected, dropEntries, openEntry, selectAll, selectByMask, uploadDropped } from '../../lib/fileops'
 import { visibleEntries } from '../../lib/listing'
 import { formatDate, formatSize, octal, permString } from '../../lib/format'
 import { FileIcon, typeLabel } from '../../lib/fileicons'
-import { isRoot, join } from '../../lib/paths'
+import { fileURL, isRoot, join } from '../../lib/paths'
 import { t } from '../../lib/i18n'
 import type { Entry } from '../../lib/types'
 import { backgroundMenu, fileMenu } from './menus'
@@ -354,10 +354,15 @@ export function FileList({ tabId, side, pane, active, visible }: Props) {
     const payload = { tabId, side, names, conn: pane.conn, path: pane.path }
     e.dataTransfer.setData('application/x-skiff', JSON.stringify(payload))
     e.dataTransfer.setData('text/plain', names.map((n) => join(style, pane.path, n)).join('\n'))
-    if (names.length === 1 && !ent.isDir) {
-      // Chromium/WebView2: drag a remote file out to the desktop
+    if (pane.conn === 'local') {
+      // local files go out as files (file managers, mails, other programs)
+      e.dataTransfer.setData('text/uri-list', names.map((n) => fileURL(style, join(style, pane.path, n))).join('\r\n'))
+    } else if (names.length === 1 && !ent.isDir && CHROMIUM) {
+      // Chromium/WebView2: a remote file dropped on the desktop downloads
       const url = new URL(downloadUrl(pane.conn, join(style, pane.path, ent.name)), location.href).href
       e.dataTransfer.setData('DownloadURL', `application/octet-stream:${ent.name}:${url}`)
+    } else {
+      remoteDragOut()
     }
     e.dataTransfer.effectAllowed = 'copyMove'
     const ghost = document.createElement('div')
@@ -488,6 +493,9 @@ export function FileList({ tabId, side, pane, active, visible }: Props) {
         className={`filelist${active ? ' active' : ''}`}
         ref={scrollRef}
         tabIndex={0}
+        role="listbox"
+        aria-multiselectable="true"
+        aria-label={t('a11y.files')}
         onKeyDown={onKeyDown}
         onMouseDown={(e) => {
           if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('fl-canvas')) {
@@ -597,6 +605,29 @@ interface RowProps {
   onCancelRename: () => void
 }
 
+// Chromium engines (WebView2, Chrome, Edge) download a remote file dropped
+// outside of the window; WebKit (Linux, macOS) cannot.
+const CHROMIUM = /Chrome\/|Edg\//.test(navigator.userAgent)
+
+// A drag of remote files that leaves the window, where WebKit cannot drop
+// them: say once how to get them.
+let dragOutHinted = false
+function remoteDragOut() {
+  if (dragOutHinted) return
+  const leave = (e: DragEvent) => {
+    if (e.clientX > 0 && e.clientY > 0 && e.clientX < innerWidth && e.clientY < innerHeight) return
+    dragOutHinted = true
+    toast('info', t('drag.outTitle'), t('drag.outHint'))
+    done()
+  }
+  const done = () => {
+    document.removeEventListener('dragleave', leave)
+    document.removeEventListener('dragend', done)
+  }
+  document.addEventListener('dragleave', leave)
+  document.addEventListener('dragend', done)
+}
+
 const Row = memo(function Row(p: RowProps) {
   const { ent } = p
   const parent = ent === PARENT
@@ -604,6 +635,8 @@ const Row = memo(function Row(p: RowProps) {
   return (
     <div
       className={cls}
+      role="option"
+      aria-selected={p.selected}
       data-index={p.index}
       style={{ transform: `translateY(${p.start}px)`, height: p.height }}
       onMouseDown={(e) => p.onMouseDown(e, ent)}

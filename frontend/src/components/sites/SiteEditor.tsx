@@ -319,7 +319,7 @@ export function SiteEditor({ site, isNew, onSaved, onDeleted, onCancel }: { site
                   <label>{t('site.color')}</label>
                   <div className="color-row">
                     {COLORS.map((c) => (
-                      <button key={c || 'none'} className={`swatch${(s.color || '') === c ? ' on' : ''}`} style={{ background: c || 'transparent' }} onClick={() => up({ color: c })}>
+                      <button key={c || 'none'} className={`swatch${(s.color || '') === c ? ' on' : ''}`} style={{ background: c || 'transparent' }} onClick={() => up({ color: c })} aria-label={c ? t('a11y.color', { color: c }) : t('a11y.noColor')} aria-pressed={(s.color || '') === c}>
                         {!c && <X />}
                       </button>
                     ))}

@@ -159,6 +159,7 @@ export function PathBar({ tabId, side, pane }: { tabId: string; side: Side; pane
                 onClick={() => loadDir(tabId, side, c.path)}
                 onDragOver={(e) => e.preventDefault()}
                 data-dropzone
+                aria-label={i === 0 && homeCrumb ? `${t('pane.home')} (${c.path})` : undefined}
               >
                 {i === 0 && homeCrumb ? <Home className="crumb-home" /> : i === 0 && style !== 'windows' ? <span className="root-slash">/</span> : c.name}
               </button>

@@ -83,7 +83,7 @@ function Preferences({ close, initial }: { close: () => void; initial?: string }
                 <label>{t('prefs.accent')}</label>
                 <div className="color-row">
                   {ACCENTS.map((c) => (
-                    <button key={c} className={`swatch lg${prefs.accent === c ? ' on' : ''}`} style={{ background: c }} onClick={() => up({ accent: c })}>
+                    <button key={c} className={`swatch lg${prefs.accent === c ? ' on' : ''}`} style={{ background: c }} onClick={() => up({ accent: c })} aria-label={t('a11y.color', { color: c })} aria-pressed={prefs.accent === c}>
                       {prefs.accent === c && <Check />}
                     </button>
                   ))}

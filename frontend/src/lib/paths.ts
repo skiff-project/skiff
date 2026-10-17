@@ -130,3 +130,12 @@ export function normalize(style: PathStyle, p: string, cwd: string): string {
   }
   return '/' + parts.join('/')
 }
+
+/** The file:// URL of a local path ("C:\a b" → "file:///C:/a%20b"). */
+export function fileURL(style: PathStyle, p: string): string {
+  if (style === 'windows') {
+    const parts = p.replace(/\\/g, '/').split('/')
+    return 'file:///' + parts.map((s, i) => (i === 0 && /^[A-Za-z]:$/.test(s) ? s : encodeURIComponent(s))).join('/')
+  }
+  return 'file://' + p.split('/').map(encodeURIComponent).join('/')
+}

@@ -1449,6 +1449,14 @@ const en: Dict = {
   'lic.skiffDesc': 'Skiff is free and open source software, under the Apache License 2.0: you may use, change and share it, keeping this licence and its notice.',
   'lic.thirdDesc': 'Skiff includes these libraries, each under its own licence (MIT, BSD, ISC, Apache-2.0, Unlicense), whose texts follow.',
   'lic.none': 'Not available in this build.',
+  'a11y.tabs': 'Tabs',
+  'a11y.notifications': 'Notifications',
+  'a11y.files': 'Files',
+  'a11y.color': 'Colour {color}',
+  'a11y.noColor': 'No colour',
+  'drag.outTitle': 'Remote files stay in Skiff',
+  'drag.outHint': 'This window cannot drop them in another program: drag them onto the local panel, or use Copy (F5) toward a folder of this computer, then drag them from there.',
+  'a11y.closeDialog': 'Close the dialog',
 }
 
 const fr: Dict = {
@@ -2898,6 +2906,14 @@ const fr: Dict = {
   'lic.skiffDesc': 'Skiff est un logiciel libre et open source, sous licence Apache 2.0 : vous pouvez l\'utiliser, le modifier et le partager, en gardant cette licence et sa mention.',
   'lic.thirdDesc': 'Skiff inclut ces bibliothèques, chacune sous sa propre licence (MIT, BSD, ISC, Apache-2.0, Unlicense), dont les textes suivent.',
   'lic.none': 'Indisponible dans cette version.',
+  'a11y.tabs': 'Onglets',
+  'a11y.notifications': 'Notifications',
+  'a11y.files': 'Fichiers',
+  'a11y.color': 'Couleur {color}',
+  'a11y.noColor': 'Sans couleur',
+  'drag.outTitle': 'Les fichiers distants restent dans Skiff',
+  'drag.outHint': 'Cette fenêtre ne peut pas les déposer dans un autre programme : faites-les glisser sur le panneau local, ou utilisez Copier (F5) vers un dossier de cet ordinateur, puis faites-les glisser depuis celui-ci.',
+  'a11y.closeDialog': 'Fermer la boîte de dialogue',
 }
 
 const dicts: Record<string, Dict> = { en, fr }

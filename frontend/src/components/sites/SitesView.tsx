@@ -425,7 +425,7 @@ export function SitesView() {
                     <div className="ellipsis site-name">{w.name}</div>
                     <div className="ellipsis site-sub">{w.tabs.length} session(s)</div>
                   </div>
-                  <button className="btn sm" onClick={() => openWorkspace(w.name)}><Plug /></button>
+                  <button className="btn sm" onClick={() => openWorkspace(w.name)} data-tip={`${t('ws.open')} « ${w.name} »`}><Plug /></button>
                 </div>
               ))}
             </>
@@ -611,7 +611,7 @@ function Welcome({ onNew, recent, onSelect }: { onNew: () => void; recent: SiteV
                   <div className="ellipsis strong">{s.name || s.host}</div>
                   <div className="ellipsis faint">{t('sites.lastUsed', { when: formatDate(s.lastUsed, 'relative') })}</div>
                 </div>
-                <button className="btn sm primary" onClick={(e) => { e.stopPropagation(); connectSite(s.id) }}><Plug /></button>
+                <button className="btn sm primary" onClick={(e) => { e.stopPropagation(); connectSite(s.id) }} data-tip={`${t('common.connect')} : ${s.name || s.host}`}><Plug /></button>
               </div>
             ))}
           </div>

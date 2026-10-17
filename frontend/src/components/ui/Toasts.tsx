@@ -5,9 +5,9 @@ import { t as tr } from '../../lib/i18n'
 export function Toasts() {
   const toasts = useStore((s) => s.toasts)
   return (
-    <div className="toasts">
+    <div className="toasts" role="region" aria-live="polite" aria-label={tr('a11y.notifications')}>
       {toasts.map((t) => (
-        <div key={t.id} className={`toast ${t.kind}`}>
+        <div key={t.id} className={`toast ${t.kind}`} role={t.kind === 'error' ? 'alert' : 'status'}>
           <div className="toast-icon">
             {t.kind === 'ok' ? <CheckCircle2 /> : t.kind === 'error' ? <XCircle /> : t.kind === 'warn' ? <AlertTriangle /> : <Info />}
           </div>

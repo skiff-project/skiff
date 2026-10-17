@@ -1620,6 +1620,86 @@ step('mode portable : configuration à côté du binaire', async () => {
   })
 })
 
+step('glisser hors de Skiff : les fichiers locaux partent en fichiers', async () => {
+  await page.locator('.tab', { hasText: '127.0.0.1' }).first().click()
+  await nav(0, LOCAL)
+  const dragged = (r) => r.evaluate((el) => {
+    const dt = new DataTransfer()
+    el.dispatchEvent(new DragEvent('dragstart', { dataTransfer: dt, bubbles: true, cancelable: true }))
+    el.dispatchEvent(new DragEvent('dragend', { dataTransfer: dt, bubbles: true }))
+    return { uris: dt.getData('text/uri-list'), download: dt.getData('DownloadURL'), text: dt.getData('text/plain') }
+  })
+  const local = await dragged(row(0, 'a.txt'))
+  assert.equal(local.uris, 'file://' + join(LOCAL, 'a.txt').split('/').map(encodeURIComponent).join('/'))
+  assert.equal(local.download, '', 'a local file is not downloaded')
+  // a remote file, in Chromium: dropped on the desktop, it downloads
+  await rpc('fs.writeText', { conn: (await sftp()).id, path: `${REMOTE}/glisse.txt`, content: 'x', encoding: 'utf-8', eol: 'LF' })
+  await nav(1, REMOTE)
+  const remote = await dragged(row(1, 'glisse.txt'))
+  assert.match(remote.download, /^application\/octet-stream:glisse\.txt:http/)
+  assert.equal(remote.uris, '')
+  await rpc('fs.delete', { conn: (await sftp()).id, paths: [`${REMOTE}/glisse.txt`] })
+})
+
+step('accessibilité : chaque contrôle a un nom', async () => {
+  // what a screen reader announces: the visible controls without a name
+  const unnamed = () => page.evaluate(() => {
+    const shown = (el) => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length)
+    const named = (el) => {
+      if ((el.getAttribute('aria-label') || '').trim() || (el.getAttribute('title') || '').trim()) return true
+      const by = el.getAttribute('aria-labelledby')
+      if (by && by.split(' ').some((id) => document.getElementById(id)?.textContent.trim())) return true
+      if (el.matches('input, select, textarea')) return !!el.labels?.length
+      return !!(el.textContent || '').trim()
+    }
+    return [...document.querySelectorAll('button, [role="button"], [role="menuitem"], [role="tab"], [role="option"], input, select, textarea')]
+      .filter((el) => shown(el) && el.type !== 'hidden' && el.type !== 'file' && !named(el)).map((el) => el.outerHTML.slice(0, 140))
+  })
+  const check = async (where) => {
+    await sleep(200)
+    const list = await unnamed()
+    assert.deepEqual(list, [], `${where}: controls without a name`)
+  }
+  assert.equal(await page.evaluate(() => document.documentElement.lang), 'fr')
+  await page.locator('.tab.home').click()
+  await check('sites')
+  // a site in the editor, and its menu
+  await rpc('sites.save', { site: { name: 'Site accessible', protocol: 'sftp', host: '127.0.0.1', port: 2222, user: 'skiff', useAgent: false, resolveSymlinks: true }, secrets: {} })
+  const site = page.locator('.sites-tree .tree-site', { has: page.locator('.site-name', { hasText: /^Site accessible$/ }) }).last()
+  await site.click()
+  await page.locator('.site-editor').waitFor()
+  for (const sec of ['Général', 'Connexion', 'SSH']) {
+    const tab = page.locator('.site-editor nav.vtabs').getByRole('button', { name: sec, exact: true })
+    if (await tab.count()) {
+      await tab.click()
+      await check(`site ${sec}`)
+    }
+  }
+  await site.click({ button: 'right' })
+  await page.locator('.menu').waitFor()
+  await check('menu of a site')
+  await page.keyboard.press('Escape')
+  const made = (await rpc('sites.list')).sites.find((x) => x.name === 'Site accessible')
+  if (made) await rpc('sites.delete', { ids: [made.id] })
+  await page.locator('.tab', { hasText: '127.0.0.1' }).first().click()
+  await check('session')
+  await page.keyboard.press('Control+,')
+  const d = dialog()
+  for (const sec of ['Apparence', 'Transferts', 'Terminal', 'SSH', 'Sécurité', 'Système']) {
+    await d.locator('nav.vtabs').getByRole('button', { name: sec, exact: true }).click()
+    await check(`préférences ${sec}`)
+  }
+  // a dialog is named by its title
+  assert.equal(await page.evaluate(() => {
+    const dlg = document.querySelector('[role="dialog"]')
+    return document.getElementById(dlg.getAttribute('aria-labelledby'))?.textContent
+  }), 'Préférences')
+  await page.keyboard.press('Escape')
+  // the toolbar of the session, as a screen reader sees it
+  assert.equal(await page.getByRole('button', { name: 'Clés autorisées' }).count(), 1)
+  assert.ok(await page.getByRole('tab', { selected: true }).count() >= 1, 'the active tab')
+})
+
 step('aucune erreur JavaScript', () => {
   assert.deepEqual(pageErrors, [])
 })

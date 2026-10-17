@@ -64,13 +64,15 @@ export function TabBar() {
 
   return (
     <div className="tabbar" onDoubleClick={(e) => e.target === e.currentTarget && activate('sites')}>
-      <div className="tabstrip" ref={stripRef}>
+      <div className="tabstrip" ref={stripRef} role="tablist" aria-label={t('a11y.tabs')}>
         {tabs.map((tab, i) => {
           const isTerm = tab.kind === 'terminal'
           const exited = isTerm && terminalPanes(tab).every((p) => terminals[p.termId]?.exited)
           return (
             <div
               key={tab.id}
+              role="tab"
+              aria-selected={tab.id === active}
               className={`tab${tab.id === active ? ' active' : ''}${tab.kind === 'sites' ? ' home' : ''}${dropIdx === i && dragId ? ' drop-before' : ''}${exited ? ' exited' : ''}`}
               onMouseDown={(e) => {
                 if (e.button === 1 && tab.kind !== 'sites') {
@@ -114,6 +116,7 @@ export function TabBar() {
                   ) : (
                     <button
                       className="tab-close"
+                      aria-label={`${t('common.close')} ${tab.title}`}
                       onMouseDown={(e) => e.stopPropagation()}
                       onClick={(e) => {
                         e.stopPropagation()

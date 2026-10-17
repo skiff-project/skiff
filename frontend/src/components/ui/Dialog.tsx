@@ -1,5 +1,6 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { X } from 'lucide-react'
+import { t } from '../../lib/i18n'
 
 interface Props {
   title?: ReactNode
@@ -19,6 +20,7 @@ interface Props {
 // Dialog renders a modal panel with keyboard handling (Esc / Enter).
 export function Dialog({ title, icon, iconTone = 'accent', size = 'md', onClose, onSubmit, footer, children, closeOnOverlay = false, bodyClass, noPadding, headExtra }: Props) {
   const ref = useRef<HTMLDivElement>(null)
+  const titleId = useId()
   const prevFocus = useRef<Element | null>(null)
 
   useEffect(() => {
@@ -82,13 +84,13 @@ export function Dialog({ title, icon, iconTone = 'accent', size = 'md', onClose,
   const cls = size === 'md' ? 'dialog' : `dialog ${size}`
   return (
     <div className="overlay" onMouseDown={(e) => closeOnOverlay && e.target === e.currentTarget && onClose()} onKeyDown={onKeyDown}>
-      <div className={cls} ref={ref} role="dialog" aria-modal="true" onContextMenu={(e) => e.stopPropagation()}>
+      <div className={cls} ref={ref} role="dialog" aria-modal="true" aria-labelledby={title ? titleId : undefined} onContextMenu={(e) => e.stopPropagation()}>
         {(title || icon) && (
           <div className="dialog-head">
             {icon && <div className={`dialog-icon ${iconTone !== 'accent' ? iconTone : ''}`}>{icon}</div>}
-            <h3 className="grow ellipsis">{title}</h3>
+            <h3 className="grow ellipsis" id={titleId}>{title}</h3>
             {headExtra}
-            <button className="icon-btn" onClick={onClose} aria-label="Close" tabIndex={-1}>
+            <button className="icon-btn" onClick={onClose} aria-label={t('a11y.closeDialog')} tabIndex={-1}>
               <X />
             </button>
           </div>
