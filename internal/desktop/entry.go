@@ -14,7 +14,8 @@ import (
 // icon a window gives is ignored under Wayland. Skiff installs its own entry
 // and icon in the data folder of the user, and keeps them up to date when
 // the program moves. An entry written by hand (without the Skiff mark) is
-// left alone.
+// left alone, and none is written when a package (.deb) installed Skiff for
+// every user: its entry is then the one in the menus.
 
 const entryMark = "X-Skiff-Managed=true"
 
@@ -37,6 +38,32 @@ func EntryPaths() (entry, icon string) {
 		return "", ""
 	}
 	return filepath.Join(d, "applications", "skiff.desktop"), filepath.Join(d, "icons", "hicolor", "512x512", "apps", "skiff.png")
+}
+
+// SystemEntry is the desktop entry a package installed for every user
+// (/usr/share/applications/skiff.desktop), or "". The data folder of the
+// user and the inside of an AppImage (that some launchers add to
+// XDG_DATA_DIRS) do not count.
+func SystemEntry() string {
+	dirs := os.Getenv("XDG_DATA_DIRS")
+	if dirs == "" {
+		dirs = "/usr/local/share:/usr/share"
+	}
+	home := filepath.Clean(dataHome())
+	appdir := os.Getenv("APPDIR")
+	for _, d := range filepath.SplitList(dirs) {
+		if d == "" || filepath.Clean(d) == home {
+			continue
+		}
+		if appdir != "" && strings.HasPrefix(filepath.Clean(d)+"/", filepath.Clean(appdir)+"/") {
+			continue
+		}
+		p := filepath.Join(d, "applications", "skiff.desktop")
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	return ""
 }
 
 func entryText(exe, icon string) string {
@@ -66,7 +93,8 @@ func entryText(exe, icon string) string {
 
 // InstallEntry writes (or updates) the desktop entry and the icon of Skiff
 // for the user, on Linux and BSD. It does nothing elsewhere, and reports
-// whether something was written.
+// whether something was written. When a package installed the entry for
+// every user, it removes its own instead, which would hide that one.
 func InstallEntry(icon []byte, exe string) (bool, error) {
 	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 		return false, nil
@@ -74,6 +102,12 @@ func InstallEntry(icon []byte, exe string) (bool, error) {
 	entry, iconPath := EntryPaths()
 	if entry == "" {
 		return false, errors.New("no data folder")
+	}
+	if SystemEntry() != "" {
+		if cur, err := os.ReadFile(entry); err == nil && bytes.Contains(cur, []byte(entryMark)) {
+			return false, RemoveEntry()
+		}
+		return false, nil
 	}
 	want := entryText(exe, iconPath)
 	if cur, err := os.ReadFile(entry); err == nil {

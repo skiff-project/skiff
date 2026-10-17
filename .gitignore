@@ -13,3 +13,6 @@ frontend/dist/*
 .DS_Store
 .idea/
 .vscode/
+
+# downloaded build tools (AppImage runtime)
+/build/cache/

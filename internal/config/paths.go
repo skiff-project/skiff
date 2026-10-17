@@ -5,21 +5,38 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 )
+
+// Executable is the path of this program, links resolved. Started from an
+// AppImage, it is the AppImage file: the program itself runs from a
+// temporary mount that changes at every start.
+func Executable() (string, error) {
+	exe, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	if real, err := filepath.EvalSymlinks(exe); err == nil {
+		exe = real
+	}
+	img, dir := os.Getenv("APPIMAGE"), os.Getenv("APPDIR")
+	if img != "" && dir != "" && strings.HasPrefix(exe, filepath.Clean(dir)+string(filepath.Separator)) {
+		return img, nil
+	}
+	return exe, nil
+}
 
 // Dir resolves the configuration directory:
 //   - $SKIFF_HOME when set,
-//   - "skiff-data" next to the executable when it exists or when a file
-//     named "skiff.portable" sits next to it (portable mode, like WinSCP.ini),
+//   - "skiff-data" next to the executable (or the AppImage) when it exists
+//     or when a file named "skiff.portable" sits next to it (portable mode,
+//     like WinSCP.ini),
 //   - otherwise <user config dir>/Skiff.
 func Dir() (string, bool) {
 	if d := os.Getenv("SKIFF_HOME"); d != "" {
 		return d, false
 	}
-	if exe, err := os.Executable(); err == nil {
-		if real, err := filepath.EvalSymlinks(exe); err == nil {
-			exe = real
-		}
+	if exe, err := Executable(); err == nil {
 		base := filepath.Dir(exe)
 		data := filepath.Join(base, "skiff-data")
 		if st, err := os.Stat(data); err == nil && st.IsDir() {

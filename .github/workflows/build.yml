@@ -45,15 +45,17 @@ jobs:
         with: { version: 12 }
       - uses: actions/setup-node@v4
         with: { node-version: '${{ env.NODE_VERSION }}', cache: pnpm, cache-dependency-path: frontend/pnpm-lock.yaml }
-      - run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
+      - run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config squashfs-tools
       - run: ./build.sh ui
       - name: Native desktop build
         run: |
           VERSION=$(git describe --tags --always)
           CGO_ENABLED=1 go build -trimpath -tags desktop,production,webkit2_41 -ldflags "-s -w -X main.version=$VERSION" -o skiff-linux-${{ matrix.arch }}-desktop .
           CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o skiff-linux-${{ matrix.arch }} .
+      - name: Debian package and AppImage
+        run: ./build.sh deb appimage
       - uses: actions/upload-artifact@v4
-        with: { name: 'linux-${{ matrix.arch }}', path: 'skiff-linux-*' }
+        with: { name: 'linux-${{ matrix.arch }}', path: "skiff-linux-*\ndist/*.deb\ndist/*.AppImage" }
 
   macos:
     needs: test
@@ -66,18 +68,10 @@ jobs:
         with: { version: 12 }
       - uses: actions/setup-node@v4
         with: { node-version: '${{ env.NODE_VERSION }}', cache: pnpm, cache-dependency-path: frontend/pnpm-lock.yaml }
-      - run: ./build.sh ui
-      - name: Native desktop build (universal)
-        run: |
-          VERSION=$(git describe --tags --always)
-          for arch in arm64 amd64; do
-            CGO_ENABLED=1 GOARCH=$arch go build -trimpath -tags desktop,production -ldflags "-s -w -X main.version=$VERSION" -o skiff-$arch .
-          done
-          lipo -create -output skiff skiff-arm64 skiff-amd64
-          ./build/darwin/bundle.sh skiff Skiff.app "${VERSION#v}"
-          ditto -c -k --keepParent Skiff.app skiff-macos-universal.zip
+      - name: Disk image (universal Skiff.app, native window)
+        run: ./build.sh dmg
       - uses: actions/upload-artifact@v4
-        with: { name: macos, path: skiff-macos-universal.zip }
+        with: { name: macos, path: 'dist/*.dmg' }
 
   windows:
     needs: test
@@ -90,6 +84,7 @@ jobs:
         with: { version: 12 }
       - uses: actions/setup-node@v4
         with: { node-version: '${{ env.NODE_VERSION }}', cache: pnpm, cache-dependency-path: frontend/pnpm-lock.yaml }
+      - run: sudo apt-get update && sudo apt-get install -y nsis
       - run: ./build.sh ui
       - name: Cross-compile Windows (WebView2, no CGO)
         run: |
@@ -97,8 +92,10 @@ jobs:
           for arch in amd64 arm64; do
             GOOS=windows GOARCH=$arch CGO_ENABLED=0 go build -trimpath -tags desktop,production -ldflags "-s -w -X main.version=$VERSION" -o skiff-windows-$arch.exe .
           done
+      - name: Installers (NSIS)
+        run: ./build.sh setup-windows
       - uses: actions/upload-artifact@v4
-        with: { name: windows, path: 'skiff-windows-*.exe' }
+        with: { name: windows, path: "skiff-windows-*.exe\ndist/skiff-setup-*.exe" }
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -107,8 +104,12 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with: { path: artifacts, merge-multiple: true }
-      - run: cd artifacts && sha256sum * > SHA256SUMS
+      - name: Gather the files (the packages come in dist/)
+        run: |
+          mkdir release
+          find artifacts -type f -exec mv -t release {} +
+          cd release && sha256sum * > SHA256SUMS
       - uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/*
+          files: release/*
           generate_release_notes: true

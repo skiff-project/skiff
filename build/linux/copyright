@@ -1,0 +1,8 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Skiff
+Upstream-Contact: Laterna <337788684+laterna-media@users.noreply.github.com>
+
+Files: *
+Copyright: 2026 Laterna
+License: unspecified
+ No license has been chosen for Skiff yet: all rights reserved.

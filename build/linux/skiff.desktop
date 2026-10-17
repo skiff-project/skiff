@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=Skiff
+GenericName=File transfer client
+GenericName[fr]=Client de transfert de fichiers
+Comment=SFTP, SCP, FTP, WebDAV and S3 files, terminal and editor
+Comment[fr]=Fichiers SFTP, SCP, FTP, WebDAV et S3, terminal et éditeur
+Exec=skiff %U
+Icon=skiff
+Terminal=false
+Categories=Network;FileTransfer;
+Keywords=sftp;scp;ftp;webdav;s3;ssh;winscp;
+StartupWMClass=skiff
+StartupNotify=true

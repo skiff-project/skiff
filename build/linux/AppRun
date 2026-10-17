@@ -1,0 +1,8 @@
+#!/bin/sh
+# Starts Skiff from its AppImage: the native window when the system has
+# WebKitGTK 4.1, else the variant that opens a browser window.
+HERE="$(dirname "$(readlink -f "$0")")"
+if "$HERE/usr/bin/skiff" version >/dev/null 2>&1; then
+  exec "$HERE/usr/bin/skiff" "$@"
+fi
+exec "$HERE/usr/bin/skiff-browser" "$@"

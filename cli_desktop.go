@@ -4,22 +4,20 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 
+	"skiff/internal/config"
 	"skiff/internal/desktop"
 )
 
-// executable is the path of this program, links resolved; "" for a program
-// built in a temporary folder (go run).
+// executable is the path of this program, links resolved (the AppImage
+// file inside an AppImage); "" for a program built in a temporary folder
+// (go run).
 func executable() string {
-	exe, err := os.Executable()
+	exe, err := config.Executable()
 	if err != nil {
 		return ""
-	}
-	if p, err := filepath.EvalSymlinks(exe); err == nil {
-		exe = p
 	}
 	if strings.HasPrefix(exe, os.TempDir()) {
 		return ""
@@ -58,6 +56,11 @@ func cmdDesktopEntry(args []string) int {
 		return 0
 	}
 	entry, icon := desktop.EntryPaths()
+	if sys := desktop.SystemEntry(); sys != "" && !*remove {
+		desktop.InstallEntry(appIcon, "") // removes an entry of ours that would hide it
+		fmt.Println("nothing to do: the package of Skiff installed", sys)
+		return 0
+	}
 	if *remove {
 		if err := desktop.RemoveEntry(); err != nil {
 			fmt.Fprintln(os.Stderr, "skiff:", err)

@@ -1,17 +1,15 @@
 #!/usr/bin/env bash
-# Wraps a macOS binary into Skiff.app (run on macOS: needs sips + iconutil).
+# Wraps a macOS binary into Skiff.app (the icon is skiff.icns, made by
+# build/icons.py). On macOS, the bundle is then signed ad hoc (codesign), as
+# Apple Silicon requires.
 set -euo pipefail
 BIN="$1"; OUT="${2:-Skiff.app}"; VERSION="${3:-0.1.0}"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 rm -rf "$OUT"
 mkdir -p "$OUT/Contents/MacOS" "$OUT/Contents/Resources"
 cp "$BIN" "$OUT/Contents/MacOS/skiff"
-ICONSET="$(mktemp -d)/skiff.iconset"; mkdir -p "$ICONSET"
-for s in 16 32 64 128 256 512; do
-  sips -z $s $s "$ROOT/build/appicon.png" --out "$ICONSET/icon_${s}x${s}.png" >/dev/null
-  d=$((s*2)); sips -z $d $d "$ROOT/build/appicon.png" --out "$ICONSET/icon_${s}x${s}@2x.png" >/dev/null
-done
-iconutil -c icns "$ICONSET" -o "$OUT/Contents/Resources/skiff.icns"
+chmod 755 "$OUT/Contents/MacOS/skiff"
+cp "$ROOT/build/darwin/skiff.icns" "$OUT/Contents/Resources/skiff.icns"
 cat > "$OUT/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -29,4 +27,7 @@ cat > "$OUT/Contents/Info.plist" <<PLIST
   <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
 </dict></plist>
 PLIST
+if command -v codesign >/dev/null; then
+  codesign --force --sign - "$OUT"
+fi
 echo "created $OUT"
