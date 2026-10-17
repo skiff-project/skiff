@@ -38,6 +38,9 @@ func Open(dir string, portable bool) (*Store, error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, err
 	}
+	if err := checkFormat(dir); err != nil {
+		return nil, err
+	}
 	sec, err := newSecrets(dir)
 	if err != nil {
 		return nil, err
