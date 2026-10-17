@@ -423,6 +423,10 @@ func (e *e2e) upload(t *testing.T, conn, p string, data []byte, overwrite bool) 
 	if err != nil {
 		t.Fatal(err)
 	}
+	if resp.StatusCode >= 500 {
+		b, _ := io.ReadAll(resp.Body)
+		t.Logf("upload %s: HTTP %d: %s", p, resp.StatusCode, strings.TrimSpace(string(b)))
+	}
 	resp.Body.Close()
 	return resp.StatusCode
 }

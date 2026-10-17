@@ -7,5 +7,5 @@ RUN apk add --no-cache vsftpd openssl \
  && openssl req -x509 -newkey rsa:2048 -nodes -days 3650 -subj '/CN=localhost/O=Skiff/C=FR' \
       -keyout /etc/vsftpd/key.pem -out /etc/vsftpd/cert.pem
 COPY vsftpd.conf /etc/vsftpd/vsftpd.conf
-EXPOSE 990 30010-30019
+EXPOSE 990 30030-30059
 CMD ["vsftpd", "/etc/vsftpd/vsftpd.conf"]

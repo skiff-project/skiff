@@ -614,7 +614,7 @@ type dataStream struct {
 func (d *dataStream) Close() error {
 	d.once.Do(func() {
 		if tc, ok := d.Conn.(*tls.Conn); ok && !d.abortRead {
-			tc.CloseWrite()
+			closeTLS(tc)
 		}
 		d.Conn.Close()
 		if d.abortRead {
@@ -641,6 +641,21 @@ func (d *dataStream) Close() error {
 		d.unlock()
 	})
 	return d.err
+}
+
+// closeTLS ends a TLS data connection cleanly: close_notify, end of the TCP
+// stream, then whatever the server still sends until it closes. TLS 1.3
+// session tickets come after the handshake and are never read on an upload;
+// closing with unread data makes the system reset the connection, which
+// drops the end of the file if the server has not read it yet (vsftpd:
+// "426 Failure reading network stream").
+func closeTLS(tc *tls.Conn) {
+	tc.CloseWrite()
+	if cw, ok := tc.NetConn().(interface{ CloseWrite() error }); ok {
+		cw.CloseWrite()
+	}
+	tc.SetReadDeadline(time.Now().Add(15 * time.Second))
+	io.Copy(io.Discard, tc)
 }
 
 type readStream struct {

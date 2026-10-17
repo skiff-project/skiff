@@ -193,7 +193,7 @@ func fileOps(t *testing.T, e *e2e, tg target) {
 	}
 	e.must(t, "fs.move", map[string]any{"conn": id, "paths": []string{p("sub/b.txt")}, "dstDir": root}, nil)
 	if !e.exists(id, p("b.txt")) || e.exists(id, p("sub/b.txt")) {
-		t.Fatal("move failed")
+		t.Fatalf("move failed: stat b.txt: %v; stat sub/b.txt: %v", e.call("fs.stat", map[string]string{"conn": id, "path": p("b.txt")}, nil), e.call("fs.stat", map[string]string{"conn": id, "path": p("sub/b.txt")}, nil))
 	}
 	if caps.ServerCopy {
 		var dup string

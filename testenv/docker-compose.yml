@@ -43,16 +43,21 @@ services:
       - TLS_CN=localhost
       - TLS_ORG=Skiff
       - TLS_C=FR
+      # room for the core, server and CLI suites running at the same time
+      # (the image allows 5 clients and 10 passive ports)
+      - FTP_MAX_CLIENTS=50
+      - FTP_MAX_CONNECTIONS=50
+      - FTP_PASSIVE_PORTS=30000:30029
     ports:
       - "2121:21"
-      - "30000-30009:30000-30009"
+      - "30000-30029:30000-30029"
   ftps-implicit:
     # FTPS with implicit TLS (vsftpd, home /home/skiff seen as /)
     build: ./ftps-implicit
     init: true # vsftpd crashes as PID 1 when a session ends
     ports:
       - "9990:990"
-      - "30010-30019:30010-30019"
+      - "30030-30059:30030-30059"
   webdav:
     image: rclone/rclone:latest
     command: serve webdav /data --addr :8080 --user skiff --pass skiff
