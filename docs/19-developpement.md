@@ -67,6 +67,17 @@ Les fichiers des installateurs sont dans `build/` :
 | `build/windows/installer.nsi`, `build/windows/icon.ico` | Installateur Windows (NSIS) |
 | `build/darwin/bundle.sh`, `build/darwin/dmg.sh`, `build/darwin/skiff.icns` | `Skiff.app` et son image disque |
 
+### Licences
+
+Skiff est sous licence Apache 2.0 (`LICENSE`, `NOTICE`) ; une contribution est faite sous la même licence. `THIRD_PARTY_NOTICES.txt` liste les bibliothèques compilées dans le programme, pour chaque système (`go list`) et pour l'interface (`pnpm licenses`), avec le texte de leur licence et leurs fichiers `NOTICE`. Le programme l'intègre (**À propos**, `skiff licenses`) et les installateurs le copient à côté de `LICENSE`.
+
+```bash
+python3 build/notices.py           # après un ajout ou une mise à jour de dépendance
+python3 build/notices.py --check   # dans ./build.sh test : échoue si le fichier n'est plus à jour
+```
+
+Une nouvelle dépendance doit avoir une licence compatible avec Apache 2.0 (MIT, BSD, ISC, Apache 2.0, MPL 2.0…) ; une bibliothèque GPL ou LGPL liée statiquement ne l'est pas.
+
 ## 19.3 Les tests
 
 Les tests de bout en bout s'exécutent contre les serveurs Docker de `testenv/` (lancés automatiquement par `itest` et `uitest`). Ils utilisent aussi le client OpenSSH de la machine (`ssh-agent`, `ssh-add`, `ssh-keygen`) pour l'agent et les certificats.

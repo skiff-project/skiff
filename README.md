@@ -284,3 +284,13 @@ Serveurs de test (`testenv/docker-compose.yml`) : SSH `127.0.0.1:2222`, SSH anci
 - Le `chmod` FTP dépend du serveur (`SITE CHMOD`), et S3/WebDAV n'ont pas de droits Unix.
 - La file de transferts n'est pas conservée après un redémarrage.
 - Le glisser-déposer d'un fichier distant vers le bureau ne fonctionne qu'avec les moteurs Chromium (WebView2, Chrome, Edge).
+
+---
+
+## Licence
+
+Skiff est un logiciel libre, sous [licence Apache 2.0](LICENSE) : vous pouvez l'utiliser, le modifier et le redistribuer, y compris dans un cadre commercial, en gardant la licence et la mention [`NOTICE`](NOTICE). La licence n'accorde aucun droit sur le nom ni sur le logo de Skiff.
+
+Skiff inclut des bibliothèques sous leurs propres licences (MIT, BSD, ISC, Apache-2.0, Unlicense) : leur liste et leurs textes sont dans [`THIRD_PARTY_NOTICES.txt`](THIRD_PARTY_NOTICES.txt), dans **Préférences → À propos de Skiff** et dans `skiff licenses`.
+
+Copyright 2026 Laterna.

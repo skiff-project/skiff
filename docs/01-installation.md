@@ -13,7 +13,7 @@ Chaque système a son installateur :
 | Debian, Ubuntu, Linux Mint… (x64, ARM64) | `skiff_<version>_amd64.deb` (ou `_arm64.deb`) | `sudo apt install ./skiff_<version>_amd64.deb` : apt installe aussi WebKitGTK si besoin |
 | Autres Linux (x64, ARM64) | `Skiff-<version>-x86_64.AppImage` (ou `-aarch64`) | Rendez le fichier exécutable (`chmod +x Skiff-*.AppImage`, ou **Propriétés → Autoriser l'exécution**), puis lancez-le. Rien n'est installé |
 
-Tous ouvrent la **fenêtre native** : WebView2 sous Windows (préinstallé sur Windows 10/11), WKWebView sous macOS, WebKitGTK sous Linux.
+Skiff est un logiciel libre et gratuit, sous licence Apache 2.0. Tous ouvrent la **fenêtre native** : WebView2 sous Windows (préinstallé sur Windows 10/11), WKWebView sous macOS, WebKitGTK sous Linux.
 
 **Premier lancement sous Windows et macOS.** Les installateurs ne sont pas encore signés par un certificat d'éditeur. Windows affiche alors « Windows a protégé votre ordinateur » : cliquez sur **Informations complémentaires**, puis sur **Exécuter quand même**. macOS indique qu'il ne peut pas vérifier l'application : ouvrez **Réglages Système → Confidentialité et sécurité** et cliquez sur **Ouvrir quand même** en face de Skiff. Ces deux avertissements n'apparaissent qu'une fois.
 

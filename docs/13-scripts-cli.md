@@ -16,6 +16,7 @@ skiff import <source> [fichier]  importe des sessions
 skiff task list | run <nom>      liste les tâches planifiées, ou en lance une
 skiff desktop-entry [-remove]    entrée du menu des applications (Linux)
 skiff url-handler [-register | -remove]  liens sftp://, ftp://… ouverts par Skiff
+skiff licenses [-full]           licence de Skiff et des logiciels qu'il inclut
 skiff version                    affiche la version
 skiff help                       affiche l'aide
 ```
@@ -252,6 +253,10 @@ skiff url-handler              # sftp:  Skiff, ftp:  Fichiers…
 skiff url-handler -register    # les liens s'ouvrent avec Skiff
 skiff url-handler -remove      # ils reviennent aux autres applications
 ```
+
+## 13.12 `skiff licenses`
+
+Affiche la mention de Skiff (licence Apache 2.0) et la liste des bibliothèques incluses avec leur licence ; `-full` ajoute le texte complet de chaque licence.
 
 ---
 

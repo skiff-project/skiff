@@ -206,7 +206,7 @@ En mode web, cette section n'existe pas : les liens sont ceux du serveur.
 
 ![Préférences : À propos](images/prefs-a-propos.png)
 
-La version, la **Plateforme** (système et architecture), le **Mode** (bureau ou web), le dossier de **Configuration** et la présence d'un **Agent SSH**.
+La version, la **Plateforme** (système et architecture), le **Mode** (bureau ou web), le dossier de **Configuration**, la présence d'un **Agent SSH** et la **Licence**. **Licence de Skiff** affiche la licence Apache 2.0 et la mention `NOTICE` ; **Logiciels inclus** liste les bibliothèques que Skiff contient, avec la licence et le texte de chacune (une recherche filtre la liste). Les mêmes textes s'affichent avec `skiff licenses` ([§ 13.12](13-scripts-cli.md#1312-skiff-licenses)).
 
 ---
 
