@@ -47,6 +47,9 @@ func testKeychain(t *testing.T, e *e2e) {
 	}
 	ci := e.connect(t, "sftp")
 	e.must(t, "keys.install", map[string]string{"conn": ci.ID, "publicKey": g.Public}, nil)
+	t.Cleanup(func() {
+		e.call("keys.removeAuthorized", map[string]any{"conn": ci.ID, "fingerprints": []string{g.Fingerprint}, "force": true}, nil)
+	})
 
 	// only the keychain can log in: no password, no usable key file
 	site := testSite("sftp")

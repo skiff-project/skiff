@@ -153,6 +153,11 @@ func testAgent(t *testing.T, e *e2e) {
 	ci := e.connect(t, "sftp")
 	e.must(t, "keys.install", map[string]string{"conn": ci.ID, "publicKey": pubA}, nil)
 	e.must(t, "keys.install", map[string]string{"conn": ci.ID, "publicKey": pubEnc}, nil)
+	t.Cleanup(func() {
+		fpA, _ := keys.Fingerprint(pubA)
+		fpEnc, _ := keys.Fingerprint(pubEnc)
+		e.call("keys.removeAuthorized", map[string]any{"conn": ci.ID, "fingerprints": []string{fpA, fpEnc}, "force": true}, nil)
+	})
 	t.Setenv("SSH_AUTH_SOCK", sock)
 
 	t.Run("agentOnly", func(t *testing.T) {

@@ -27,6 +27,9 @@ func testSSHConfig(t *testing.T, e *e2e) {
 	e.must(t, "keys.generate", keys.GenerateRequest{Type: "ed25519", Comment: "sshconfig@e2e", Format: "openssh", SaveTo: filepath.Join(ssh, "id_sshcfg")}, &g)
 	ci := e.connect(t, "sftp")
 	e.must(t, "keys.install", map[string]string{"conn": ci.ID, "publicKey": g.Public}, nil)
+	t.Cleanup(func() {
+		e.call("keys.removeAuthorized", map[string]any{"conn": ci.ID, "fingerprints": []string{g.Fingerprint}, "force": true}, nil)
+	})
 
 	fwd := freePort(t)
 	// the first value obtained wins: cfg-strict comes before the cfg-*
