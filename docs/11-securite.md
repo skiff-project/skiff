@@ -124,6 +124,40 @@ La boîte s'ouvre depuis :
 
 Vérifiez ensuite qu'une nouvelle connexion passe par la clé (le [journal](10-recherche-journal.md) indique `publickey`) avant de désactiver les mots de passe sur le serveur (`PasswordAuthentication no` dans `/etc/ssh/sshd_config`).
 
+### Les clés autorisées d'un serveur
+
+**Clés autorisées** (icône de clé de la barre d'outils d'une session SFTP ou SCP, palette `Ctrl+K`, ou **Informations serveur/protocole**) liste les clés qui permettent de se connecter au compte : le fichier `~/.ssh/authorized_keys`, lu et écrit par de simples opérations sur les fichiers, comme pour l'installation.
+
+![Les clés autorisées d'un serveur](images/cles-autorisees.png)
+
+Chaque ligne montre le type de la clé (Ed25519, RSA, ECDSA, clés matérielles `-SK`), son commentaire, son empreinte SHA-256 et ses options (`from=`, `command=`, `no-pty`, `restrict`…). Des badges signalent :
+
+| Badge | Signification |
+|---|---|
+| **Cette connexion** | La clé avec laquelle la session s'est identifiée. Skiff la connaît parce que le serveur ne demande de signer qu'avec une clé qu'il accepte ; elle figure aussi dans les [informations serveur](10-recherche-journal.md#103-informations-serveur-et-protocole) (**Clé d'authentification**). |
+| `~/.ssh/…` ou **Trousseau : …** | Sa clé privée est sur cet ordinateur |
+| **Autorité de certification** | Une ligne `cert-authority` : elle laisse entrer les certificats signés par cette autorité |
+
+Pour chaque clé : **Remplacer par une autre clé…** (voir ci-dessous), **Copier la ligne** et **Retirer la clé**, après confirmation. Retirer la clé de la session demande une confirmation de plus : sans elle, la session pourrait ne plus pouvoir se reconnecter. **Ajouter une clé…** ouvre l'installation, **Modifier le fichier** ouvre `authorized_keys` dans l'éditeur (une ligne illisible pour sshd y est signalée, et se corrige là).
+
+Skiff ne réécrit que les lignes des clés retirées ou ajoutées : les autres lignes, leurs options et les commentaires restent tels quels. Le fichier est écrit à côté puis renommé : une connexion coupée au milieu laisse l'ancien fichier, jamais un fichier tronqué. Si le fichier a changé depuis son affichage (une autre session, un autre administrateur), le retrait est refusé et la liste se recharge.
+
+sshd ignore `authorized_keys` quand d'autres utilisateurs peuvent écrire dans le dossier personnel, dans `~/.ssh` ou dans le fichier (option `StrictModes`) : Skiff l'indique en rouge, et **Corriger les droits** retire ces droits d'écriture. Si la session s'est identifiée avec une clé absente de ce fichier, Skiff le signale aussi : sshd lit peut-être un autre fichier (`AuthorizedKeysFile` dans `sshd_config`), que Skiff ne gère pas.
+
+### Installer ou remplacer une clé sur plusieurs serveurs
+
+Pour déposer une clé sur tout un parc, ou changer de clé (un portable perdu, une clé trop ancienne), sélectionnez les sites concernés ([§ 3.1](03-sites.md#sélectionner-plusieurs-sites)) : le panneau de la sélection et son clic droit proposent **Installer une clé** et **Remplacer une clé**. Le clic droit d'un site SSH seul propose **Installer ou remplacer une clé…**.
+
+![Une clé installée sur plusieurs sites](images/cles-plusieurs-sites.png)
+
+Skiff se connecte aux sites l'un après l'autre (une session déjà ouverte sur le site sert telle quelle), fait l'opération, puis referme les connexions qu'il a ouvertes. Chaque site affiche son résultat : **Installée**, **Déjà installée**, **Remplacée (nouvelle clé vérifiée)** ou l'erreur. Les sites qui ne sont pas SSH sont laissés de côté, et **Arrêter après celui-ci** interrompt la série. Un mot de passe ou une clé d'hôte inconnue sont demandés comme à une connexion ordinaire ; si le mot de passe maître verrouille les mots de passe enregistrés, il est demandé une fois au départ.
+
+**Remplacer une clé** procède en trois temps, sur chaque serveur : la nouvelle clé est ajoutée ; Skiff ouvre une seconde connexion qui ne présente **que** la nouvelle clé (sans mot de passe ni autre clé) ; seulement si le serveur l'accepte, l'ancienne clé est retirée. Un serveur qui refuse la nouvelle clé garde l'ancienne : personne ne se retrouve à la porte. La partie privée de la nouvelle clé doit donc être sur cet ordinateur (trousseau Skiff, agent SSH ou `~/.ssh`).
+
+![Remplacer une clé](images/cle-remplacer.png)
+
+La **Clé à retirer** se choisit parmi les clés de l'ordinateur, ou par **Une autre clé (empreinte ou clé publique)** : l'empreinte `SHA256:…` ou la ligne de clé publique d'une clé qui n'est plus là. Depuis la liste des clés autorisées, **Remplacer par une autre clé…** la remplit avec la clé de la ligne.
+
 ## 11.7 Trousseau Skiff et transfert d'agent
 
 Le **trousseau Skiff** garde vos clés privées dans Skiff lui-même, chiffrées comme les mots de passe enregistrés : par le mot de passe maître s'il y en a un ([§ 11.4](#114-mot-de-passe-maître)), sinon par la clé locale de l'ordinateur. Pas besoin d'agent SSH sur l'ordinateur, ni de laisser une clé non chiffrée sur le disque.
@@ -148,6 +182,8 @@ Les clés du trousseau sont **proposées à tous les serveurs SSH**, avant celle
 
 - **Fenêtre de bureau** : l'interface communique avec le moteur de Skiff par un serveur HTTP qui n'écoute que sur `127.0.0.1`, protégé par un jeton aléatoire à chaque lancement, un contrôle de l'en-tête `Host` (contre le *DNS rebinding*) et un en-tête anti-CSRF obligatoire.
 - Les fichiers HTML et SVG prévisualisés ne sont jamais exécutés dans le contexte de l'application.
+- **Liens** (`sftp://`… ouverts depuis un navigateur ou un mail, [§ 12.14](12-preferences.md#1214-système)) : Skiff montre toujours le serveur, l'utilisateur et le dossier du lien et attend votre accord avant de se connecter ; une clé d'hôte imposée par le lien (`;fingerprint=`, à la WinSCP) est ignorée, la clé du serveur est vérifiée comme d'habitude ; seuls les liens `sftp`, `scp`, `ftp`, `ftps`, `ftpes`, `dav` et `davs` sont acceptés (jamais un conteneur de l'ordinateur, par exemple).
+- **Fenêtre unique** : une seconde ouverture de Skiff transmet son URL à la fenêtre ouverte par une adresse locale protégée par une clé tirée au hasard et rangée dans `instance.json` (droits 600) ; cette clé ne permet que de demander l'ouverture d'une URL, et une page web ne peut pas s'en servir.
 - **Mode web** : voir [Mode web distant](14-mode-web.md#143-sécurité).
 
 ---

@@ -42,6 +42,8 @@ Pour ranger, connecter ou supprimer beaucoup de sites d'un coup :
 
 À droite, la liste des sites choisis et leurs actions : **Déplacer vers le dossier** (un dossier existant, la racine, ou **Nouveau dossier…** créé et rempli d'un coup), **Connecter les N** (une session par site), **Supprimer les N** (une seule confirmation) et **Effacer la sélection**. Le clic droit sur un site sélectionné propose les mêmes actions, `Entrée` les connecte tous, `Suppr` les supprime, et glisser l'un d'eux sur un dossier les y range tous. Le bas de la liste rappelle le nombre de sites sélectionnés.
 
+Pour les sites SSH de la sélection, **Installer une clé** et **Remplacer une clé** déposent ou changent une clé sur tous leurs serveurs d'un coup ([§ 11.6](11-securite.md#installer-ou-remplacer-une-clé-sur-plusieurs-serveurs)).
+
 ### Menu contextuel d'un site
 
 ![Menu contextuel d'un site](images/sites-menu-contextuel.png)
@@ -50,6 +52,7 @@ Pour ranger, connecter ou supprimer beaucoup de sites d'un coup :
 |---|---|
 | **Connexion** (`Entrée`) | Ouvre une session |
 | **Ouvrir dans un terminal** | Se connecte et ouvre directement un terminal SSH (SFTP et SCP) |
+| **Installer ou remplacer une clé…** | Installe une clé publique sur le serveur, ou remplace une ancienne clé après avoir vérifié la nouvelle (SFTP et SCP, [§ 11.6](11-securite.md#installer-ou-remplacer-une-clé-sur-plusieurs-serveurs)) |
 | **Modifier** | Affiche le formulaire du site |
 | **Dupliquer** | Crée une copie du site, nommée « … (copie) », mots de passe compris |
 | **Renommer** | Change le nom du site |

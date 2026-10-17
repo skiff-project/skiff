@@ -46,7 +46,7 @@ Pour garder une trace sur disque, activez **Écrire les journaux de session dans
 
 | Groupe | Informations |
 |---|---|
-| **SSH** | Version du serveur, adresse, type de clé d'hôte, empreintes SHA-256 et MD5, échange de clés, chiffrements dans chaque sens, MAC, méthode d'authentification, nombre d'hôtes de rebond |
+| **SSH** | Version du serveur, adresse, type de clé d'hôte, empreintes SHA-256 et MD5, échange de clés, chiffrements dans chaque sens, MAC, méthode d'authentification, empreinte de la clé d'authentification (quand la session s'est identifiée par une clé), nombre d'hôtes de rebond |
 | **SFTP** | Version du protocole, extensions prises en charge par le serveur (`posix-rename`, `statvfs`, `hardlink`, `fsync`, `limits`, `copy-data`…), commande du serveur SFTP |
 | **SCP** | Méthode de listage, shell |
 | **FTP** | Serveur, système (`SYST`), message d'accueil, mode passif ou actif, méthode de listage (MLSD ou LIST), fonctionnalités (`FEAT`) |
@@ -55,7 +55,7 @@ Pour garder une trace sur disque, activez **Écrire les journaux de session dans
 | **S3** | Endpoint, région, TLS, adressage |
 | **Session** | Date et heure de connexion |
 
-**Copier** copie le tout sous forme de texte, pratique pour un ticket de support. Pour une session SFTP ou SCP, **Installer une clé publique…** ajoute une de vos clés au serveur ([§ 11.6](11-securite.md#installer-une-clé-existante-sur-un-serveur)).
+**Copier** copie le tout sous forme de texte, pratique pour un ticket de support. Pour une session SFTP ou SCP, **Installer une clé publique…** ajoute une de vos clés au serveur ([§ 11.6](11-securite.md#installer-une-clé-existante-sur-un-serveur)), et **Clés autorisées…** liste celles qu'il accepte ([§ 11.6](11-securite.md#les-clés-autorisées-dun-serveur)).
 
 ## 10.4 Palette de commandes
 

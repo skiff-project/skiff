@@ -93,6 +93,8 @@ Skiff reprend les fonctionnalités de WinSCP (interface Commander à deux pannea
 - **Diff visuel** local ↔ distant ou serveur ↔ serveur, fusion par blocs
 - **Mode web distant** (`skiff serve`) : Skiff sur un serveur ou un NAS, utilisable depuis n'importe quel navigateur
 - **Générateur de clés** (Ed25519, ECDSA, RSA ; OpenSSH ou `.ppk` v3), conversion OpenSSH ↔ PPK, **installation de la clé publique** sur un serveur (équivalent de `ssh-copy-id`)
+- **Clés autorisées** d'un serveur : la clé de la session signalée, retrait, droits corrigés ; **installation ou remplacement d'une clé sur plusieurs sites**, l'ancienne n'étant retirée qu'une fois la nouvelle vérifiée
+- **Liens `sftp://`, `ftp://`…** d'un navigateur ou d'un mail ouverts par Skiff, avec confirmation, dans la fenêtre déjà ouverte
 - **Mot de passe maître** (Argon2id + XChaCha20-Poly1305)
 - Import **WinSCP (INI et registre, mots de passe compris), PuTTY, FileZilla, `~/.ssh/config`** (y compris `ProxyJump` et `LocalForward`), URL ; export JSON, WinSCP.ini, ssh config, URL
 - **Générateur d'URL et de code** de session (URL, ligne de commande, script, commande OpenSSH)
@@ -164,6 +166,7 @@ skiff run [options] [script]     exécute un script compatible WinSCP
 skiff shell [url-de-session]     console interactive
 skiff keygen [options]           génère (ou convertit, -convert) une paire de clés SSH
 skiff import <source> [fichier]  importe des sessions (winscp-ini, winscp-registry, putty, filezilla, ssh-config)
+skiff url-handler [-register]    liens sftp://, ftp://… ouverts par Skiff (ou non : -remove)
 skiff version
 ```
 

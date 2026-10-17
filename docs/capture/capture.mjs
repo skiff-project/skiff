@@ -33,9 +33,16 @@ rmSync(CFG, { recursive: true, force: true })
 // ---------------------------------------------------------------------------
 // Skiff process
 
+// the environment of the Skiff of the captures: everything in the demo home
+// (the links of the system included)
+const skiffEnv = (env = {}) => ({
+  ...process.env, HOME, SKIFF_HOME: CFG, SKIFF_NO_WINDOW: '1', SKIFF_PORT: String(PORT), SKIFF_DEV_TOKEN: TOKEN, SSH_AUTH_SOCK: '', LANG: 'fr_FR.UTF-8',
+  XDG_CONFIG_HOME: join(HOME, '.config'), XDG_DATA_HOME: join(HOME, '.local/share'), ...env,
+})
+
 function startSkiff(extraArgs = [], env = {}) {
   const p = spawn(SKIFF, extraArgs, {
-    env: { ...process.env, HOME, SKIFF_HOME: CFG, SKIFF_NO_WINDOW: '1', SKIFF_PORT: String(PORT), SKIFF_DEV_TOKEN: TOKEN, SSH_AUTH_SOCK: '', LANG: 'fr_FR.UTF-8', ...env },
+    env: skiffEnv(env),
     stdio: ['ignore', 'pipe', 'pipe'],
   })
   p.stdout.on('data', () => {})
@@ -678,6 +685,94 @@ scene('cle-installer', async () => {
   await page.keyboard.press('Enter')
   await dialog().locator('.code-block').waitFor()
   await shot('cle-installer', { el: dialog() })
+  await closeDialogs()
+})
+
+scene('cles-autorisees', async () => {
+  await openTab('Site vitrine')
+  const conn = (await rpc('conn.list')).find((c) => c.title.startsWith('Site vitrine') && c.state === 'connected')
+  const mine = (await rpc('keys.list')).find((k) => k.publicKey && k.path.endsWith('id_ed25519'))
+  const ci = await rpc('keys.generate', { type: 'ed25519', comment: 'deploiement-ci', format: 'openssh' })
+  const old = await rpc('keys.generate', { type: 'rsa', bits: 3072, comment: 'ancien-portable', format: 'openssh' })
+  for (const line of [mine?.publicKey, `command="/usr/local/bin/deployer",no-pty,from="10.0.0.0/8" ${ci.public}`, old.public]) {
+    if (line) await rpc('keys.install', { conn: conn.id, publicKey: line })
+  }
+  try {
+    await tip('Clés autorisées').click()
+    await dialog().locator(`.ak-row[data-fingerprint="${old.fingerprint}"]`).waitFor()
+    await sleep(300)
+    await shot('cles-autorisees', { el: dialog() })
+    // replacing one: the new key is checked before the old one goes
+    await dialog().locator(`.ak-row[data-fingerprint="${old.fingerprint}"] [data-tip="Remplacer par une autre clé…"]`).click()
+    const r = page.locator('.dialog').last()
+    await r.locator('.roll-row').waitFor()
+    const newKey = r.locator('.field').filter({ has: page.locator('label', { hasText: /^Nouvelle clé$/ }) })
+    const opt = await newKey.locator('option', { hasText: 'id_ed25519' }).first().getAttribute('value')
+    if (opt) await newKey.locator('select').selectOption(opt)
+    await sleep(300)
+    await shot('cle-remplacer', { el: r })
+  } finally {
+    await closeDialogs()
+    await rpc('keys.removeAuthorized', { conn: conn.id, fingerprints: [mine?.fingerprint, ci.fingerprint, old.fingerprint].filter(Boolean), version: '', force: true })
+  }
+})
+
+scene('cles-plusieurs-sites', async () => {
+  const mine = (await rpc('keys.list')).find((k) => k.publicKey && k.path.endsWith('id_ed25519'))
+  await sitesTab()
+  await (await site('Site vitrine (SFTP)')).click()
+  await (await site('Serveur SCP')).click({ modifiers: ['Control'] })
+  await (await site('FTP partenaire')).click({ modifiers: ['Control'] })
+  await (await site('Site vitrine (SFTP)')).click({ button: 'right' })
+  await page.locator('.menu-item', { hasText: 'Installer une clé sur les sites SSH sélectionnés' }).click()
+  const r = dialog()
+  await r.locator('.roll-row').first().waitFor()
+  const keyField = r.locator('.field').filter({ has: page.locator('label', { hasText: /^Clé$/ }) })
+  const opt = await keyField.locator('option', { hasText: 'id_ed25519' }).first().getAttribute('value')
+  if (opt) await keyField.locator('select').selectOption(opt)
+  await btnIn(r, 'Installer (2)').click()
+  // the SCP site has no saved password: asked, unless the key just
+  // installed lets it in
+  const pw = page.locator('.dialog input[type="password"]')
+  for (let i = 0; i < 100 && (await r.locator('.roll-row.done').count()) < 2; i++) {
+    if (await pw.count()) {
+      await pw.fill('skiff')
+      await btnIn(page.locator('.dialog').last(), 'OK').click()
+    }
+    await sleep(200)
+  }
+  await r.locator('.roll-row.done').nth(1).waitFor({ timeout: 30000 })
+  await sleep(300)
+  await shot('cles-plusieurs-sites', { el: r })
+  await closeDialogs()
+  // a plain click lets go of the selection (the next scenes edit sites)
+  await (await site('Site vitrine (SFTP)')).click()
+  await page.locator('.sites-multi').waitFor({ state: 'detached' })
+  const conn = (await rpc('conn.list')).find((c) => c.title.startsWith('Site vitrine') && c.state === 'connected')
+  if (conn && mine) await rpc('keys.removeAuthorized', { conn: conn.id, fingerprints: [mine.fingerprint], version: '', force: true })
+})
+
+scene('lien-ouvrir', async () => {
+  // a link clicked in a browser: the system starts "skiff --link <url>",
+  // which hands it to the open window
+  const p = spawn(SKIFF, ['--link', 'sftp://deploy@recette.example.com/srv/recette/releases'], { env: skiffEnv({ SKIFF_PORT: String(PORT + 1) }), stdio: 'ignore' })
+  await new Promise((r) => p.on('exit', r))
+  const d = dialog()
+  await d.locator('.dialog-head h3', { hasText: 'Ouvrir un lien' }).waitFor()
+  await sleep(300)
+  await shot('lien-ouvrir', { el: d })
+  await closeDialogs()
+})
+
+scene('preferences-systeme', async () => {
+  await page.keyboard.press('Control+,')
+  const d = dialog()
+  await d.locator('nav.vtabs').getByRole('button', { name: 'Système', exact: true }).click()
+  await btnIn(d, 'Ouvrir ces liens avec Skiff').click()
+  await d.locator('tr[data-scheme="davs"] .badge', { hasText: 'Skiff' }).waitFor()
+  await sleep(300)
+  await shot('preferences-systeme', { el: d })
+  await btnIn(d, 'Ne plus les ouvrir avec Skiff').click()
   await closeDialogs()
 })
 

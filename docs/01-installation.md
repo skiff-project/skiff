@@ -8,7 +8,7 @@ Chaque système a son installateur :
 
 | Système | Fichier | Installation |
 |---|---|---|
-| Windows 10/11 (x64, ARM64) | `skiff-setup-<version>-windows-amd64.exe` (ou `-arm64.exe`) | Double-cliquez. Skiff s'installe pour votre compte, **sans droits d'administrateur**, dans `%LOCALAPPDATA%\Programs\Skiff`, avec un raccourci dans le menu Démarrer (et sur le bureau si vous cochez la case) |
+| Windows 10/11 (x64, ARM64) | `skiff-setup-<version>-windows-amd64.exe` (ou `-arm64.exe`) | Double-cliquez. Skiff s'installe pour votre compte, **sans droits d'administrateur**, dans `%LOCALAPPDATA%\Programs\Skiff`, avec un raccourci dans le menu Démarrer (et sur le bureau si vous cochez la case). La case **Ouvrir les liens sftp://, scp://, ftp://… avec Skiff**, cochée, fait ouvrir ces liens par Skiff ([§ 12.14](12-preferences.md#1214-système)) |
 | macOS 11 et plus (Intel et Apple Silicon) | `Skiff-<version>-macos.dmg` | Ouvrez l'image disque et glissez **Skiff** sur le dossier **Applications** |
 | Debian, Ubuntu, Linux Mint… (x64, ARM64) | `skiff_<version>_amd64.deb` (ou `_arm64.deb`) | `sudo apt install ./skiff_<version>_amd64.deb` : apt installe aussi WebKitGTK si besoin |
 | Autres Linux (x64, ARM64) | `Skiff-<version>-x86_64.AppImage` (ou `-aarch64`) | Rendez le fichier exécutable (`chmod +x Skiff-*.AppImage`, ou **Propriétés → Autoriser l'exécution**), puis lancez-le. Rien n'est installé |
@@ -78,7 +78,9 @@ Les installateurs mettent Skiff dans le menu Démarrer (Windows), le dossier App
 
 **Sous Linux, sans le paquet** (AppImage ou binaire seul), au premier lancement de la fenêtre, Skiff ajoute son entrée au menu des applications et son icône, pour votre utilisateur : `~/.local/share/applications/skiff.desktop` et `~/.local/share/icons/hicolor/512x512/apps/skiff.png`. Sans elles, GNOME et KDE (sous Wayland surtout) affichent une icône générique dans le dock et le sélecteur de fenêtres. L'entrée suit le binaire, ou le fichier AppImage, s'il change de place ; une entrée `skiff.desktop` écrite à la main n'est jamais modifiée. Rien n'est ajouté en [mode portable](#15-mode-portable). Quand le paquet `.deb` est installé, c'est son entrée qui compte : Skiff n'en ajoute pas, et retire celle qu'il avait ajoutée, qui la masquerait.
 
-La suite est décrite au chapitre [Premiers pas](02-premiers-pas.md). Les autres commandes (`serve`, `run`, `shell`, `keygen`, `import`, `task`, `desktop-entry`, `version`) sont décrites au chapitre [Scripts et ligne de commande](13-scripts-cli.md).
+**Une seule fenêtre.** Relancer Skiff alors qu'il est déjà ouvert (le raccourci, `skiff sftp://…`, un lien cliqué) ne crée pas une seconde fenêtre : la fenêtre ouverte revient au premier plan et ouvre la connexion demandée. Deux fenêtres sur la même configuration risqueraient d'écrire les mêmes fichiers et de lancer deux fois les tâches planifiées. Une copie en [mode portable](#15-mode-portable) a sa propre configuration, donc sa propre fenêtre.
+
+La suite est décrite au chapitre [Premiers pas](02-premiers-pas.md). Les autres commandes (`serve`, `run`, `shell`, `keygen`, `import`, `task`, `desktop-entry`, `url-handler`, `version`) sont décrites au chapitre [Scripts et ligne de commande](13-scripts-cli.md).
 
 ## 1.4 Dossier de configuration
 
@@ -99,6 +101,7 @@ Le chemin exact est affiché en bas de la fenêtre **Préférences** et dans **P
 | `secret.key` | Clé de chiffrement des mots de passe quand il n'y a pas de mot de passe maître (droits 600) |
 | `master.json` | Paramètres de dérivation du mot de passe maître (sel, coût Argon2id), sans le mot de passe |
 | `known_hosts` | Clés d'hôte SSH acceptées (format OpenSSH) |
+| `instance.json` | Tant que la fenêtre est ouverte : son adresse locale et la clé qui permet à un second lancement de lui passer une URL (droits 600) |
 | `trusted_certs.json` | Certificats TLS auxquels vous avez fait confiance |
 | `keychain.json` | [Trousseau Skiff](11-securite.md#117-trousseau-skiff-et-transfert-dagent) : clés privées chiffrées comme les mots de passe |
 | `tasks.json`, `task-runs.json` | [Tâches planifiées](07-synchronisation.md#74-tâches-planifiées) et leur historique |
@@ -136,7 +139,7 @@ La configuration (sites, mots de passe, préférences) est conservée par les mi
 
 | Installé avec | Mettre à jour | Désinstaller |
 |---|---|---|
-| L'installateur Windows | Lancez le nouvel installateur, même si Skiff est ouvert : la nouvelle version démarre au prochain lancement | **Paramètres → Applications → Applications installées → Skiff → Désinstaller**. Le programme de désinstallation demande s'il faut aussi supprimer `%APPDATA%\Skiff` (non par défaut) |
+| L'installateur Windows | Lancez le nouvel installateur, même si Skiff est ouvert : la nouvelle version démarre au prochain lancement | **Paramètres → Applications → Applications installées → Skiff → Désinstaller**. Les liens `sftp://`… reviennent aux autres applications ; le programme de désinstallation demande s'il faut aussi supprimer `%APPDATA%\Skiff` (non par défaut) |
 | L'image disque macOS | Glissez la nouvelle version sur **Applications** et remplacez l'ancienne | Mettez **Skiff** à la corbeille, puis, si vous le souhaitez, le dossier `~/Library/Application Support/Skiff` |
 | Le paquet `.deb` | `sudo apt install ./skiff_<nouvelle version>_amd64.deb` | `sudo apt remove skiff` |
 | L'AppImage | Remplacez le fichier (gardez le même nom pour que l'entrée du menu reste valable, ou relancez-la : l'entrée suit) | `./Skiff-*.AppImage desktop-entry -remove` (retire l'entrée du menu et l'icône), puis supprimez le fichier |

@@ -182,7 +182,27 @@ Chaque commande a un nom, une ligne de commande avec les motifs de WinSCP (rappe
 
 La liste de tous les raccourcis. Elle est reprise au chapitre [Raccourcis clavier](16-raccourcis.md).
 
-## 12.14 À propos de Skiff
+## 12.14 Système
+
+![Préférences : Système](images/preferences-systeme.png)
+
+**Liens** : les liens `sftp://`, `scp://`, `ftp://`, `ftps://`, `ftpes://`, `dav://` et `davs://` d'un navigateur, d'un mail ou d'un document peuvent s'ouvrir dans Skiff, comme avec WinSCP. Le tableau indique l'application qui ouvre aujourd'hui chacun d'eux ; **Ouvrir ces liens avec Skiff** fait de Skiff celle-ci, **Ne plus les ouvrir avec Skiff** les rend.
+
+Au clic sur un lien, Skiff (déjà ouvert, ou lancé pour l'occasion) affiche la connexion demandée et attend votre accord :
+
+![Ouvrir un lien](images/lien-ouvrir.png)
+
+Quand le lien désigne un site enregistré (même protocole, serveur, port et utilisateur), Skiff propose d'ouvrir ce site, avec ses réglages et ses mots de passe, au dossier du lien. Un mot de passe contenu dans le lien est signalé ; une clé d'hôte imposée par le lien est ignorée ([§ 11.8](11-securite.md#118-sécurité-de-lapplication)).
+
+| Système | Où Skiff s'inscrit |
+|---|---|
+| Linux, FreeBSD | Le fichier `mimeapps.list` de l'utilisateur (`~/.config`), selon la norme freedesktop ; l'entrée du menu de Skiff liste ces liens. Sans le paquet `.deb`, l'entrée du menu de l'utilisateur est créée au besoin. |
+| Windows | Le registre de l'utilisateur (sans droits d'administrateur), et **Paramètres → Applications → Applications par défaut**, où Skiff apparaît. Une application choisie dans ces paramètres garde ses liens : **Applications par défaut de Windows…** les ouvre pour y choisir Skiff. L'installateur propose la même chose (case cochée). |
+| macOS | `Skiff.app` déclare ces liens ; le bouton fait de Skiff leur application. Pour les rendre, choisissez une autre application depuis celle-ci : macOS garde la dernière choisie. |
+
+En mode web, cette section n'existe pas : les liens sont ceux du serveur.
+
+## 12.15 À propos de Skiff
 
 ![Préférences : À propos](images/prefs-a-propos.png)
 

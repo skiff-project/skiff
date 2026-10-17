@@ -36,6 +36,8 @@ Ce chapitre aide les habitués de WinSCP à retrouver chaque fonction dans Skiff
 | Session → Informations serveur/protocole | Bouton ⓘ de la barre d'outils |
 | Session → Journal | Panneau **Journal** |
 | Session → Générer URL / code de session | Menu contextuel d'un site → **Générer URL / code…** |
+| Préférences → Intégration → Enregistrer pour gérer les adresses URL | **Préférences → Système → Ouvrir ces liens avec Skiff** (ou la case de l'installateur Windows) |
+| Installer la clé publique sur le serveur | **Installer une clé publique…**, et **Clés autorisées** pour voir, retirer ou remplacer les clés du serveur, sur un site ou sur plusieurs |
 | Éditeur interne | Éditeur CodeMirror (coloration, recherche, encodages, conflits) |
 | Éditeur externe avec renvoi automatique | Identique (`Maj+F4`), onglet **Fichiers édités** |
 | PuTTYgen | **Générer une paire de clés…**, **Convertir** (Préférences → Sécurité), `skiff keygen` |

@@ -13,9 +13,14 @@ skiff run [options] [script]     exécute un script compatible WinSCP
 skiff shell [url-de-session]     console interactive
 skiff keygen [options]           génère (ou convertit, -convert) une paire de clés SSH
 skiff import <source> [fichier]  importe des sessions
+skiff task list | run <nom>      liste les tâches planifiées, ou en lance une
+skiff desktop-entry [-remove]    entrée du menu des applications (Linux)
+skiff url-handler [-register | -remove]  liens sftp://, ftp://… ouverts par Skiff
 skiff version                    affiche la version
 skiff help                       affiche l'aide
 ```
+
+`skiff --link <url>` est la forme que le système emploie pour un lien cliqué ailleurs : la fenêtre montre la connexion et demande avant de se connecter ([§ 12.14](12-preferences.md#1214-système)). Sans `--link`, une URL de la ligne de commande se connecte directement. Si Skiff est déjà ouvert, la commande passe l'URL à sa fenêtre et se termine.
 
 `skiff <commande> -h` détaille les options de chaque commande. Les scripts et la console utilisent les sites, les préférences, les clés d'hôte et les mots de passe enregistrés de la configuration habituelle.
 
@@ -237,6 +242,16 @@ skiff desktop-entry -remove   # les retire
 ```
 
 Lancée depuis une AppImage, l'entrée pointe vers le fichier `.AppImage`. Quand le paquet `.deb` est installé, la commande n'ajoute rien (« nothing to do: the package of Skiff installed /usr/share/applications/skiff.desktop ») et retire l'entrée qu'elle avait ajoutée, qui masquerait celle du paquet.
+
+## 13.11 `skiff url-handler`
+
+Indique quelle application ouvre chaque lien `sftp://`, `scp://`, `ftp://`, `ftps://`, `ftpes://`, `dav://` et `davs://`, ou fait de Skiff celle-ci, comme **Préférences → Système** ([§ 12.14](12-preferences.md#1214-système)). L'installateur Windows s'en sert.
+
+```bash
+skiff url-handler              # sftp:  Skiff, ftp:  Fichiers…
+skiff url-handler -register    # les liens s'ouvrent avec Skiff
+skiff url-handler -remove      # ils reviennent aux autres applications
+```
 
 ---
 

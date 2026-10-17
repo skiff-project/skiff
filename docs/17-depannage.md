@@ -84,6 +84,15 @@ L'application n'est pas encore signée par un développeur identifié : ouvrez *
 **L'AppImage ne s'ouvre pas (« AppImages require FUSE to run »).**
 Installez FUSE (paquet `fuse3`), ou lancez-la avec l'option `--appimage-extract-and-run`.
 
+**Un lien `sftp://` n'ouvre pas Skiff.**
+Ouvrez **Préférences → Système** : le tableau indique l'application qui ouvre chaque lien, et **Ouvrir ces liens avec Skiff** les reprend. Sous Windows, une application choisie dans **Paramètres → Applications → Applications par défaut** garde ses liens : choisissez-y Skiff (bouton **Applications par défaut de Windows…**). Un navigateur peut aussi demander une fois s'il faut ouvrir l'application.
+
+**Lancer Skiff une seconde fois ne fait que ramener la fenêtre.**
+C'est voulu : une seule fenêtre par dossier de configuration ([§ 1.3](01-installation.md#13-lancer-skiff)). Ouvrez plutôt un nouvel onglet (`Ctrl+N` ou l'onglet **Sites**). Après un plantage, le fichier `instance.json` resté dans la configuration n'empêche pas le lancement suivant.
+
+**Remplacer une clé échoue avec « the new key is installed, but the old one stays ».**
+Le serveur n'a pas accepté la nouvelle clé seule, ou sa partie privée n'est pas sur cet ordinateur : l'ancienne clé a été gardée ([§ 11.6](11-securite.md#installer-ou-remplacer-une-clé-sur-plusieurs-serveurs)). Vérifiez que la clé privée est dans le trousseau, l'agent ou `~/.ssh`, et que `sshd_config` ne lit pas un autre fichier (`AuthorizedKeysFile`).
+
 **Deux entrées Skiff dans le menu, ou une entrée qui ne marche plus.**
 Lancez `skiff desktop-entry -remove` pour retirer celle que Skiff a ajoutée pour votre utilisateur ; celle du paquet `.deb`, si vous l'avez installé, reste.
 
