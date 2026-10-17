@@ -378,6 +378,9 @@ func (s *Server) serveFile(w http.ResponseWriter, r *http.Request, p string) {
 	} else {
 		w.Header().Set("Cache-Control", "no-cache")
 	}
+	if strings.HasSuffix(p, ".html") {
+		w.Header().Set("Content-Security-Policy", uiCSP(r.Host))
+	}
 	data, err := fs.ReadFile(s.opts.Static, p)
 	if err != nil {
 		http.NotFound(w, r)
@@ -388,6 +391,30 @@ func (s *Server) serveFile(w http.ResponseWriter, r *http.Request, p string) {
 		mod = st.ModTime()
 	}
 	http.ServeContent(w, r, p, mod, strings.NewReader(string(data)))
+}
+
+// uiCSP is the content security policy of the UI: its scripts and its
+// server only. A script slipped in (a file name, a preview, an extension of
+// the webview) cannot load code, send data elsewhere or be framed. Inline
+// styles stay allowed (CodeMirror and xterm.js write them).
+func uiCSP(host string) string {
+	ws := ""
+	if host != "" && strings.Trim(host, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-:[]") == "" {
+		ws = " ws://" + host + " wss://" + host
+	}
+	return strings.Join([]string{
+		"default-src 'self'",
+		"script-src 'self'",
+		"style-src 'self' 'unsafe-inline'",
+		"img-src 'self' data: blob:",
+		"media-src 'self' blob:",
+		"font-src 'self' data:",
+		"connect-src 'self'" + ws,
+		"frame-src 'self'",
+		"base-uri 'none'",
+		"form-action 'self'",
+		"frame-ancestors 'none'",
+	}, "; ")
 }
 
 func clientIP(r *http.Request) string {

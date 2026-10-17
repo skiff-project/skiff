@@ -2,6 +2,8 @@ module skiff
 
 go 1.27.1
 
+toolchain go1.27.2
+
 require (
 	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
 	github.com/Microsoft/go-winio v0.6.4 // indirect

@@ -29,6 +29,34 @@ jobs:
       - name: Integration tests (Docker)
         run: ./build.sh itest
 
+  security:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: '${{ env.GO_VERSION }}' }
+      - uses: pnpm/action-setup@v4
+        with: { version: 12 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: pnpm, cache-dependency-path: frontend/pnpm-lock.yaml }
+      - name: Known vulnerabilities (Go, every system)
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+          govulncheck ./...
+          govulncheck -tags desktop,production,webkit2_41 ./...
+          GOOS=windows govulncheck -tags desktop,production ./...
+          GOOS=darwin govulncheck ./...
+      - name: Known vulnerabilities (interface)
+        run: cd frontend && pnpm install --frozen-lockfile && pnpm audit --prod
+      - name: Fuzzing the parsers of what servers send
+        run: |
+          for t in "FuzzParseURL ./internal/config/" "FuzzParseAuthorized ./internal/keys/" "FuzzListingLines ./internal/vfs/ftpfs/" \
+                   "FuzzListings ./internal/vfs/scpfs/" "FuzzSafeName ./internal/vfs/" "FuzzLines ./internal/sshconfig/" \
+                   "FuzzTokenize ./internal/script/" "FuzzServerOutputs ./internal/core/"; do
+            set -- $t
+            go test -run '^$' -fuzz "^$1\$" -fuzztime 30s "$2"
+          done
+
   linux:
     needs: test
     strategy:
