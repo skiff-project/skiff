@@ -85,6 +85,9 @@ export function SitesView() {
   const [q, setQ] = useState('')
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [dropFolder, setDropFolder] = useState<string | null>(null)
+  // several sites chosen with Ctrl+click and Shift+click
+  const [multi, setMulti] = useState<string[]>([])
+  const anchor = useRef<string | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
 
   const filtered = useMemo(() => {
@@ -93,6 +96,21 @@ export function SitesView() {
     return sites.filter((s) => [s.name, s.host, s.user, s.folder, s.notes].some((v) => v?.toLowerCase().includes(lq)))
   }, [sites, q])
   const tree = useMemo(() => buildTree(q ? [] : folders, filtered), [folders, filtered, q])
+  // the sites in the order they are shown
+  const flat = useMemo(() => {
+    const out: SiteView[] = []
+    const walk = (n: TreeNode) => {
+      if (!collapsed[n.path] || q) {
+        n.folders.forEach(walk)
+        out.push(...n.sites)
+      }
+    }
+    walk(tree)
+    return out
+  }, [tree, collapsed, q])
+  useEffect(() => setMulti([]), [q])
+  // sites deleted elsewhere leave the selection
+  useEffect(() => setMulti((m) => (m.every((id) => sites.some((s) => s.id === id)) ? m : m.filter((id) => sites.some((s) => s.id === id)))), [sites])
   const sshHosts = useMemo(() => {
     const hosts = sshConfig?.enabled ? sshConfig.hosts : []
     if (!q) return hosts
@@ -130,6 +148,35 @@ export function SitesView() {
     setSshSel(null)
     setDraft({ ...newSiteDraft(), name: alias, host: alias })
   }
+  /** A click on a site: alone, added with Ctrl, a range with Shift. */
+  const clickSite = (e: React.MouseEvent, s: SiteView) => {
+    if (e.ctrlKey || e.metaKey) {
+      const base = multi.length ? multi : sel ? [sel] : []
+      const next = base.includes(s.id) ? base.filter((id) => id !== s.id) : [...base, s.id]
+      setMulti(next.length > 1 ? next : [])
+      anchor.current = s.id
+      setDraft(null)
+      setSel(next.length ? (next.includes(s.id) ? s.id : next[next.length - 1]) : null)
+      return
+    }
+    if (e.shiftKey && (anchor.current || sel)) {
+      const from = flat.findIndex((x) => x.id === (anchor.current || sel))
+      const to = flat.findIndex((x) => x.id === s.id)
+      if (from >= 0 && to >= 0) {
+        const range = flat.slice(Math.min(from, to), Math.max(from, to) + 1).map((x) => x.id)
+        setMulti(range.length > 1 ? range : [])
+        setDraft(null)
+        setSel(s.id)
+        return
+      }
+    }
+    setMulti([])
+    anchor.current = s.id
+    setDraft(null)
+    setSel(s.id)
+  }
+  const many = multi.length > 1
+
   const selectSshHost = (alias: string) => {
     setDraft(null)
     setSel(null)
@@ -137,6 +184,7 @@ export function SitesView() {
   }
 
   const siteMenu = (e: React.MouseEvent | HTMLElement, s: SiteView) => {
+    if (many && multi.includes(s.id)) return selectionMenu(e)
     const items: MenuItem[] = [
       { label: t('common.connect'), icon: <Plug />, shortcut: 'Enter', onClick: () => connectSite(s.id) },
       { label: t('sites.openTerminal'), icon: <SquareTerminal />, hidden: !(s.protocol === 'sftp' || s.protocol === 'scp'), onClick: () => connectAndTerminal(s.id) },
@@ -157,6 +205,27 @@ export function SitesView() {
       },
       { separator: true },
       { label: t('common.delete'), icon: <Trash2 />, danger: true, onClick: () => deleteSites([s.id]) },
+    ]
+    if (e instanceof HTMLElement) showMenuAt(e, items)
+    else showMenu(e.clientX, e.clientY, items)
+  }
+
+  /** The menu of several selected sites. */
+  const selectionMenu = (e: React.MouseEvent | HTMLElement) => {
+    const items: MenuItem[] = [
+      { header: t('sites.selected', { n: multi.length }) },
+      { label: t('sites.connectSelected', { n: multi.length }), icon: <Plug />, shortcut: 'Enter', onClick: () => multi.forEach((id) => connectSite(id)) },
+      {
+        label: t('sites.moveToFolder'), icon: <Folder />, submenu: [
+          { label: t('sites.rootFolder'), onClick: () => moveSites(multi, '') },
+          ...folders.map((f) => ({ label: f, onClick: () => moveSites(multi, f) })),
+          { separator: true },
+          { label: t('sites.newFolder') + '…', icon: <FolderPlus />, onClick: () => moveToNewFolder(multi) },
+        ],
+      },
+      { label: t('sites.clearSelection'), shortcut: 'Esc', onClick: () => setMulti([]) },
+      { separator: true },
+      { label: t('sites.deleteSelected', { n: multi.length }), icon: <Trash2 />, danger: true, shortcut: 'Suppr', onClick: () => deleteSites(multi) },
     ]
     if (e instanceof HTMLElement) showMenuAt(e, items)
     else showMenu(e.clientX, e.clientY, items)
@@ -194,36 +263,61 @@ export function SitesView() {
   }
 
   const moveSites = async (ids: string[], folder: string) => {
+    if (!ids.length) return
     await call('sites.move', { ids, folder })
     reloadSites()
   }
+  const moveToNewFolder = async (ids: string[]) => {
+    const name = await prompt({ title: t('sites.newFolder'), label: t('common.folder'), value: '' })
+    if (!name?.trim()) return
+    await call('folders.add', { name: name.trim() })
+    moveSites(ids, name.trim())
+  }
+  /** The sites dragged: the selection when the site dragged is in it. */
+  const dragIds = (e: React.DragEvent) => (e.dataTransfer.getData('application/x-skiff-site') || '').split('\n').filter(Boolean)
 
   const deleteSites = async (ids: string[]) => {
     if (!(await ask({ title: t('common.delete'), message: t('sites.deleteConfirm', { n: ids.length }), danger: true, ok: t('common.delete') }))) return
     await call('sites.delete', { ids })
     if (sel && ids.includes(sel)) setSel(null)
+    setMulti((m) => m.filter((id) => !ids.includes(id)))
     reloadSites()
   }
 
   const onKey = (e: React.KeyboardEvent) => {
-    if ((e.target as HTMLElement).tagName === 'INPUT' && e.key !== 'ArrowDown' && e.key !== 'Enter') return
-    const flat: SiteView[] = []
-    const walk = (n: TreeNode) => {
-      if (!collapsed[n.path] || q) {
-        n.folders.forEach(walk)
-        flat.push(...n.sites)
-      }
-    }
-    walk(tree)
+    const inInput = (e.target as HTMLElement).tagName === 'INPUT'
+    if (inInput && e.key !== 'ArrowDown' && e.key !== 'Enter') return
     const idx = flat.findIndex((s) => s.id === sel)
-    if (e.key === 'ArrowDown') {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a' && !inInput) {
       e.preventDefault()
-      const n = flat[Math.min(flat.length - 1, idx + 1)]
-      if (n) { setDraft(null); setSel(n.id) }
-    } else if (e.key === 'ArrowUp') {
+      setMulti(flat.length > 1 ? flat.map((s) => s.id) : [])
+      if (flat[0] && !sel) setSel(flat[0].id)
+    } else if (e.key === 'Escape' && many) {
       e.preventDefault()
-      const n = flat[Math.max(0, idx - 1)]
-      if (n) { setDraft(null); setSel(n.id) }
+      setMulti([])
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      const n = flat[e.key === 'ArrowDown' ? Math.min(flat.length - 1, idx + 1) : Math.max(0, idx - 1)]
+      if (!n) return
+      if (e.shiftKey && !inInput) {
+        // Shift+arrow: the selection grows from where it started
+        const start = anchor.current || sel || n.id
+        anchor.current = start
+        const a = flat.findIndex((x) => x.id === start)
+        const b = flat.findIndex((x) => x.id === n.id)
+        const range = flat.slice(Math.min(a, b), Math.max(a, b) + 1).map((x) => x.id)
+        setMulti(range.length > 1 ? range : [])
+      } else {
+        setMulti([])
+        anchor.current = n.id
+      }
+      setDraft(null)
+      setSel(n.id)
+    } else if (e.key === 'Enter' && many) {
+      e.preventDefault()
+      multi.forEach((id) => connectSite(id))
+    } else if (e.key === 'Delete' && many) {
+      deleteSites(multi)
     } else if (e.key === 'Enter' && sel) {
       e.preventDefault()
       connectSite(sel)
@@ -247,7 +341,7 @@ export function SitesView() {
           onContextMenu={(e) => folderMenu(e, n)}
           onDragOver={(e) => { if (e.dataTransfer.types.includes('application/x-skiff-site')) { e.preventDefault(); setDropFolder(n.path) } }}
           onDragLeave={() => setDropFolder(null)}
-          onDrop={(e) => { e.preventDefault(); setDropFolder(null); moveSites([e.dataTransfer.getData('application/x-skiff-site')], n.path) }}
+          onDrop={(e) => { e.preventDefault(); setDropFolder(null); moveSites(dragIds(e), n.path) }}
           data-dropzone
         >
           {collapsed[n.path] && !q ? <ChevronRight className="chev" /> : <ChevronDown className="chev" />}
@@ -260,7 +354,11 @@ export function SitesView() {
         <>
           {n.folders.map((f) => renderNode(f, depth + 1))}
           {n.sites.map((s) => (
-            <SiteRow key={s.id} s={s} depth={depth} selected={sel === s.id && !draft} onSelect={() => { setDraft(null); setSel(s.id) }} onMenu={siteMenu} />
+            <SiteRow
+              key={s.id} s={s} depth={depth} selected={(many ? multi.includes(s.id) : sel === s.id) && !draft}
+              onClick={(e) => clickSite(e, s)} onSelect={() => { if (!multi.includes(s.id)) { setMulti([]); setDraft(null); setSel(s.id) } }}
+              onMenu={siteMenu} dragData={() => (many && multi.includes(s.id) ? multi.join('\n') : s.id)}
+            />
           ))}
         </>
       )}
@@ -293,7 +391,7 @@ export function SitesView() {
           className="sites-tree"
           tabIndex={0}
           onDragOver={(e) => { if (e.dataTransfer.types.includes('application/x-skiff-site')) e.preventDefault() }}
-          onDrop={(e) => { const id = e.dataTransfer.getData('application/x-skiff-site'); if (id && !dropFolder) moveSites([id], '') }}
+          onDrop={(e) => { const ids = dragIds(e); if (ids.length && !dropFolder) moveSites(ids, '') }}
           data-dropzone
         >
           {info?.locked && (
@@ -360,9 +458,26 @@ export function SitesView() {
             </>
           )}
         </div>
+        {many && (
+          <div className="sites-multi-bar">
+            <span className="strong">{t('sites.selected', { n: multi.length })}</span>
+            <div className="spacer" />
+            <button className="mini-btn" onClick={() => setMulti([])}>{t('sites.clearSelection')}</button>
+          </div>
+        )}
       </aside>
       <main className="sites-main">
-        {editing ? (
+        {many ? (
+          <MultiPanel
+            sites={multi.map((id) => sites.find((s) => s.id === id)).filter(Boolean) as SiteView[]}
+            folders={folders}
+            onConnect={() => multi.forEach((id) => connectSite(id))}
+            onMove={(f) => moveSites(multi, f)}
+            onMoveNew={() => moveToNewFolder(multi)}
+            onDelete={() => deleteSites(multi)}
+            onClear={() => setMulti([])}
+          />
+        ) : editing ? (
           <SiteEditor
             key={draft ? 'draft' + (draft.id || '') : editing.id}
             site={editing}
@@ -398,18 +513,23 @@ async function connectAndTerminal(siteId: string) {
   wait()
 }
 
-function SiteRow({ s, depth, selected, onSelect, onMenu, compact }: { s: SiteView; depth: number; selected: boolean; onSelect: () => void; onMenu: (e: any, s: SiteView) => void; compact?: boolean }) {
+function SiteRow({ s, depth, selected, onSelect, onClick, onMenu, compact, dragData }: {
+  s: SiteView; depth: number; selected: boolean; onSelect: () => void; onClick?: (e: React.MouseEvent) => void
+  onMenu: (e: any, s: SiteView) => void; compact?: boolean; dragData?: () => string
+}) {
   const conns = useStore((st) => st.conns)
   const connected = Object.values(conns).some((c) => c.siteId === s.id && c.state === 'connected')
   return (
     <div
       className={`tree-site${selected ? ' sel' : ''}`}
       style={{ paddingLeft: 8 + (depth - 1) * 14 + (compact ? 0 : 0) }}
-      onClick={onSelect}
-      onDoubleClick={() => connectSite(s.id)}
+      onClick={onClick || onSelect}
+      onMouseDown={(e) => { if (e.shiftKey) e.preventDefault() }}
+      onDoubleClick={(e) => { if (!e.ctrlKey && !e.metaKey && !e.shiftKey) connectSite(s.id) }}
       onContextMenu={(e) => { e.preventDefault(); onSelect(); onMenu(e, s) }}
       draggable
-      onDragStart={(e) => e.dataTransfer.setData('application/x-skiff-site', s.id)}
+      onDragStart={(e) => e.dataTransfer.setData('application/x-skiff-site', dragData ? dragData() : s.id)}
+      data-site={s.id}
     >
       <span className="site-color" style={{ background: s.color || 'var(--border-strong)' }} />
       <div className="grow" style={{ minWidth: 0 }}>
@@ -498,3 +618,47 @@ function Welcome({ onNew, recent, onSelect }: { onNew: () => void; recent: SiteV
 }
 
 void errorToast
+
+/** Several sites chosen at once, and what to do with them all. */
+function MultiPanel({ sites, folders, onConnect, onMove, onMoveNew, onDelete, onClear }: {
+  sites: SiteView[]; folders: string[]; onConnect: () => void; onMove: (folder: string) => void; onMoveNew: () => void; onDelete: () => void; onClear: () => void
+}) {
+  const [folder, setFolder] = useState('')
+  const where = new Set(sites.map((s) => s.folder || ''))
+  return (
+    <div className="sites-multi">
+      <div className="sites-multi-head">
+        <h2>{t('sites.selected', { n: sites.length })}</h2>
+        <p className="muted">{where.size === 1 ? t('sites.selectedIn', { folder: [...where][0] || t('sites.rootFolder') }) : t('sites.selectedFolders', { n: where.size })}</p>
+      </div>
+      <div className="sites-multi-list">
+        {sites.map((s) => (
+          <span key={s.id} className="sites-chip" title={`${s.user ? s.user + '@' : ''}${s.host}`}>
+            <span className="site-color" style={{ background: s.color || 'var(--border-strong)' }} />
+            {s.name || s.host}
+          </span>
+        ))}
+      </div>
+      <div className="form" style={{ maxWidth: 520 }}>
+        <div className="field">
+          <label>{t('sites.moveToFolder')}</label>
+          <div className="row">
+            <select className="select grow" value={folder} onChange={(e) => setFolder(e.target.value)}>
+              <option value="">{t('sites.rootFolder')}</option>
+              {folders.map((f) => <option key={f} value={f}>{f}</option>)}
+            </select>
+            <button className="btn" onClick={() => onMove(folder)}><Folder /> {t('sites.move')}</button>
+            <button className="btn ghost" onClick={onMoveNew}><FolderPlus /> {t('sites.newFolder')}…</button>
+          </div>
+        </div>
+        <div className="row">
+          <button className="btn primary" onClick={onConnect}><Plug /> {t('sites.connectSelected', { n: sites.length })}</button>
+          <button className="btn danger" onClick={onDelete}><Trash2 /> {t('sites.deleteSelected', { n: sites.length })}</button>
+          <div className="spacer" />
+          <button className="btn ghost" onClick={onClear}>{t('sites.clearSelection')}</button>
+        </div>
+        <p className="hint">{t('sites.multiHint')}</p>
+      </div>
+    </div>
+  )
+}

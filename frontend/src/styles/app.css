@@ -749,3 +749,12 @@
 .usage-pct { text-align: right; font-variant-numeric: tabular-nums; font-size: var(--fs-xs); }
 .usage-actions { display: flex; gap: 2px; justify-content: flex-end; visibility: hidden; }
 .usage-row:hover .usage-actions { visibility: visible; }
+
+/* several sites selected */
+.sites-multi-bar { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--border); background: var(--accent-softer); font-size: var(--fs-sm); }
+.sites-multi { flex: 1; overflow: auto; padding: 28px 32px; display: flex; flex-direction: column; gap: 18px; }
+.sites-multi-head h2 { margin: 0 0 4px; font-size: 20px; }
+.sites-multi-head p { margin: 0; }
+.sites-multi-list { display: flex; flex-wrap: wrap; gap: 6px; max-height: 220px; overflow: auto; }
+.sites-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: var(--fs-sm); }
+.sites-chip .site-color { width: 4px; height: 14px; border-radius: 2px; }

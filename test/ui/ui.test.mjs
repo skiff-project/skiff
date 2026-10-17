@@ -405,6 +405,51 @@ step('sites : créer, dupliquer, supprimer', async () => {
   await until('deleted', async () => !(await rpc('sites.list')).sites.some((s) => s.name.endsWith('(copie)')))
 })
 
+step('sites : sélection multiple, déplacer, supprimer', async () => {
+  await rpc('folders.add', { name: 'Lot UI' })
+  await rpc('folders.add', { name: 'Rangés UI' })
+  for (const name of ['Lot A', 'Lot B', 'Lot C', 'Lot D']) {
+    await rpc('sites.save', { site: { name, protocol: 'sftp', host: '127.0.0.1', port: 2222, user: 'skiff', useAgent: false, resolveSymlinks: true, folder: 'Lot UI' }, secrets: {} })
+  }
+  const byName = async (n) => (await rpc('sites.list')).sites.find((x) => x.name === n)
+  try {
+    await page.locator('.tab.home').click()
+    const siteRow = (n) => page.locator('.sites-tree .tree-site', { has: page.locator('.site-name', { hasText: new RegExp(`^${n}$`) }) }).last()
+    await siteRow('Lot A').waitFor()
+    // a range with Shift+click, a site taken out with Ctrl+click
+    await siteRow('Lot A').click()
+    await siteRow('Lot C').click({ modifiers: ['Shift'] })
+    await page.locator('.sites-multi h2', { hasText: '3 sites sélectionnés' }).waitFor()
+    await siteRow('Lot B').click({ modifiers: ['Control'] })
+    await page.locator('.sites-multi h2', { hasText: '2 sites sélectionnés' }).waitFor()
+    assert.equal(await page.locator('.sites-multi .sites-chip').count(), 2)
+    // dragging one of them onto a folder moves them all
+    await siteRow('Lot A').dragTo(page.locator('.tree-folder', { hasText: 'Rangés UI' }))
+    await until('both moved', async () => (await byName('Lot A'))?.folder === 'Rangés UI' && (await byName('Lot C'))?.folder === 'Rangés UI' && (await byName('Lot B'))?.folder === 'Lot UI')
+    // the menu of the selection, then the panel deletes them
+    await siteRow('Lot C').click({ button: 'right' })
+    await page.locator('.menu-label', { hasText: '2 sites sélectionnés' }).waitFor()
+    await page.keyboard.press('Escape')
+    await page.locator('.sites-multi').getByRole('button', { name: 'Supprimer les 2' }).click()
+    await button(dialog(), 'Supprimer').click()
+    await until('both deleted', async () => !(await byName('Lot A')) && !(await byName('Lot C')))
+    await page.locator('.sites-multi').waitFor({ state: 'detached' })
+    // Ctrl+A selects the sites shown; Escape lets go
+    await page.locator('.sites-side input').fill('Lot')
+    await siteRow('Lot B').click()
+    await page.keyboard.press('Control+a')
+    await page.locator('.sites-multi h2', { hasText: '2 sites sélectionnés' }).waitFor()
+    await page.keyboard.press('Escape')
+    await page.locator('.sites-multi').waitFor({ state: 'detached' })
+    await page.locator('.sites-side input').fill('')
+  } finally {
+    const ids = (await rpc('sites.list')).sites.filter((x) => x.name.startsWith('Lot ')).map((x) => x.id)
+    if (ids.length) await rpc('sites.delete', { ids })
+    await rpc('folders.delete', { name: 'Lot UI', withSites: false }).catch(() => {})
+    await rpc('folders.delete', { name: 'Rangés UI', withSites: false }).catch(() => {})
+  }
+})
+
 step('site : choisir la clé privée parmi celles de ~/.ssh', async () => {
   rmSync(join(HOME, '.ssh', 'id_choisie_ui'), { force: true })
   rmSync(join(HOME, '.ssh', 'id_choisie_ui.pub'), { force: true })
