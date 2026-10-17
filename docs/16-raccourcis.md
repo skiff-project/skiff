@@ -118,8 +118,12 @@ Pendant un glisser-déposer : `Ctrl` (ou `Alt`) force la copie, `Maj` force le d
 | Touche | Action |
 |---|---|
 | `↑`, `↓` | Site ou commande précédent, suivant |
-| `Entrée` | Se connecter, exécuter la commande |
-| `Suppr` | Supprimer le site sélectionné |
+| `Entrée` | Se connecter (à tous les sites sélectionnés), exécuter la commande |
+| `Suppr` | Supprimer le site sélectionné, ou les sites sélectionnés |
+| `Ctrl+clic`, `Maj+clic` | Ajouter ou retirer un site de la sélection, sélectionner une plage |
+| `Maj+↑`, `Maj+↓` | Étendre la sélection |
+| `Ctrl+A` | Sélectionner tous les sites affichés |
+| `Échap` | Effacer la sélection |
 | `Ctrl+S` | Enregistrer le site en cours de modification |
 
 ---

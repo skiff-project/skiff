@@ -24,9 +24,23 @@ La barre latérale contient, de haut en bas :
 | Clic | Affiche le site dans le formulaire |
 | Double-clic, `Entrée` | Se connecte |
 | `↑` / `↓` | Passe au site précédent / suivant |
-| `Suppr` | Supprime le site (après confirmation) |
-| Glisser un site sur un dossier | Range le site dans ce dossier (sur la zone vide : le remet à la racine) |
-| Clic droit | Menu contextuel du site ou du dossier |
+| `Ctrl+clic`, `Maj+clic`, `Maj+↑` / `Maj+↓`, `Ctrl+A` | Sélectionne plusieurs sites (voir ci-dessous) |
+| `Suppr` | Supprime le site, ou les sites sélectionnés (après confirmation) |
+| Glisser un site sur un dossier | Range le site dans ce dossier (sur la zone vide : le remet à la racine) ; glisser un site sélectionné déplace toute la sélection |
+| Clic droit | Menu contextuel du site, de la sélection ou du dossier |
+
+### Sélectionner plusieurs sites
+
+Pour ranger, connecter ou supprimer beaucoup de sites d'un coup :
+
+- `Ctrl+clic` (`Cmd+clic` sur macOS) ajoute un site à la sélection, ou l'en retire ;
+- `Maj+clic` sélectionne tous les sites entre le dernier cliqué et celui-ci, dans l'ordre affiché ; `Maj+↑` / `Maj+↓` étend la sélection au clavier ;
+- `Ctrl+A` (dans la liste) sélectionne tous les sites affichés : combiné à la recherche, par exemple tous les sites dont le nom contient « prod » ;
+- `Échap` ou un clic simple sur un site efface la sélection.
+
+![Trois sites sélectionnés](images/sites-selection.png)
+
+À droite, la liste des sites choisis et leurs actions : **Déplacer vers le dossier** (un dossier existant, la racine, ou **Nouveau dossier…** créé et rempli d'un coup), **Connecter les N** (une session par site), **Supprimer les N** (une seule confirmation) et **Effacer la sélection**. Le clic droit sur un site sélectionné propose les mêmes actions, `Entrée` les connecte tous, `Suppr` les supprime, et glisser l'un d'eux sur un dossier les y range tous. Le bas de la liste rappelle le nombre de sites sélectionnés.
 
 ### Menu contextuel d'un site
 

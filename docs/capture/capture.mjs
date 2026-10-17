@@ -300,6 +300,16 @@ scene('sites-menus', async () => {
   await closeDialogs()
 })
 
+scene('sites-selection', async () => {
+  await sitesTab()
+  await (await site('FTP partenaire')).click()
+  await (await site('Serveur SCP')).click({ modifiers: ['Control'] })
+  await (await site('Site vitrine (SFTP)')).click({ modifiers: ['Control'] })
+  await page.locator('.sites-multi').waitFor()
+  await shot('sites-selection')
+  await page.keyboard.press('Escape')
+})
+
 scene('openssh', async () => {
   await sitesTab()
   const host = page.locator('[data-ssh-host="recette"]')
