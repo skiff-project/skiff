@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ChevronDown, ChevronRight, Clock, Copy, Download, Edit3, Folder, FolderOpen, FolderPlus, Import, KeyRound, Link2, Lock, MoreHorizontal,
-  Plug, Plus, Search, Server, SquareTerminal, Trash2, Upload, Zap, Code2, LayoutGrid, Save, FileCog, Box, CalendarClock, ServerCog,
+  Plug, Plus, Search, Server, SquareTerminal, Trash2, Upload, Zap, Code2, LayoutGrid, Save, FileCog, Box, CalendarClock, ServerCog, Repeat2,
 } from 'lucide-react'
 import { get, useStore } from '../../lib/store'
 import { openTasks, connectSite, connectSshHost, connectUrl, openTerminal, reloadSites, reloadSshConfig, saveWorkspace, openWorkspace, deleteWorkspace } from '../../lib/actions'
@@ -18,6 +18,7 @@ import { ask, prompt } from '../dialogs/common'
 import { openImportDialog, openExportDialog } from '../dialogs/ImportDialog'
 import { openInstallKey, openKeygen } from '../dialogs/KeygenDialog'
 import { unlockDialog } from '../dialogs/MasterPassword'
+import { openKeyRollout } from '../keys/KeyRolloutDialog'
 import { copyToClipboard } from '../../lib/fileops'
 import { errorToast } from '../../lib/store'
 
@@ -188,6 +189,7 @@ export function SitesView() {
     const items: MenuItem[] = [
       { label: t('common.connect'), icon: <Plug />, shortcut: 'Enter', onClick: () => connectSite(s.id) },
       { label: t('sites.openTerminal'), icon: <SquareTerminal />, hidden: !(s.protocol === 'sftp' || s.protocol === 'scp'), onClick: () => connectAndTerminal(s.id) },
+      { label: t('roll.menu') + '…', icon: <KeyRound />, hidden: !(s.protocol === 'sftp' || s.protocol === 'scp'), onClick: () => openKeyRollout({ siteIds: [s.id] }) },
       { separator: true },
       { label: t('common.edit'), icon: <Edit3 />, onClick: () => { setDraft(null); setSel(s.id) } },
       { label: t('common.duplicate'), icon: <Copy />, onClick: async () => { const d = await call<SiteView>('sites.duplicate', { id: s.id, name: t('sites.copyName', { name: s.name || s.host }) }); await reloadSites(); setSel(d.id) } },
@@ -210,11 +212,16 @@ export function SitesView() {
     else showMenu(e.clientX, e.clientY, items)
   }
 
+  // the SSH sites among ids (the ones a key can be installed on)
+  const sshCount = (ids: string[]) => ids.filter((id) => { const p = sites.find((x) => x.id === id)?.protocol; return p === 'sftp' || p === 'scp' }).length
+
   /** The menu of several selected sites. */
   const selectionMenu = (e: React.MouseEvent | HTMLElement) => {
     const items: MenuItem[] = [
       { header: t('sites.selected', { n: multi.length }) },
       { label: t('sites.connectSelected', { n: multi.length }), icon: <Plug />, shortcut: 'Enter', onClick: () => multi.forEach((id) => connectSite(id)) },
+      { label: t('roll.menuMany', { n: sshCount(multi) }) + '…', icon: <KeyRound />, hidden: !sshCount(multi), onClick: () => openKeyRollout({ siteIds: multi }) },
+      { label: t('roll.menuReplaceMany', { n: sshCount(multi) }) + '…', icon: <Repeat2 />, hidden: !sshCount(multi), onClick: () => openKeyRollout({ siteIds: multi, replace: true }) },
       {
         label: t('sites.moveToFolder'), icon: <Folder />, submenu: [
           { label: t('sites.rootFolder'), onClick: () => moveSites(multi, '') },
@@ -623,6 +630,7 @@ void errorToast
 function MultiPanel({ sites, folders, onConnect, onMove, onMoveNew, onDelete, onClear }: {
   sites: SiteView[]; folders: string[]; onConnect: () => void; onMove: (folder: string) => void; onMoveNew: () => void; onDelete: () => void; onClear: () => void
 }) {
+  const ssh = sites.filter((s) => s.protocol === 'sftp' || s.protocol === 'scp')
   const [folder, setFolder] = useState('')
   const where = new Set(sites.map((s) => s.folder || ''))
   return (
@@ -651,6 +659,15 @@ function MultiPanel({ sites, folders, onConnect, onMove, onMoveNew, onDelete, on
             <button className="btn ghost" onClick={onMoveNew}><FolderPlus /> {t('sites.newFolder')}…</button>
           </div>
         </div>
+        {ssh.length > 0 && (
+          <div className="field">
+            <label>{t('roll.keysOf', { n: ssh.length })}</label>
+            <div className="row">
+              <button className="btn" onClick={() => openKeyRollout({ siteIds: ssh.map((s) => s.id) })}><KeyRound /> {t('roll.modeInstall')}…</button>
+              <button className="btn" onClick={() => openKeyRollout({ siteIds: ssh.map((s) => s.id), replace: true })}><Repeat2 /> {t('roll.modeReplace')}…</button>
+            </div>
+          </div>
+        )}
         <div className="row">
           <button className="btn primary" onClick={onConnect}><Plug /> {t('sites.connectSelected', { n: sites.length })}</button>
           <button className="btn danger" onClick={onDelete}><Trash2 /> {t('sites.deleteSelected', { n: sites.length })}</button>

@@ -20,6 +20,10 @@ type Options struct {
 	WaitIdle func()
 	Icon     []byte
 	DataDir  string
+	// OnURL receives the session URLs the system opens with Skiff while it
+	// runs (macOS sends them to the application instead of starting it
+	// again with the URL).
+	OnURL func(url string)
 }
 
 // The clipboard of the system, through the native window: a webview may

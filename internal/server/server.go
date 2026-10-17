@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/hex"
+	"io"
 	"io/fs"
 	"net"
 	"net/http"
@@ -21,7 +22,9 @@ import (
 
 	"skiff/internal/core"
 	"skiff/internal/devsync"
+	"skiff/internal/instance"
 	"skiff/internal/tasks"
+	"skiff/internal/urlhandler"
 )
 
 type Mode string
@@ -44,6 +47,13 @@ type Options struct {
 	// AllowLocalTerminal in web mode.
 	AllowLocalTerminal bool
 	Logf               func(string, ...any)
+	// HandoffKey lets a second start of the desktop window give it a
+	// session URL (see internal/instance); Raise brings the window to the
+	// front then.
+	HandoffKey string
+	Raise      func()
+	// Icon of the application, for the menu entry the links may need
+	Icon []byte
 }
 
 type Server struct {
@@ -58,25 +68,105 @@ type Server struct {
 	port     int
 	pending  sync.Map // connection attempts: token -> cancel
 	startup  string   // session URL passed on the command line
+	link     bool     // ... by a link clicked elsewhere
+	opens    []instance.Request
 	tasks    *tasks.Scheduler
 	devsync  *devsync.Syncer
 	// changed tells the sync between devices that the settings changed
 	changed func()
 }
 
-// SetStartupURL makes the UI connect to url once it is loaded.
-func (s *Server) SetStartupURL(u string) {
+// SetStartupURL makes the UI connect to url once it is loaded; link: the
+// URL comes from a link clicked elsewhere, the UI asks first.
+func (s *Server) SetStartupURL(u string, link bool) {
 	s.mu.Lock()
-	s.startup = u
+	s.startup, s.link = u, link
 	s.mu.Unlock()
 }
 
-func (s *Server) takeStartupURL() string {
+func (s *Server) takeStartupURL() (string, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	u := s.startup
-	s.startup = ""
-	return u
+	u, link := s.startup, s.link
+	s.startup, s.link = "", false
+	return u, link
+}
+
+// Open gives the UI a session URL to open (from a second start of Skiff or
+// from the system), and brings the window to the front.
+func (s *Server) Open(req instance.Request) {
+	if req.Link && !linkScheme(req.URL) {
+		// a link opens the schemes Skiff registers, nothing else (not a
+		// container of this computer, for one)
+		if s.opts.Logf != nil {
+			s.opts.Logf("link refused: %.80s", req.URL)
+		}
+		req.URL = ""
+	}
+	if req.URL != "" {
+		s.mu.Lock()
+		if len(s.opens) < 20 {
+			s.opens = append(s.opens, req)
+		}
+		s.mu.Unlock()
+		s.core.Bus.Publish("app.open", map[string]any{})
+	}
+	if s.opts.Raise != nil {
+		s.opts.Raise()
+	}
+}
+
+func linkScheme(u string) bool {
+	scheme, _, ok := strings.Cut(u, "://")
+	if !ok {
+		return false
+	}
+	for _, x := range urlhandler.Schemes {
+		if strings.EqualFold(scheme, x) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Server) takeOpens() []instance.Request {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	o := s.opens
+	s.opens = nil
+	if o == nil {
+		o = []instance.Request{}
+	}
+	return o
+}
+
+// handleHandoff takes the request of a second start: only with the key of
+// instance.json, and never from a web page (which sends an Origin).
+func (s *Server) handleHandoff(w http.ResponseWriter, r *http.Request) {
+	if s.opts.Mode != Desktop || s.opts.HandoffKey == "" {
+		http.NotFound(w, r)
+		return
+	}
+	if r.Method != http.MethodPost || r.Header.Get("Origin") != "" {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	body, err := io.ReadAll(io.LimitReader(r.Body, 64<<10))
+	if err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	req, ok := instance.Check(s.opts.HandoffKey, body)
+	if !ok {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	if req.URL != "" && (len(req.URL) > 8192 || !strings.Contains(req.URL, "://")) {
+		http.Error(w, "not a session URL", http.StatusBadRequest)
+		return
+	}
+	s.Open(req)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func New(c *core.Core, opts Options) *Server {
@@ -218,6 +308,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "invalid token", http.StatusForbidden)
 			return
 		}
+	}
+	if r.URL.Path == "/handoff" {
+		s.handleHandoff(w, r)
+		return
 	}
 	if strings.HasPrefix(r.URL.Path, "/api/") && !strings.HasPrefix(r.URL.Path, "/api/auth/") {
 		if !s.authenticated(r) {

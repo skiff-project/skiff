@@ -3,7 +3,8 @@
 ;            -DEXE=/abs/skiff.exe -DOUTFILE=/abs/skiff-setup.exe installer.nsi
 ; It installs Skiff for the current user, without administrator rights, in
 ; %LOCALAPPDATA%\Programs\Skiff (as VS Code or GitHub Desktop do), with a
-; Start menu shortcut and an entry in Settings > Apps to uninstall it.
+; Start menu shortcut, an entry in Settings > Apps to uninstall it, and
+; (optional, checked) the sftp://, scp://, ftp://… links opened by Skiff.
 
 Unicode true
 ManifestDPIAware true
@@ -43,6 +44,8 @@ BrandingText "Skiff ${VERSION}"
 
 LangString SecDesktop ${LANG_ENGLISH} "Desktop shortcut"
 LangString SecDesktop ${LANG_FRENCH} "Raccourci sur le bureau"
+LangString SecLinks ${LANG_ENGLISH} "Open sftp://, scp://, ftp://… links with Skiff"
+LangString SecLinks ${LANG_FRENCH} "Ouvrir les liens sftp://, scp://, ftp://… avec Skiff"
 LangString Need64 ${LANG_ENGLISH} "Skiff needs a 64-bit Windows."
 LangString Need64 ${LANG_FRENCH} "Skiff a besoin d'un Windows 64 bits."
 LangString NeedArm ${LANG_ENGLISH} "This installer is for Windows on ARM. Download the x64 one (windows-amd64)."
@@ -104,7 +107,18 @@ Section /o "$(SecDesktop)" SecDesktop
   CreateShortcut "$DESKTOP\Skiff.lnk" "$INSTDIR\skiff.exe"
 SectionEnd
 
+; Skiff registers the links itself (the same as Preferences > System)
+Section "$(SecLinks)" SecLinks
+  nsExec::Exec '"$INSTDIR\skiff.exe" url-handler -register'
+  Pop $0
+SectionEnd
+
 Section "Uninstall"
+  ; the links go back to the other applications (before the program goes)
+  ${If} ${FileExists} "$INSTDIR\skiff.exe"
+    nsExec::Exec '"$INSTDIR\skiff.exe" url-handler -remove'
+    Pop $0
+  ${EndIf}
   retry:
   ClearErrors
   Delete "$INSTDIR\skiff.exe"

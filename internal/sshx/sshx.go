@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -51,6 +52,9 @@ type Target struct {
 	HostKeyPolicy  Policy   `json:"-"`
 	// ForwardAgent gives the server access to the keychain and agent keys.
 	ForwardAgent bool `json:"-"`
+	// OnlyKey offers the key of this SHA256 fingerprint only (the check of
+	// a new key): from the keychain, the agent or KeyFiles.
+	OnlyKey string `json:"-"`
 }
 
 func (t Target) Addr() string {
@@ -116,8 +120,12 @@ type Info struct {
 	MACCS             string
 	MACSC             string
 	AuthMethod        string
-	RemoteAddr        string
-	Jumps             int
+	// AuthKey: the SHA256 fingerprint of the key that authenticated (of
+	// the key of the certificate when AuthCert), "" for a password
+	AuthKey    string
+	AuthCert   bool
+	RemoteAddr string
+	Jumps      int
 }
 
 // Conn wraps a client together with the jump clients it depends on.
@@ -279,7 +287,24 @@ func (c *Conn) keepalive(every time.Duration, count int, logf func(string, ...an
 func handshake(ctx context.Context, nc net.Conn, t Target, opts *Options, logf func(string, ...any)) (*ssh.Client, Info, error) {
 	var info Info
 	var mu sync.Mutex
-	setAuth := func(m string) { mu.Lock(); info.AuthMethod = m; mu.Unlock() }
+	setAuth := func(m string) {
+		mu.Lock()
+		info.AuthMethod = m
+		if m != "publickey" {
+			info.AuthKey, info.AuthCert = "", false
+		}
+		mu.Unlock()
+	}
+	// the server asks for a signature only with a key it accepts
+	signed := func(pk ssh.PublicKey) {
+		mu.Lock()
+		info.AuthCert = false
+		if c, ok := pk.(*ssh.Certificate); ok {
+			pk, info.AuthCert = c.Key, true
+		}
+		info.AuthKey = ssh.FingerprintSHA256(pk)
+		mu.Unlock()
+	}
 
 	cfg := &ssh.ClientConfig{
 		User:          t.User,
@@ -339,9 +364,13 @@ func handshake(ctx context.Context, nc net.Conn, t Target, opts *Options, logf f
 		return nil, info, err
 	}
 	if len(signers) > 0 {
+		recorded := make([]ssh.Signer, len(signers))
+		for i, sg := range signers {
+			recorded[i] = recordSigner(sg, signed)
+		}
 		auth["publickey"] = ssh.PublicKeysCallback(func() ([]ssh.Signer, error) {
 			setAuth("publickey")
-			return signers, nil
+			return recorded, nil
 		})
 	}
 
@@ -600,8 +629,68 @@ func publicKeys(ctx context.Context, t Target, keychain []ssh.Signer, pr prompt.
 			}
 		}
 	}
-	return append(certs, signers...), nil
+	out := append(certs, signers...)
+	if t.OnlyKey != "" {
+		// a check of one key: that one, without its certificates
+		var kept []ssh.Signer
+		for _, s := range out {
+			if _, cert := s.PublicKey().(*ssh.Certificate); !cert && ssh.FingerprintSHA256(s.PublicKey()) == t.OnlyKey {
+				kept = append(kept, s)
+				break
+			}
+		}
+		if len(kept) == 0 {
+			return nil, ErrKeyUnavailable
+		}
+		out = kept
+	}
+	return out, nil
 }
+
+// ErrKeyUnavailable: the private key asked for (Target.OnlyKey) is neither
+// in the Skiff keychain, nor in the SSH agent, nor in the key files given.
+var ErrKeyUnavailable = errors.New("the private key is not available here (Skiff keychain, SSH agent or key file)")
+
+// recordSigner tells signed which key the server accepted (it has a key
+// sign only after accepting it), keeping what the signer can do: the
+// RSA SHA-2 signatures need the algorithm interfaces.
+func recordSigner(s ssh.Signer, signed func(ssh.PublicKey)) ssh.Signer {
+	base := recSigner{s, signed}
+	if m, ok := s.(ssh.MultiAlgorithmSigner); ok {
+		return recMultiSigner{recAlgSigner{base, m}, m}
+	}
+	if a, ok := s.(ssh.AlgorithmSigner); ok {
+		return recAlgSigner{base, a}
+	}
+	return base
+}
+
+type recSigner struct {
+	ssh.Signer
+	signed func(ssh.PublicKey)
+}
+
+func (r recSigner) Sign(rand io.Reader, data []byte) (*ssh.Signature, error) {
+	r.signed(r.PublicKey())
+	return r.Signer.Sign(rand, data)
+}
+
+type recAlgSigner struct {
+	recSigner
+	alg ssh.AlgorithmSigner
+}
+
+func (r recAlgSigner) SignWithAlgorithm(rand io.Reader, data []byte, algorithm string) (*ssh.Signature, error) {
+	r.signed(r.PublicKey())
+	return r.alg.SignWithAlgorithm(rand, data, algorithm)
+}
+
+type recMultiSigner struct {
+	recAlgSigner
+	multi ssh.MultiAlgorithmSigner
+}
+
+func (r recMultiSigner) Algorithms() []string { return r.multi.Algorithms() }
 
 func readPublicKey(path string) ssh.PublicKey {
 	data, err := os.ReadFile(path)

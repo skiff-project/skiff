@@ -22,7 +22,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -33,7 +32,6 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	"skiff/internal/core"
-	"skiff/internal/vfs"
 )
 
 type GenerateRequest struct {
@@ -413,52 +411,12 @@ func Install(ctx context.Context, c *core.Core, conn, publicKey string) (string,
 	if _, _, _, _, err := ssh.ParseAuthorizedKey([]byte(publicKey)); err != nil {
 		return "", fmt.Errorf("invalid public key: %w", err)
 	}
-	f, err := c.FSFor(ctx, conn)
+	a, err := openAuthorized(ctx, c, conn)
 	if err != nil {
 		return "", err
 	}
-	home, err := f.Home(ctx)
-	if err != nil {
+	if _, err := a.add(ctx, publicKey); err != nil {
 		return "", err
 	}
-	dir := vfs.Join("posix", home, ".ssh")
-	ak := vfs.Join("posix", dir, "authorized_keys")
-	if _, err := f.Stat(ctx, dir); err != nil {
-		if err := f.Mkdir(ctx, dir); err != nil {
-			return "", err
-		}
-		f.Chmod(ctx, dir, 0o700)
-	}
-	var existing []byte
-	if r, err := f.Open(ctx, ak, 0); err == nil {
-		existing, _ = io.ReadAll(io.LimitReader(r, 4<<20))
-		r.Close()
-	}
-	fields := strings.Fields(publicKey)
-	for _, ln := range strings.Split(string(existing), "\n") {
-		lf := strings.Fields(ln)
-		for i := 0; i+1 < len(lf); i++ {
-			if len(fields) > 1 && lf[i] == fields[0] && lf[i+1] == fields[1] {
-				return ak, nil // already installed
-			}
-		}
-	}
-	content := string(existing)
-	if content != "" && !strings.HasSuffix(content, "\n") {
-		content += "\n"
-	}
-	content += publicKey + "\n"
-	w, err := f.Create(ctx, ak, vfs.CreateOpts{Size: int64(len(content))})
-	if err != nil {
-		return "", err
-	}
-	if _, err := w.Write([]byte(content)); err != nil {
-		w.Close()
-		return "", err
-	}
-	if err := w.Close(); err != nil {
-		return "", err
-	}
-	f.Chmod(ctx, ak, 0o600)
-	return ak, nil
+	return a.ak, nil
 }

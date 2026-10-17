@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   ArrowDownUp, Check, CheckSquare, Code2, FileCog, Fingerprint, Info, KeyRound, Keyboard, LayoutPanelLeft, ListOrdered, Palette, Plus, ScrollText,
-  Lock, Settings, Shield, SquareTerminal, Trash2, Wand2, KeySquare, Copy, Pencil, Laptop, RefreshCw, ServerCog,
+  Lock, Settings, Shield, SquareTerminal, Trash2, Wand2, KeySquare, Copy, Pencil, Laptop, RefreshCw, ServerCog, MonitorCog, Link2, ExternalLink,
 } from 'lucide-react'
 import { Dialog } from '../ui/Dialog'
 import { openDialog } from '../../lib/dialogs'
@@ -26,7 +26,7 @@ export function openPreferences(section?: string) {
 
 const ACCENTS = ['#4f7cff', '#7c5cff', '#d946ef', '#ec4899', '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#64748b']
 
-type Sec = 'appearance' | 'panels' | 'transfer' | 'queue' | 'editor' | 'terminal' | 'ssh' | 'devices' | 'confirm' | 'security' | 'commands' | 'logging' | 'shortcuts' | 'about'
+type Sec = 'appearance' | 'panels' | 'transfer' | 'queue' | 'editor' | 'terminal' | 'ssh' | 'devices' | 'confirm' | 'security' | 'commands' | 'logging' | 'shortcuts' | 'system' | 'about'
 
 function Preferences({ close, initial }: { close: () => void; initial?: string }) {
   const prefs = useStore((s) => s.prefs)!
@@ -48,6 +48,7 @@ function Preferences({ close, initial }: { close: () => void; initial?: string }
     { id: 'commands', label: t('prefs.commands'), icon: Wand2 },
     { id: 'logging', label: t('prefs.logging'), icon: ScrollText },
     { id: 'shortcuts', label: t('prefs.shortcuts'), icon: Keyboard },
+    ...(info.mode === 'web' ? [] : [{ id: 'system' as Sec, label: t('prefs.system'), icon: MonitorCog }]),
     { id: 'about', label: t('about.title'), icon: Info },
   ]
   return (
@@ -281,6 +282,7 @@ function Preferences({ close, initial }: { close: () => void; initial?: string }
           )}
 
           {sec === 'shortcuts' && <Shortcuts />}
+          {sec === 'system' && <SystemSection />}
 
           {sec === 'about' && (
             <div className="about">
@@ -299,6 +301,70 @@ function Preferences({ close, initial }: { close: () => void; initial?: string }
         </div>
       </div>
     </Dialog>
+  )
+}
+
+interface LinkStatus {
+  supported: boolean
+  canRemove: boolean
+  settings: boolean
+  schemes: { scheme: string; skiff: boolean; handler?: string }[]
+}
+
+/** The links of the system (sftp://, ftp://…) that Skiff opens. */
+function SystemSection() {
+  const [st, setSt] = useState<LinkStatus | null>(null)
+  const [busy, setBusy] = useState(false)
+  const load = () => call<LinkStatus>('app.urlHandlers').then(setSt).catch(() => setSt({ supported: false, canRemove: false, settings: false, schemes: [] }))
+  useEffect(() => { load() }, [])
+  const change = async (enable: boolean) => {
+    setBusy(true)
+    try {
+      const after = await call<LinkStatus>('app.setUrlHandlers', { enable })
+      setSt(after)
+      const all = after.schemes.every((x) => x.skiff)
+      toast('ok', enable ? (all ? t('links.done') : t('links.partly')) : t('links.removed'))
+    } catch (e) {
+      errorToast(t('links.title'), e)
+      load()
+    } finally {
+      setBusy(false)
+    }
+  }
+  const all = !!st?.schemes.length && st.schemes.every((x) => x.skiff)
+  const some = !!st?.schemes.some((x) => x.skiff)
+  return (
+    <div className="form">
+      <div className="form-section">
+        <h4>{t('links.title')}</h4>
+        <p className="muted" style={{ margin: 0 }}>{t('links.desc')}</p>
+        {st === null ? <span className="spinner" /> : !st.supported ? (
+          <div className="alert warn"><Link2 /><span>{t('links.unsupported')}</span></div>
+        ) : (
+          <>
+            <table className="table links-table">
+              <thead><tr><th>{t('links.scheme')}</th><th>{t('links.handler')}</th></tr></thead>
+              <tbody>
+                {st.schemes.map((x) => (
+                  <tr key={x.scheme} data-scheme={x.scheme}>
+                    <td className="mono">{x.scheme}://</td>
+                    <td>{x.skiff ? <span className="badge ok"><Check /> Skiff</span> : x.handler ? x.handler : <span className="faint">{t('links.none')}</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="row" style={{ flexWrap: 'wrap' }}>
+              {!all && <button className="btn primary" disabled={busy} onClick={() => change(true)}>{busy ? <span className="spinner sm" /> : <Link2 />} {t('links.enable')}</button>}
+              {some && st.canRemove && <button className="btn" disabled={busy} onClick={() => change(false)}>{t('links.disable')}</button>}
+              {st.settings && <button className="btn" onClick={() => call('app.openDefaultApps').catch((e) => errorToast(t('links.settings'), e))}><ExternalLink /> {t('links.settings')}</button>}
+            </div>
+            {st.settings && <span className="hint">{t('links.settingsHint')}</span>}
+            {!st.canRemove && <span className="hint">{t('links.macHint')}</span>}
+            <span className="hint">{t('links.ask')}</span>
+          </>
+        )}
+      </div>
+    </div>
   )
 }
 

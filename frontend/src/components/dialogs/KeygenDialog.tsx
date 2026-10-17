@@ -6,10 +6,11 @@ import { openDialog } from '../../lib/dialogs'
 import { call } from '../../lib/api'
 import { errorToast, toast, useStore } from '../../lib/store'
 import { t } from '../../lib/i18n'
-import type { GeneratedKey, KeychainKey, KeyFile } from '../../lib/types'
+import type { GeneratedKey, KeyFile } from '../../lib/types'
 import { copyToClipboard } from '../../lib/fileops'
 import { displayPath } from '../../lib/actions'
 import { PasswordMeter } from './MasterPassword'
+import { KeyPicker, pickedKey, sameKey, useKeyChoices } from '../keys/KeyPicker'
 
 /** Resolves with the path of the saved private key, if one was generated. */
 export function openKeygen() {
@@ -170,8 +171,6 @@ function ConvertKey({ k, close }: { k: KeyFile; close: () => void }) {
 }
 
 /** A public key the install dialog can offer. */
-interface PublicChoice { id: string; label: string; group: string; publicKey: string }
-
 // openInstallKey installs an existing public key (Skiff keychain, ~/.ssh or
 // pasted) in ~/.ssh/authorized_keys of a connected SFTP or SCP server, like
 // ssh-copy-id. publicKey preselects a key, conn a server.
@@ -179,34 +178,19 @@ export function openInstallKey(opts: { publicKey?: string; conn?: string } = {})
   return openDialog((close) => <InstallKey {...opts} close={close} />)
 }
 
-const sameKey = (a: string, b: string) => a.split(/\s+/).slice(0, 2).join(' ') === b.split(/\s+/).slice(0, 2).join(' ')
-
 function InstallKey({ publicKey, conn, close }: { publicKey?: string; conn?: string; close: () => void }) {
   const conns = useStore(useShallow((s) => Object.values(s.conns).filter((c) => (c.protocol === 'sftp' || c.protocol === 'scp') && c.state === 'connected')))
-  const [choices, setChoices] = useState<PublicChoice[] | null>(null)
-  const [hidden, setHidden] = useState(0) // key files whose public key is unknown
+  const { choices, hidden } = useKeyChoices()
   const [choice, setChoice] = useState('')
   const [pasted, setPasted] = useState('')
   const [target, setTarget] = useState(conn && conns.some((c) => c.id === conn) ? conn : conns[0]?.id || '')
   const [busy, setBusy] = useState(false)
   useEffect(() => {
-    Promise.all([
-      call<{ keys: KeychainKey[] }>('keychain.list').then((r) => r.keys).catch(() => [] as KeychainKey[]),
-      call<KeyFile[]>('keys.list').catch(() => [] as KeyFile[]),
-    ]).then(([chain, files]) => {
-      const list: PublicChoice[] = chain.map((k) => ({ id: 'chain:' + k.id, label: `${k.name} · ${k.type}`, group: t('keychain.title'), publicKey: k.publicKey }))
-      for (const f of files) {
-        // a key of ~/.ssh that is also in the keychain is offered once
-        if (!f.publicKey || list.some((c) => sameKey(c.publicKey, f.publicKey!))) continue
-        list.push({ id: 'file:' + f.path, label: `${displayPath('local', f.path)} · ${f.type}`, group: '~/.ssh', publicKey: f.publicKey })
-      }
-      setHidden(files.filter((f) => !f.publicKey).length)
-      setChoices(list)
-      const pre = publicKey ? list.find((c) => sameKey(c.publicKey, publicKey)) : undefined
-      setChoice(pre?.id || list[0]?.id || 'paste')
-    })
-  }, [])
-  const key = choice === 'paste' ? pasted.trim() : choices?.find((c) => c.id === choice)?.publicKey || ''
+    if (!choices || choice) return
+    const pre = publicKey ? choices.find((c) => sameKey(c.publicKey, publicKey)) : undefined
+    setChoice(pre?.id || choices[0]?.id || 'paste')
+  }, [choices])
+  const key = pickedKey(choices, choice, pasted)
   const install = async () => {
     if (!key || !target) return
     setBusy(true)
@@ -219,7 +203,6 @@ function InstallKey({ publicKey, conn, close }: { publicKey?: string; conn?: str
       setBusy(false)
     }
   }
-  const groups = [...new Set((choices || []).map((c) => c.group))]
   return (
     <Dialog
       size="lg"
@@ -231,32 +214,7 @@ function InstallKey({ publicKey, conn, close }: { publicKey?: string; conn?: str
     >
       <div className="form">
         <p className="muted" style={{ margin: 0 }}>{t('keys.installDesc')}</p>
-        <div className="field">
-          <label>{t('keys.key')}</label>
-          {choices === null ? <span className="spinner" /> : (
-            <select className="select" value={choice} onChange={(e) => setChoice(e.target.value)} data-autofocus>
-              {groups.map((g) => (
-                <optgroup key={g} label={g}>
-                  {choices.filter((c) => c.group === g).map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
-                </optgroup>
-              ))}
-              <option value="paste">{t('keys.paste')}</option>
-            </select>
-          )}
-          {hidden > 0 && <span className="hint">{t('keys.noPublic', { n: hidden })}</span>}
-        </div>
-        {choice === 'paste' ? (
-          <div className="field">
-            <label>{t('keygen.public')}</label>
-            <textarea className="input mono" rows={4} value={pasted} placeholder="ssh-ed25519 AAAA… moi@pc" onChange={(e) => setPasted(e.target.value)} />
-          </div>
-        ) : key && (
-          <div className="field">
-            <label>{t('keygen.public')}</label>
-            <div className="code-block" style={{ cursor: 'copy' }} onClick={() => copyToClipboard(key)}>{key}</div>
-            <div><button className="btn sm" onClick={() => copyToClipboard(key)}><Copy /> {t('common.copy')}</button></div>
-          </div>
-        )}
+        <KeyPicker label={t('keys.key')} choices={choices} hidden={hidden} value={choice} onChange={setChoice} pasted={pasted} onPaste={setPasted} autoFocus />
         <div className="field">
           <label>{t('keys.server')}</label>
           {conns.length ? (

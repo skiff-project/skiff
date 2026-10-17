@@ -1,6 +1,6 @@
 import {
   ArrowLeftRight, Columns2, Eye, EyeOff, FileSearch, GitCompareArrows, Info, Link2, Network, PanelRight, Power, RefreshCcwDot,
-  ScrollText, SquareTerminal, TerminalSquare, Zap, FolderTree, Activity, Box, ChevronDown, FolderCode, Cog, EthernetPort,
+  ScrollText, SquareTerminal, TerminalSquare, Zap, FolderTree, Activity, Box, ChevronDown, FolderCode, Cog, EthernetPort, KeySquare,
 } from 'lucide-react'
 import { get, set, useStore, type SessionTab } from '../lib/store'
 import { closeTab, editNewSite, openMonitor, openProject, savePrefs, setBottom, toggleSyncBrowsing, updateLayout } from '../lib/actions'
@@ -16,6 +16,7 @@ import { openFindDialog } from './dialogs/FindDialog'
 import { openWatchDialog } from './dialogs/WatchDialog'
 import { openTunnelDialog } from './dialogs/TunnelDialog'
 import { openServerInfo } from './dialogs/ServerInfo'
+import { openAuthorizedKeys } from './keys/AuthorizedKeysDialog'
 
 export function SessionToolbar({ tab }: { tab: SessionTab }) {
   const conn = useStore((s) => s.conns[tab.conn])
@@ -77,6 +78,9 @@ export function SessionToolbar({ tab }: { tab: SessionTab }) {
       </button>
       <button className="tb-btn icon-only" disabled={!caps?.tunnels} onClick={() => openContainers({ via: tab.conn, onNewSite: (st) => editNewSite({ ...st, viaConn: undefined, viaSite: get().conns[tab.conn]?.siteId }) })} data-tip={t('ctr.ofServer')}>
         <Box />
+      </button>
+      <button className="tb-btn icon-only" disabled={conn?.protocol !== 'sftp' && conn?.protocol !== 'scp'} onClick={() => openAuthorizedKeys(tab.conn)} data-tip={t('ak.open')}>
+        <KeySquare />
       </button>
       <div className="spacer" />
       <button className={`tb-btn icon-only${showHidden ? ' on' : ''}`} onClick={() => savePrefs({ showHidden: !get().prefs?.showHidden })} data-tip={t('toolbar.hidden')} data-kbd="Ctrl+Alt+H">

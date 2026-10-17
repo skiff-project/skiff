@@ -11,9 +11,11 @@ package main
 
 import (
 	"skiff/internal/config"
+	"skiff/internal/instance"
 	"skiff/internal/tasks"
 
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -587,5 +589,130 @@ func TestCLIStartupURL(t *testing.T) {
 	resp.Body.Close()
 	if r.Result["startupUrl"] != "sftp://skiff@127.0.0.1:2222/config" || r.Result["mode"] != "desktop" {
 		t.Errorf("app.info = %v", r.Result)
+	}
+}
+
+// startWindow starts the window of Skiff without its webview (the local
+// server only) and returns a client logged in to it.
+func (c *cli) startWindow(t *testing.T, port int, token string) (*exec.Cmd, *http.Client, string) {
+	t.Helper()
+	cmd := exec.Command(skiffBin)
+	cmd.Env = append(c.env, "SKIFF_NO_WINDOW=1", fmt.Sprintf("SKIFF_PORT=%d", port), "SKIFF_DEV_TOKEN="+token)
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	base := fmt.Sprintf("http://127.0.0.1:%d", port)
+	jar, _ := cookiejar.New(nil)
+	client := &http.Client{Jar: jar, Timeout: 10 * time.Second}
+	for i := 0; ; i++ {
+		if resp, err := client.Get(base + "/?token=" + token); err == nil {
+			resp.Body.Close()
+			break
+		}
+		if i == 100 {
+			cmd.Process.Kill()
+			t.Fatal("the window did not start")
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return cmd, client, base
+}
+
+func rpcResult(t *testing.T, client *http.Client, base, method string, out any) {
+	t.Helper()
+	req, _ := http.NewRequest("POST", base+"/api/rpc/"+method, strings.NewReader("{}"))
+	req.Header.Set("X-Skiff", "1")
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var r struct {
+		Result json.RawMessage `json:"result"`
+	}
+	json.NewDecoder(resp.Body).Decode(&r)
+	if err := json.Unmarshal(r.Result, out); err != nil {
+		t.Fatalf("%s: %v", method, err)
+	}
+}
+
+// TestCLISecondStart: a second start of the window on the same
+// configuration folder (a link clicked in a browser) hands its URL to the
+// running one and ends; after a crash, the stale file does not stop the
+// next start.
+func TestCLISecondStart(t *testing.T) {
+	c := newCLI(t)
+	cfg := filepath.Join(c.home, "config")
+	first, client, base := c.startWindow(t, freeTCPPort(t), "tok")
+	defer func() { first.Process.Kill(); first.Wait() }()
+	eventually := func(what string, cond func() bool) {
+		t.Helper()
+		for i := 0; i < 100 && !cond(); i++ {
+			time.Sleep(100 * time.Millisecond)
+		}
+		if !cond() {
+			t.Fatal(what)
+		}
+	}
+	eventually("instance.json written", func() bool {
+		_, err := os.Stat(filepath.Join(cfg, instance.FileName))
+		return err == nil
+	})
+	if st, _ := os.Stat(filepath.Join(cfg, instance.FileName)); st.Mode().Perm() != 0o600 {
+		t.Errorf("instance.json mode %v", st.Mode().Perm())
+	}
+	second := func(args ...string) (string, error) {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, skiffBin, args...)
+		// a window of its own would listen there: it must not get that far
+		cmd.Env = append(c.env, "SKIFF_NO_WINDOW=1", fmt.Sprintf("SKIFF_PORT=%d", freeTCPPort(t)))
+		out, err := cmd.CombinedOutput()
+		return string(out), err
+	}
+	start := time.Now()
+	if out, err := second("--link", "sftp://skiff@127.0.0.1:2222/config"); err != nil || strings.Contains(out, "Skiff UI") {
+		t.Fatalf("second start: %v %s", err, out)
+	}
+	if d := time.Since(start); d > 10*time.Second {
+		t.Errorf("second start took %v", d)
+	}
+	var opens []instance.Request
+	rpcResult(t, client, base, "app.takeOpens", &opens)
+	if len(opens) != 1 || opens[0].URL != "sftp://skiff@127.0.0.1:2222/config" || !opens[0].Link {
+		t.Errorf("opens: %+v", opens)
+	}
+	// without a URL: the running window comes to the front, nothing opens
+	if out, err := second(); err != nil {
+		t.Fatalf("plain second start: %v %s", err, out)
+	}
+	rpcResult(t, client, base, "app.takeOpens", &opens)
+	if len(opens) != 0 {
+		t.Errorf("opens after a plain start: %+v", opens)
+	}
+
+	// a crash leaves the file: the next start notices and runs
+	first.Process.Signal(syscall.SIGKILL)
+	first.Wait()
+	if _, err := os.Stat(filepath.Join(cfg, instance.FileName)); err != nil {
+		t.Fatal("the file of the crashed window is expected to stay")
+	}
+	port := freeTCPPort(t)
+	next, client, base := c.startWindow(t, port, "tok2")
+	defer func() { next.Process.Kill(); next.Wait() }()
+	eventually("instance.json rewritten", func() bool {
+		b, _ := os.ReadFile(filepath.Join(cfg, instance.FileName))
+		return strings.Contains(string(b), fmt.Sprintf(`"port":%d`, port))
+	})
+	var info map[string]any
+	rpcResult(t, client, base, "app.info", &info)
+	if info["mode"] != "desktop" {
+		t.Errorf("app.info: %v", info)
+	}
+	// a clean end removes the file
+	next.Process.Signal(syscall.SIGTERM)
+	next.Wait()
+	if _, err := os.Stat(filepath.Join(cfg, instance.FileName)); !os.IsNotExist(err) {
+		t.Errorf("instance.json left after the end: %v", err)
 	}
 }

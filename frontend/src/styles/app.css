@@ -758,3 +758,30 @@
 .sites-multi-list { display: flex; flex-wrap: wrap; gap: 6px; max-height: 220px; overflow: auto; }
 .sites-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: var(--fs-sm); }
 .sites-chip .site-color { width: 4px; height: 14px; border-radius: 2px; }
+
+/* authorized keys of a server */
+.ak-list { max-height: 52vh; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+.ak-row { display: grid; grid-template-columns: 74px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 9px 12px; border-bottom: 1px solid var(--border); }
+.ak-row:last-child { border-bottom: 0; }
+.ak-row:hover { background: var(--surface-hover); }
+.ak-row.own { background: var(--accent-softer); }
+.ak-row.invalid { background: color-mix(in srgb, var(--danger) 6%, transparent); }
+.ak-row.invalid .ak-type svg { width: 16px; height: 16px; color: var(--danger); }
+.ak-type { display: flex; justify-content: flex-start; }
+.ak-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ak-title { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.ak-title .badge svg { width: 11px; height: 11px; }
+.ak-options { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.ak-option { font-size: 11px; padding: 1px 6px; border-radius: var(--radius-sm); background: var(--surface); color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* a key installed or replaced on several servers */
+.roll-list { max-height: 40vh; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+.roll-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) minmax(0, 1.2fr); align-items: center; gap: 10px; padding: 7px 12px; border-bottom: 1px solid var(--border); }
+.roll-row:last-child { border-bottom: 0; }
+.roll-row > svg { width: 15px; height: 15px; }
+.roll-main { display: flex; flex-direction: column; min-width: 0; }
+.roll-state { font-size: var(--fs-sm); color: var(--muted); text-align: right; }
+.roll-row.done .roll-state { color: var(--ok); }
+.roll-row.skipped { opacity: .65; }
+.key-preview { max-height: 84px; }
+.links-table { max-width: 460px; }

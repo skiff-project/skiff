@@ -25,6 +25,12 @@ cat > "$OUT/Contents/Info.plist" <<PLIST
   <key>LSMinimumSystemVersion</key><string>11.0</string>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
+  <key>CFBundleURLTypes</key><array><dict>
+    <key>CFBundleURLName</key><string>Skiff session</string>
+    <key>CFBundleURLSchemes</key><array>
+      <string>sftp</string><string>scp</string><string>ftp</string><string>ftps</string><string>ftpes</string><string>dav</string><string>davs</string>
+    </array>
+  </dict></array>
 </dict></plist>
 PLIST
 if command -v codesign >/dev/null; then

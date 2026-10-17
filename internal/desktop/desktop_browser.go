@@ -53,6 +53,13 @@ func openDefault(url string) error {
 	return exec.Command("xdg-open", url).Start()
 }
 
+// Raise cannot bring a browser window to the front.
+func Raise() {}
+
+// Reopen shows the UI again, its browser tab having been closed (with a
+// Chromium "app" window, Skiff ends when the window closes).
+func Reopen(url string) { openDefault(url) }
+
 // Run shows the UI in a Chromium-based "app" window when available (and
 // returns when it closes), otherwise in the default browser (and returns
 // once the UI has been gone for a while).

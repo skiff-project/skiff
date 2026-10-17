@@ -202,6 +202,13 @@ func (e *e2e) promptsOf(kind prompt.Kind) []core.PromptEvent {
 }
 
 // call invokes an RPC method like the interface does.
+// eventCount is the number of events of a type received so far.
+func (e *e2e) eventCount(typ string) int {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.events[typ]
+}
+
 func (e *e2e) call(method string, params any, out any) error {
 	if params == nil {
 		params = struct{}{}
@@ -440,6 +447,7 @@ func TestE2E(t *testing.T) {
 		fn   func(*testing.T, *e2e)
 	}{
 		{"app", testApp},
+		{"links", testLinks},
 		{"sites", testSites},
 		{"importExport", testImportExport},
 		{"protocols", testProtocols},
@@ -501,7 +509,7 @@ func TestE2E(t *testing.T) {
 			}
 			return n
 		}(), e.events)
-		for _, ev := range []string{"conn.update", "transfer.update", "log", "prompt", "watch.event", "tunnel.update", "term.update", "find.hits", "logs.data", "logs.end", "sites.changed", "security.changed", "prefs.changed", "edit.update", "task.update", "task.run"} {
+		for _, ev := range []string{"conn.update", "transfer.update", "log", "prompt", "watch.event", "tunnel.update", "term.update", "find.hits", "logs.data", "logs.end", "sites.changed", "security.changed", "prefs.changed", "edit.update", "task.update", "task.run", "app.open"} {
 			if e.events[ev] == 0 {
 				t.Errorf("event %q never received", ev)
 			}

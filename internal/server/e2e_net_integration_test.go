@@ -511,7 +511,11 @@ func testKeys(t *testing.T, e *e2e) {
 	if !sameKey(formats["id_rsa_e2e.ppk"].PublicKey, rsa.Public) {
 		t.Errorf("public key of the encrypted .ppk %q, want %q", formats["id_rsa_e2e.ppk"].PublicKey, rsa.Public)
 	}
-	// install the public keys, then log in with the keys only
+	// install the public keys, then log in with the keys only (they go
+	// at the end: the test server keeps its authorized_keys between runs)
+	t.Cleanup(func() {
+		e.call("keys.removeAuthorized", map[string]any{"conn": ci.ID, "fingerprints": []string{ed.Fingerprint, rsa.Fingerprint}, "force": true}, nil)
+	})
 	var where string
 	e.must(t, "keys.install", map[string]string{"conn": ci.ID, "publicKey": ed.Public}, &where)
 	e.must(t, "keys.install", map[string]string{"conn": ci.ID, "publicKey": formats["id_rsa_e2e.ppk"].PublicKey}, &where)
@@ -573,6 +577,79 @@ func testKeys(t *testing.T, e *e2e) {
 		e.must(t, "keys.convert", keys.ConvertRequest{Path: filepath.Join(ssh, "id_rsa_e2e.ppk"), Passphrase: "phrase-secrete", Format: "openssh", SaveTo: filepath.Join(ssh, "id_rsa_e2e_openssh")}, &g)
 		e.open(t, e.saveSite(t, keyOnly(filepath.Join(ssh, "id_rsa_e2e_openssh"), ""), "").ID)
 		e.mustFail(t, "keys.convert", keys.ConvertRequest{Path: filepath.Join(ssh, "id_rsa_e2e.ppk"), Passphrase: "faux", Format: "openssh"})
+	})
+	// the keys a server lets in: list, remove, replace after a check
+	t.Run("authorizedKeys", func(t *testing.T) {
+		find := func(au keys.Authorized, fp string) *keys.AuthorizedKey {
+			for i := range au.Keys {
+				if au.Keys[i].Fingerprint == fp {
+					return &au.Keys[i]
+				}
+			}
+			return nil
+		}
+		a := gen(t, keys.GenerateRequest{Type: "ed25519", Comment: "rotation a", Format: "openssh", SaveTo: filepath.Join(ssh, "id_rotation_a")})
+		e.must(t, "keys.install", map[string]string{"conn": ci.ID, "publicKey": a.Public}, nil)
+		var au keys.Authorized
+		e.must(t, "keys.authorized", map[string]string{"conn": ci.ID}, &au)
+		if k := find(au, a.Fingerprint); !au.Exists || k == nil || k.Comment != "rotation a" || k.Type != "ssh-ed25519" || au.AuthKey != "" || au.Version == "" {
+			t.Fatalf("authorized (password connection): %+v", au)
+		}
+		if find(au, ed.Fingerprint) == nil {
+			t.Error("the keys installed before are listed too")
+		}
+		// a connection that logged in with key a knows it
+		byKey := e.open(t, e.saveSite(t, keyOnly(filepath.Join(ssh, "id_rotation_a"), ""), "").ID)
+		e.must(t, "keys.authorized", map[string]string{"conn": byKey.ID}, &au)
+		if au.AuthKey != a.Fingerprint || au.AuthCert {
+			t.Fatalf("key of the connection %q, want %q", au.AuthKey, a.Fingerprint)
+		}
+		var info []map[string]string
+		e.must(t, "conn.serverInfo", map[string]string{"conn": byKey.ID}, &info)
+		shown := false
+		for _, i := range info {
+			shown = shown || (i["key"] == "Authentication key" && i["value"] == a.Fingerprint)
+		}
+		if !shown {
+			t.Errorf("server info lacks the authentication key: %v", info)
+		}
+		// not without saying so: its own key, or from an older listing
+		if err := e.call("keys.removeAuthorized", map[string]any{"conn": byKey.ID, "fingerprints": []string{a.Fingerprint}, "version": au.Version}, nil); err == nil || !strings.Contains(err.Error(), "logged in with this key") {
+			t.Errorf("removing the key of the connection: %v", err)
+		}
+		if err := e.call("keys.removeAuthorized", map[string]any{"conn": byKey.ID, "fingerprints": []string{a.Fingerprint}, "version": "0000000000000000", "force": true}, nil); err == nil || !strings.Contains(err.Error(), "changed since") {
+			t.Errorf("removing from an older listing: %v", err)
+		}
+		// replacement: b is checked by a second connection, then a goes
+		b := gen(t, keys.GenerateRequest{Type: "ed25519", Comment: "rotation b", Format: "openssh", SaveTo: filepath.Join(ssh, "id_rotation_b")})
+		var res keys.ReplaceResult
+		e.must(t, "keys.replace", map[string]string{"conn": byKey.ID, "publicKey": b.Public, "oldFingerprint": a.Fingerprint}, &res)
+		if !res.Added || !res.Verified || res.Removed != 1 {
+			t.Errorf("replace = %+v", res)
+		}
+		e.must(t, "keys.authorized", map[string]string{"conn": ci.ID}, &au)
+		if find(au, a.Fingerprint) != nil || find(au, b.Fingerprint) == nil || find(au, ed.Fingerprint) == nil {
+			t.Fatalf("after the replacement: %+v", au)
+		}
+		e.open(t, e.saveSite(t, keyOnly(filepath.Join(ssh, "id_rotation_b"), ""), "").ID)
+		// a key whose private part is not here: installed, the old one stays
+		c := gen(t, keys.GenerateRequest{Type: "ed25519", Comment: "ailleurs", Format: "openssh"})
+		if err := e.call("keys.replace", map[string]string{"conn": ci.ID, "publicKey": c.Public, "oldFingerprint": b.Fingerprint}, &res); err == nil || !strings.Contains(err.Error(), "old one stays") {
+			t.Errorf("replacement with an unavailable key: %v", err)
+		}
+		e.must(t, "keys.authorized", map[string]string{"conn": ci.ID}, &au)
+		if find(au, b.Fingerprint) == nil || find(au, c.Fingerprint) == nil {
+			t.Fatalf("after the refused replacement: %+v", au)
+		}
+		// clean up: only those lines go
+		before := len(au.Keys)
+		e.must(t, "keys.removeAuthorized", map[string]any{"conn": ci.ID, "fingerprints": []string{b.Fingerprint, c.Fingerprint}, "version": au.Version}, &au)
+		if find(au, b.Fingerprint) != nil || find(au, c.Fingerprint) != nil || len(au.Keys) != before-2 || find(au, ed.Fingerprint) == nil {
+			t.Errorf("after the removal: %+v", au)
+		}
+		if strings.Contains(e.readText(t, ci.ID, au.Path), "skiff-new") || e.exists(ci.ID, au.Path+".skiff-new") {
+			t.Error("temporary file left")
+		}
 	})
 	t.Run("wrongKeyFallsBackToPassword", func(t *testing.T) {
 		s := testSite("sftp")

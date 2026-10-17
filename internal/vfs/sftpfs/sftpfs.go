@@ -588,6 +588,10 @@ func (f *FS) Info() []vfs.InfoItem {
 }
 
 func sshInfo(i sshx.Info) []vfs.InfoItem {
+	key := i.AuthKey
+	if key != "" && i.AuthCert {
+		key += " (certificate)"
+	}
 	return []vfs.InfoItem{
 		{Group: "SSH", Key: "Server", Value: i.ServerVersion},
 		{Group: "SSH", Key: "Address", Value: i.RemoteAddr},
@@ -599,6 +603,7 @@ func sshInfo(i sshx.Info) []vfs.InfoItem {
 		{Group: "SSH", Key: "Cipher (server → client)", Value: i.CipherSC},
 		{Group: "SSH", Key: "MAC", Value: i.MACCS},
 		{Group: "SSH", Key: "Authentication", Value: i.AuthMethod},
+		{Group: "SSH", Key: "Authentication key", Value: key},
 		{Group: "SSH", Key: "Jump hosts", Value: strconv.Itoa(i.Jumps)},
 	}
 }

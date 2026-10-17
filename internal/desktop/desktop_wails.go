@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	goruntime "runtime"
+	"sync"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -21,6 +22,25 @@ import (
 
 // Native reports whether this build embeds a webview.
 const Native = true
+
+var window struct {
+	sync.Mutex
+	ctx context.Context
+}
+
+// Raise brings the window to the front.
+func Raise() {
+	window.Lock()
+	ctx := window.ctx
+	window.Unlock()
+	if ctx != nil {
+		runtime.WindowUnminimise(ctx)
+		runtime.WindowShow(ctx)
+	}
+}
+
+// Reopen shows the UI again: the native window is always there.
+func Reopen(url string) { Raise() }
 
 // Run opens the native window and blocks until it is closed.
 func Run(o Options) error {
@@ -46,6 +66,9 @@ func Run(o Options) error {
 		AssetServer:              &assetserver.Options{Handler: handler},
 		EnableDefaultContextMenu: false,
 		OnStartup: func(ctx context.Context) {
+			window.Lock()
+			window.ctx = ctx
+			window.Unlock()
 			setClipboard(func() (string, error) { return runtime.ClipboardGetText(ctx) }, func(s string) error { return runtime.ClipboardSetText(ctx, s) })
 		},
 		OnBeforeClose: func(ctx context.Context) bool {
@@ -79,6 +102,11 @@ func Run(o Options) error {
 			WebviewUserDataPath: o.DataDir,
 		},
 		Mac: &mac.Options{
+			OnUrlOpen: func(u string) {
+				if o.OnURL != nil {
+					o.OnURL(u)
+				}
+			},
 			TitleBar: mac.TitleBarDefault(),
 			About:    &mac.AboutInfo{Title: "Skiff", Message: "Version " + o.Version + "\nModern cross-platform file transfer client", Icon: o.Icon},
 		},

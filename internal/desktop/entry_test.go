@@ -21,7 +21,7 @@ func TestInstallEntry(t *testing.T) {
 		t.Fatalf("install: %v %v", wrote, err)
 	}
 	b, _ := os.ReadFile(entry)
-	for _, want := range []string{"Name=Skiff", "Exec=/opt/skiff/skiff %U", "Icon=" + iconPath, "StartupWMClass=skiff", entryMark} {
+	for _, want := range []string{"Name=Skiff", "Exec=/opt/skiff/skiff --link %U", "Icon=" + iconPath, "StartupWMClass=skiff", entryMark} {
 		if !strings.Contains(string(b), want) {
 			t.Errorf("entry lacks %q:\n%s", want, b)
 		}
@@ -37,7 +37,7 @@ func TestInstallEntry(t *testing.T) {
 	if wrote, _ := InstallEntry(icon, "/home/alex/Mes programmes/skiff"); !wrote {
 		t.Error("not updated after a move")
 	}
-	if b, _ := os.ReadFile(entry); !strings.Contains(string(b), `Exec="/home/alex/Mes programmes/skiff" %U`) {
+	if b, _ := os.ReadFile(entry); !strings.Contains(string(b), `Exec="/home/alex/Mes programmes/skiff" --link %U`) {
 		t.Errorf("quoted path:\n%s", b)
 	}
 	// removed

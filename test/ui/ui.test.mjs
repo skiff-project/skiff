@@ -47,7 +47,7 @@ async function startSkiff() {
   skiff = spawn(SKIFF, [], {
     env: {
       ...process.env, HOME, SKIFF_HOME: join(TMP, 'config'), SKIFF_NO_WINDOW: '1', SKIFF_PORT: String(PORT), SKIFF_DEV_TOKEN: 'ui',
-      SKIFF_UI_DIR: join(ROOT, 'frontend/dist'), SSH_AUTH_SOCK: '', XDG_DATA_HOME: join(HOME, '.local/share'),
+      SKIFF_UI_DIR: join(ROOT, 'frontend/dist'), SSH_AUTH_SOCK: '', XDG_DATA_HOME: join(HOME, '.local/share'), XDG_CONFIG_HOME: join(HOME, '.config'),
       SKIFF_SSH_SYSTEM_CONFIG: 'none', SKIFF_BROWSER: join(TMP, 'browser.sh'),
     },
     stdio: 'ignore',
@@ -1366,6 +1366,164 @@ step('installer une clé existante sur le serveur', async () => {
     rmSync(join(HOME, '.ssh', 'id_installe_ui'), { force: true })
     if (before === null) await rpc('fs.delete', { conn: c.id, paths: [ak] })
     else await rpc('fs.writeText', { conn: c.id, path: ak, content: before, encoding: 'utf-8', eol: 'LF', force: true })
+  }
+})
+
+step('clés autorisées : lister, remplacer après vérification, retirer', async () => {
+  const c = await sftp()
+  const ak = `${c.home}/.ssh/authorized_keys`
+  const before = await rpc('fs.readText', { conn: c.id, path: ak }).then((r) => r.content).catch(() => null)
+  const body = (pub) => pub.split(' ')[1]
+  const files = ['id_ak_ui_a', 'id_ak_ui_a.pub', 'id_ak_ui_b', 'id_ak_ui_b.pub'].map((f) => join(HOME, '.ssh', f))
+  files.forEach((f) => rmSync(f, { force: true }))
+  const a = await rpc('keys.generate', { type: 'ed25519', comment: 'ak-ui-a', format: 'openssh', saveTo: join(HOME, '.ssh', 'id_ak_ui_a') })
+  const b = await rpc('keys.generate', { type: 'ed25519', comment: 'ak-ui-b', format: 'openssh', saveTo: join(HOME, '.ssh', 'id_ak_ui_b') })
+  await rpc('keys.install', { conn: c.id, publicKey: a.public })
+  try {
+    await page.locator('.tab', { hasText: '127.0.0.1' }).first().click()
+    await V('[data-tip="Clés autorisées"]').click()
+    const d = dialog()
+    const keyRow = (fp) => d.locator(`.ak-row[data-fingerprint="${fp}"]`)
+    await keyRow(a.fingerprint).waitFor()
+    const text = await keyRow(a.fingerprint).innerText()
+    assert.ok(text.includes('ak-ui-a') && text.includes('Ed25519'), 'comment and type')
+    assert.ok(text.includes('id_ak_ui_a'), 'its private key is on this computer')
+    // the session logged in with its password: no key is "this connection"
+    assert.equal(await d.locator('.ak-row.own').count(), 0)
+    // replace a with b: b opens a connection on its own, then a goes
+    await keyRow(a.fingerprint).locator('[data-tip="Remplacer par une autre clé…"]').click()
+    const r = page.locator('.dialog').last()
+    await r.locator('.dialog-head h3', { hasText: 'Remplacer une clé' }).waitFor()
+    const field = (name) => r.locator('.field').filter({ has: page.locator('label', { hasText: new RegExp(`^${name}$`) }) })
+    assert.ok((await field('Clé à retirer').locator('select option:checked').innerText()).includes('id_ak_ui_a'), 'the key of the row')
+    const opt = await field('Nouvelle clé').locator('option', { hasText: 'id_ak_ui_b' }).getAttribute('value')
+    await field('Nouvelle clé').locator('select').selectOption(opt)
+    await button(r, 'Remplacer (1)').click()
+    await r.locator('.roll-row.done', { hasText: 'Remplacée (nouvelle clé vérifiée)' }).waitFor({ timeout: 30000 })
+    const after = await remoteText(ak)
+    assert.ok(after.includes(body(b.public)) && !after.includes(body(a.public)), 'a replaced by b')
+    await button(r, 'Fermer').click()
+    await keyRow(b.fingerprint).waitFor()
+    assert.equal(await keyRow(a.fingerprint).count(), 0)
+    // remove b, after confirming
+    await keyRow(b.fingerprint).locator('[data-tip="Retirer la clé"]').click()
+    await button(dialog(), 'Retirer la clé').click()
+    await until('b removed', async () => !(await remoteText(ak)).includes(body(b.public)))
+    await keyRow(b.fingerprint).waitFor({ state: 'detached' })
+    await page.keyboard.press('Escape')
+  } finally {
+    files.forEach((f) => rmSync(f, { force: true }))
+    if (before === null) await rpc('fs.delete', { conn: c.id, paths: [ak] })
+    else await rpc('fs.writeText', { conn: c.id, path: ak, content: before, encoding: 'utf-8', eol: 'LF', force: true })
+  }
+})
+
+step('clés : installer une clé sur plusieurs sites', async () => {
+  const c = await sftp()
+  const ak = `${c.home}/.ssh/authorized_keys`
+  const before = await rpc('fs.readText', { conn: c.id, path: ak }).then((r) => r.content).catch(() => null)
+  const k = await rpc('keys.generate', { type: 'ed25519', comment: 'plusieurs-ui', format: 'openssh' })
+  await rpc('folders.add', { name: 'Clés UI' })
+  for (const name of ['Clé A', 'Clé B']) {
+    await rpc('sites.save', { site: { name, protocol: 'sftp', host: '127.0.0.1', port: 2222, user: 'skiff', useAgent: false, resolveSymlinks: true, folder: 'Clés UI' }, secrets: { password: 'skiff' } })
+  }
+  await rpc('sites.save', { site: { name: 'Clé FTP', protocol: 'ftp', host: '127.0.0.1', port: 2121, user: 'skiff', ftps: 'explicit', useAgent: false, resolveSymlinks: true, folder: 'Clés UI' }, secrets: { password: 'skiff' } })
+  try {
+    await page.locator('.tab.home').click()
+    const siteRow = (n) => page.locator('.sites-tree .tree-site', { has: page.locator('.site-name', { hasText: new RegExp(`^${n}$`) }) }).last()
+    await siteRow('Clé A').click()
+    await siteRow('Clé FTP').click({ modifiers: ['Shift'] })
+    await page.locator('.sites-multi h2', { hasText: '3 sites sélectionnés' }).waitFor()
+    await page.locator('.sites-multi').getByRole('button', { name: 'Installer une clé…', exact: true }).click()
+    const r = dialog()
+    const field = (name) => r.locator('.field').filter({ has: page.locator('label', { hasText: new RegExp(`^${name}$`) }) })
+    await field('Clé').locator('select').selectOption('paste')
+    await r.locator('textarea').fill(k.public)
+    // only the SSH sites of the selection
+    assert.equal(await r.locator('.roll-row').count(), 2)
+    assert.equal(await r.locator('.roll-row', { hasText: 'Clé FTP' }).count(), 0)
+    await button(r, 'Installer (2)').click()
+    await r.locator('.roll-row.done', { hasText: 'Clé A' }).waitFor({ timeout: 30000 })
+    await r.locator('.roll-row.done', { hasText: 'Clé B' }).waitFor({ timeout: 30000 })
+    // the same server twice: the second one has it already
+    assert.ok((await r.locator('.roll-row', { hasText: 'Clé A' }).innerText()).includes('Installée'))
+    assert.ok((await r.locator('.roll-row', { hasText: 'Clé B' }).innerText()).includes('Déjà installée'))
+    assert.equal((await remoteText(ak)).split(k.public.split(' ')[1]).length - 1, 1, 'installed once')
+    // the connections opened for it are closed
+    await until('connections closed', async () => !(await conns()).some((x) => x.title === 'Clé A' || x.title === 'Clé B'))
+    await button(r, 'Fermer').click()
+    await page.keyboard.press('Escape')
+  } finally {
+    const ids = (await rpc('sites.list')).sites.filter((x) => x.folder === 'Clés UI').map((x) => x.id)
+    if (ids.length) await rpc('sites.delete', { ids })
+    await rpc('folders.delete', { name: 'Clés UI', withSites: false }).catch(() => {})
+    if (before === null) await rpc('fs.delete', { conn: c.id, paths: [ak] })
+    else await rpc('fs.writeText', { conn: c.id, path: ak, content: before, encoding: 'utf-8', eol: 'LF', force: true })
+  }
+})
+
+step('liens : ouvrir sftp:// avec Skiff, et confirmer un lien cliqué', async () => {
+  // the links of the system (in the folders of the test)
+  await page.keyboard.press('Control+,')
+  const d = dialog()
+  await d.locator('nav.vtabs').getByRole('button', { name: 'Système', exact: true }).click()
+  await d.locator('tr[data-scheme="sftp"]').getByText('Aucune application').waitFor()
+  await button(d, 'Ouvrir ces liens avec Skiff').click()
+  await d.locator('tr[data-scheme="davs"] .badge', { hasText: 'Skiff' }).waitFor()
+  assert.ok(readFileSync(join(HOME, '.config', 'mimeapps.list'), 'utf8').includes('x-scheme-handler/sftp=skiff.desktop'))
+  assert.ok(readFileSync(join(HOME, '.local', 'share', 'applications', 'skiff.desktop'), 'utf8').includes('--link %U'), 'menu entry started with --link')
+  await button(d, 'Ne plus les ouvrir avec Skiff').click()
+  await d.locator('tr[data-scheme="sftp"]').getByText('Aucune application').waitFor()
+  await page.keyboard.press('Escape')
+
+  // a link clicked elsewhere: the system starts "skiff --link <url>",
+  // which hands it to the window already open on the same configuration
+  const port = PORT + 3000
+  const base = `http://127.0.0.1:${port}`
+  const home = join(TMP, 'lien-home')
+  const cfg = join(TMP, 'lien-config')
+  mkdirSync(join(home, '.ssh'), { recursive: true })
+  const env = {
+    ...process.env, HOME: home, SKIFF_HOME: cfg, SKIFF_NO_WINDOW: '1', SSH_AUTH_SOCK: '', SKIFF_SSH_SYSTEM_CONFIG: 'none',
+    XDG_CONFIG_HOME: join(home, '.config'), XDG_DATA_HOME: join(home, '.local/share'),
+  }
+  delete env.SKIFF_UI_DIR
+  const win = spawn(SKIFF, [], { env: { ...env, SKIFF_PORT: String(port), SKIFF_DEV_TOKEN: 'lien' }, stdio: 'ignore' })
+  const ctx = await browser.newContext({ locale: 'fr-FR' })
+  try {
+    await until('the window', async () => (await fetch(`${base}/api/auth/status`)).ok)
+    await until('its instance file', async () => existsSync(join(cfg, 'instance.json')))
+    const p = await ctx.newPage()
+    p.on('pageerror', (e) => pageErrors.push(e.message))
+    await p.goto(`${base}/?token=lien`)
+    await p.locator('.welcome').waitFor()
+    const click = (url) => new Promise((ok, ko) => {
+      const x = spawn(SKIFF, ['--link', url], { env: { ...env, SKIFF_PORT: String(port + 1) }, stdio: 'ignore' })
+      x.on('exit', (code) => (code === 0 ? ok() : ko(new Error(`skiff --link ended with ${code}`))))
+    })
+    // a host key pinned in the link is not trusted
+    await click('sftp://skiff;fingerprint=SHA256:faussefaussefausse@127.0.0.1:2222/config')
+    const ld = p.locator('.dialog').last()
+    await ld.locator('.dialog-head h3', { hasText: 'Ouvrir un lien' }).waitFor()
+    const txt = await ld.innerText()
+    assert.ok(txt.includes('127.0.0.1:2222') && txt.includes('/config') && txt.includes('SFTP'), txt)
+    assert.ok(txt.includes("Le lien impose une clé d'hôte"), 'pinned host key ignored')
+    await ld.getByRole('button', { name: 'Se connecter', exact: true }).click()
+    const hk = p.locator('.dialog').last()
+    await hk.getByText('Serveur inconnu').waitFor()
+    await hk.getByRole('button', { name: 'Accepter', exact: true }).click()
+    const pw = p.locator('.dialog').last()
+    await pw.locator('input[type="password"]').fill('skiff')
+    await pw.getByRole('button', { name: 'OK', exact: true }).click()
+    await until('connected', async () => (await rpcAt(base, 'lien', 'conn.list')).some((x) => x.state === 'connected' && x.remoteDir === '/config'))
+    await p.locator('.tab', { hasText: '127.0.0.1' }).waitFor()
+    // a second link, refused: Skiff opens no container of this computer
+    await click('docker://web/etc')
+    await sleep(800)
+    assert.equal(await p.locator('.dialog').count(), 0, 'no dialog for a docker:// link')
+  } finally {
+    await ctx.close()
+    await stop(win)
   }
 })
 

@@ -16,12 +16,14 @@ import (
 	"skiff/internal/desktop"
 	"skiff/internal/devsync"
 	"skiff/internal/importer"
+	"skiff/internal/instance"
 	"skiff/internal/keys"
 	"skiff/internal/prompt"
 	"skiff/internal/sshconfig"
 	"skiff/internal/sshx"
 	"skiff/internal/tasks"
 	"skiff/internal/transfer"
+	"skiff/internal/urlhandler"
 	"skiff/internal/vfs"
 )
 
@@ -42,6 +44,7 @@ func (s *Server) registerRPC() {
 	method(s, "app.info", func(ctx context.Context, _ empty) (any, error) {
 		home, _ := c.Local.Home(ctx)
 		host, _ := os.Hostname()
+		startup, link := s.takeStartupURL()
 		return map[string]any{
 			"version":       s.opts.Version,
 			"mode":          s.opts.Mode,
@@ -58,8 +61,42 @@ func (s *Server) registerRPC() {
 			"localRoot":     c.Local.Root,
 			"agent":         sshx.AgentAvailable(),
 			"localTerminal": (!s.web() || s.opts.AllowLocalTerminal) && c.Local.Root == "",
-			"startupUrl":    s.takeStartupURL(),
+			"startupUrl":    startup,
+			"startupLink":   link,
 		}, nil
+	})
+	// the session URLs given by a second start of Skiff or by the system
+	method(s, "app.takeOpens", func(ctx context.Context, _ empty) ([]instance.Request, error) { return s.takeOpens(), nil })
+	// the sftp://, ftp://… links of the system (not in web mode: they are
+	// the server's)
+	method(s, "app.urlHandlers", func(ctx context.Context, _ empty) (urlhandler.Status, error) {
+		if s.web() {
+			return urlhandler.Status{}, nil
+		}
+		return urlhandler.Get(), nil
+	})
+	method(s, "app.setUrlHandlers", func(ctx context.Context, p struct {
+		Enable bool `json:"enable"`
+	}) (urlhandler.Status, error) {
+		if s.web() {
+			return urlhandler.Status{}, errors.New("not available in web mode")
+		}
+		exe, err := config.Executable()
+		if err != nil {
+			return urlhandler.Status{}, err
+		}
+		if p.Enable {
+			err = urlhandler.Register(exe, s.opts.Icon)
+		} else {
+			err = urlhandler.Remove(exe)
+		}
+		return urlhandler.Get(), err
+	})
+	method(s, "app.openDefaultApps", func(ctx context.Context, _ empty) (ok, error) {
+		if s.web() {
+			return ok{}, errors.New("not available in web mode")
+		}
+		return yes, urlhandler.OpenSettings()
 	})
 	method(s, "prefs.get", func(ctx context.Context, _ empty) (config.Prefs, error) {
 		p := c.Store.Prefs()
@@ -825,6 +862,27 @@ func (s *Server) registerRPC() {
 		PublicKey string `json:"publicKey"`
 	}) (string, error) {
 		return keys.Install(ctx, c, p.Conn, p.PublicKey)
+	})
+	// the keys a server lets in (~/.ssh/authorized_keys)
+	method(s, "keys.authorized", func(ctx context.Context, p connReq) (keys.Authorized, error) {
+		return keys.ListAuthorized(ctx, c, p.Conn)
+	})
+	method(s, "keys.removeAuthorized", func(ctx context.Context, p struct {
+		Conn         string   `json:"conn"`
+		Fingerprints []string `json:"fingerprints"`
+		Version      string   `json:"version"`
+		Force        bool     `json:"force"` // the key of this very connection
+	}) (keys.Authorized, error) {
+		return keys.RemoveAuthorized(ctx, c, p.Conn, p.Fingerprints, p.Version, p.Force)
+	})
+	method(s, "keys.replace", func(ctx context.Context, p struct {
+		Conn           string `json:"conn"`
+		PublicKey      string `json:"publicKey"`
+		OldFingerprint string `json:"oldFingerprint"`
+	}) (keys.ReplaceResult, error) {
+		cctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		return keys.Replace(cctx, c, p.Conn, p.PublicKey, p.OldFingerprint, prompt.WithConn(c.Prompter, p.Conn))
 	})
 	// ---- Skiff keychain ----
 	type keychainList struct {

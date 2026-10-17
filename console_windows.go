@@ -10,12 +10,21 @@ import (
 )
 
 var (
-	kernel32                = windows.NewLazySystemDLL("kernel32.dll")
+	kernel32                  = windows.NewLazySystemDLL("kernel32.dll")
 	procGetConsoleProcessList = kernel32.NewProc("GetConsoleProcessList")
-	procFreeConsole         = kernel32.NewProc("FreeConsole")
-	user32                  = windows.NewLazySystemDLL("user32.dll")
-	procMessageBox          = user32.NewProc("MessageBoxW")
+	procFreeConsole           = kernel32.NewProc("FreeConsole")
+	user32                    = windows.NewLazySystemDLL("user32.dll")
+	procMessageBox            = user32.NewProc("MessageBoxW")
+	procAllowSetForeground    = user32.NewProc("AllowSetForegroundWindow")
 )
+
+// allowForeground lets the Skiff already running come to the front when
+// this start hands it a link (Windows only lets the foreground process give
+// the focus away).
+func allowForeground() {
+	const asfwAny = ^uintptr(0) // ASFW_ANY (-1)
+	procAllowSetForeground.Call(asfwAny)
+}
 
 // detachConsole hides the console window when Skiff was started by
 // double-clicking (the console then belongs to Skiff alone).

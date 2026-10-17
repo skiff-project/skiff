@@ -55,13 +55,16 @@ export async function boot() {
   stream = new EventStream(onEvent)
   stream.onStatus = (online) => {
     set({ online })
-    if (online) resync()
+    if (online) {
+      resync()
+      takeOpens()
+    }
   }
   reloadSshConfig()
   if (info.localTerminal) loadShells('local') // for the command palette
   // Re-attach tabs for connections that survived a UI reload.
   for (const c of conns) if (c.state !== 'closed') openSessionTab(c, { activate: false })
-  if (info.startupUrl) connectUrl(info.startupUrl)
+  if (info.startupUrl) openFromOutside(info.startupUrl, !!info.startupLink)
   else if (!conns.length && prefs.restoreTabs && prefs.lastTabs?.length) restoreTabs(prefs.lastTabs)
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyAppearance(get().prefs!))
 }
@@ -90,9 +93,32 @@ async function resync() {
 
 let refreshTimers: Record<string, number> = {}
 
+/**
+ * Opens a session URL given from outside: on the command line, by a second
+ * start of Skiff, by the system. One that comes from a link clicked
+ * elsewhere is shown first, and opened only if the user says so.
+ */
+export function openFromOutside(url: string, link: boolean) {
+  if (link) import('../components/dialogs/OpenLinkDialog').then((m) => m.openLinkDialog(url))
+  else connectUrl(url)
+}
+
+// the URLs waiting on the server (the first window to ask takes them)
+async function takeOpens() {
+  try {
+    const opens = await call<{ url: string; link?: boolean }[]>('app.takeOpens')
+    for (const o of opens) openFromOutside(o.url, !!o.link)
+  } catch {
+    /* web mode of an older server */
+  }
+}
+
 function onEvent(type: string, data: any) {
   const s = get()
   switch (type) {
+    case 'app.open':
+      takeOpens()
+      break
     case 'conn.update': {
       const c = data as ConnInfo
       resyncing?.conns.set(c.id, c)

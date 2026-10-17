@@ -24,6 +24,7 @@ Usage:
   skiff import <source> [file]     import sessions (winscp-ini, winscp-registry, putty, filezilla, ssh-config)
   skiff task list | run <name>     list the scheduled tasks, or run one now (for the system scheduler)
   skiff desktop-entry [-remove]    install (or remove) the menu entry and the icon (Linux)
+  skiff url-handler [-register|-remove]  open (or no longer) the sftp://, ftp://… links with Skiff
   skiff version                    print the version
 
 WinSCP compatibility:
@@ -61,6 +62,8 @@ func main() {
 		code = cmdTask(args[1:])
 	case "desktop-entry":
 		code = cmdDesktopEntry(args[1:])
+	case "url-handler":
+		code = cmdURLHandler(args[1:])
 	case "version", "--version", "-v":
 		fmt.Printf("skiff %s\n", version)
 	case "help", "--help", "-h":

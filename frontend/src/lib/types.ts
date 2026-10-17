@@ -57,6 +57,7 @@ export interface AppInfo {
   agent: boolean
   localTerminal: boolean
   startupUrl?: string
+  startupLink?: boolean
 }
 
 export interface Proxy {

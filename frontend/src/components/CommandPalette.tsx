@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowRightLeft, Copy, CornerDownLeft, File, FileSearch, Folder, FolderPlus, GitCompareArrows, KeyRound, Link2, Moon, Network, Plug, Plus,
-  RefreshCcwDot, ScrollText, Server, Settings, SquareTerminal, Trash2, Upload, Zap, Eye, Download, Lock, Activity, Box, CalendarClock, FolderCode, Cog, EthernetPort, HardDrive,
+  RefreshCcwDot, ScrollText, Server, Settings, SquareTerminal, Trash2, Upload, Zap, Eye, Download, Lock, Activity, Box, CalendarClock, FolderCode, Cog, EthernetPort, HardDrive, KeySquare,
 } from 'lucide-react'
 import { activeSession, get, set, useStore } from '../lib/store'
 import { activate, connectSite, connectUrl, loadDir, openMonitor, openProject, openTasks, openUsage, openTerminal, savePrefs, setBottom, toggleSyncBrowsing, attachTerminalTab, openWorkspace, saveWorkspace } from '../lib/actions'
@@ -19,6 +19,7 @@ import { openServices } from './dialogs/ServicesDialog'
 import { openPorts } from './dialogs/PortsDialog'
 import { openInstallKey, openKeygen } from './dialogs/KeygenDialog'
 import { openTunnelDialog } from './dialogs/TunnelDialog'
+import { openAuthorizedKeys } from './keys/AuthorizedKeysDialog'
 import { FileIcon } from '../lib/fileicons'
 import { visibleEntries } from '../lib/listing'
 
@@ -124,6 +125,7 @@ export function CommandPalette() {
       cmd('ports', t('ports.openDialog'), EthernetPort, () => openPorts(s.conn), undefined, !conns[s.conn]?.caps.shell || !conns[s.conn]?.caps.tunnels)
       cmd('usage', t('usage.here'), HardDrive, () => openUsage(s.panes[side].conn, s.panes[side].path))
       cmd('containers', t('ctr.ofServer'), Box, () => openContainers({ via: s.conn }), undefined, !conns[s.conn]?.caps.tunnels)
+      cmd('authorizedkeys', t('ak.open'), KeySquare, () => openAuthorizedKeys(s.conn), undefined, conns[s.conn]?.protocol !== 'sftp' && conns[s.conn]?.protocol !== 'scp')
       cmd('hidden', t('toolbar.hidden'), Eye, () => savePrefs({ showHidden: !get().prefs?.showHidden }), 'Ctrl+Alt+H')
       // files in the current folder
       const p = s.panes[side]

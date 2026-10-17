@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useState } from 'react'
-import { Info, ServerCog } from 'lucide-react'
+import { Info, ServerCog, KeySquare } from 'lucide-react'
 import { useStore } from '../../lib/store'
 import { openInstallKey } from './KeygenDialog'
+import { openAuthorizedKeys } from '../keys/AuthorizedKeysDialog'
 import { Dialog } from '../ui/Dialog'
 import { openDialog } from '../../lib/dialogs'
 import { call } from '../../lib/api'
@@ -30,7 +31,7 @@ function ServerInfo({ conn, close }: { conn: string; close: () => void }) {
   const groups: Record<string, InfoItem[]> = {}
   for (const it of items || []) if (it.value) (groups[it.group] ||= []).push(it)
   return (
-    <Dialog size="lg" title={t('info.title')} icon={<Info />} onClose={close} footer={<>{(proto === 'sftp' || proto === 'scp') && <button className="btn" onClick={() => openInstallKey({ conn })}><ServerCog /> {t('keys.installTitle')}…</button>}<div className="spacer" /><button className="btn" onClick={() => copyToClipboard((items || []).map((i) => `${i.group}\t${i.key}\t${i.value}`).join('\n'))}>{t('common.copy')}</button><button className="btn primary" onClick={close}>{t('common.close')}</button></>}>
+    <Dialog size="lg" title={t('info.title')} icon={<Info />} onClose={close} footer={<>{(proto === 'sftp' || proto === 'scp') && <><button className="btn" onClick={() => openInstallKey({ conn })}><ServerCog /> {t('keys.installTitle')}…</button><button className="btn" onClick={() => { close(); openAuthorizedKeys(conn) }}><KeySquare /> {t('ak.open')}…</button></>}<div className="spacer" /><button className="btn" onClick={() => copyToClipboard((items || []).map((i) => `${i.group}\t${i.key}\t${i.value}`).join('\n'))}>{t('common.copy')}</button><button className="btn primary" onClick={close}>{t('common.close')}</button></>}>
       {err && <div className="alert danger">{err}</div>}
       {!items && !err && <div className="spinner" />}
       {Object.entries(groups).map(([g, list]) => (
