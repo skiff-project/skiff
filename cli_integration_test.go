@@ -26,6 +26,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 	"testing"
@@ -177,10 +178,15 @@ exit
 	}
 	// remote state
 	ls := remote(t, "cd "+dir+" && ls -la && stat -c '%n %a %Y' c.txt renomme.txt physique && readlink lien; cat b.txt | od -c | head -2; ls sync")
-	for _, want := range []string{"renomme.txt", "physique", "c.txt 644 1580702706", "-rw-------  2 skiff users    6", "un.txt", "deux.txt"} {
+	for _, want := range []string{"renomme.txt", "physique", "c.txt 644 1580702706", "un.txt", "deux.txt"} {
 		if !strings.Contains(ls, want) {
 			t.Errorf("remote state lacks %q:\n%s", want, ls)
 		}
+	}
+	// the hard link: mode 600, two links, 6 bytes (ls aligns its columns
+	// on the widest value of the folder, so the spaces vary)
+	if !regexp.MustCompile(`(?m)^-rw------- +2 +skiff +users +6 .* physique$`).MatchString(ls) {
+		t.Errorf("remote state lacks the hard link physique (600, 2 links, 6 bytes):\n%s", ls)
 	}
 	if strings.Contains(ls, "copie.txt") || strings.Contains(ls, "site") || strings.Contains(ls, " lien ") {
 		t.Errorf("get -delete / rm / rmdir did not remove:\n%s", ls)
