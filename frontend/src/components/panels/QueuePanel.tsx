@@ -2,6 +2,7 @@ import { ArrowDown, ArrowRight, ArrowUp, CheckCircle2, ChevronDown, ChevronRight
 import { useState } from 'react'
 import { useStore } from '../../lib/store'
 import { call } from '../../lib/api'
+import { displayPath } from '../../lib/actions'
 import { formatDuration, formatSize, formatSpeed } from '../../lib/format'
 import { t } from '../../lib/i18n'
 import type { Job } from '../../lib/types'
@@ -137,7 +138,7 @@ function JobRow({ job: j, first, last, fmt }: { job: Job; first: boolean; last: 
           ))}
           {j.errors?.map((e, i) => (
             <div key={i} className="job-file danger-text selectable">
-              <CircleAlert /> <span className="mono ellipsis">{e.path}</span> <span className="ellipsis">{e.error}</span>
+              <CircleAlert /> <span className="mono ellipsis">{j.src === 'local' || j.dst === 'local' ? displayPath('local', e.path) : e.path}</span> <span className="ellipsis">{e.error}</span>
             </div>
           ))}
         </div>
