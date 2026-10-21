@@ -19,6 +19,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 VERSION="${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo 0.1.0-dev)}"
+VERSION="${VERSION#v}" # the tag v1.2.0 shows as 1.2.0
 LDFLAGS="-s -w -X main.version=${VERSION}"
 GO="${GO:-go}"
 PNPM="${PNPM:-pnpm}"

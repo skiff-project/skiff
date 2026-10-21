@@ -6,7 +6,7 @@ Skiff is a modern, cross-platform file transfer client, shipped as **a single bi
 
 ![Skiff connected to an SFTP server, in the Commander interface](images/commander.png)
 
-This documentation describes each feature, screen by screen. The screenshots were taken on Skiff 0.1.0 in English, with the light theme, unless stated otherwise.
+This documentation describes each feature, screen by screen. The screenshots were taken on Skiff 1.0.0 in English, with the light theme, unless stated otherwise.
 
 ## Contents
 

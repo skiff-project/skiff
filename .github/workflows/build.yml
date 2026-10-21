@@ -79,7 +79,7 @@ jobs:
       - run: ./build.sh ui
       - name: Native desktop build
         run: |
-          VERSION=$(git describe --tags --always)
+          VERSION=$(git describe --tags --always); VERSION=${VERSION#v}
           CGO_ENABLED=1 go build -trimpath -tags desktop,production,webkit2_41 -ldflags "-s -w -X main.version=$VERSION" -o skiff-linux-${{ matrix.arch }}-desktop .
           CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o skiff-linux-${{ matrix.arch }} .
       - name: Debian package and AppImage
@@ -129,7 +129,7 @@ jobs:
       - run: ./build.sh ui
       - name: Cross-compile Windows (WebView2, no CGO)
         run: |
-          VERSION=$(git describe --tags --always)
+          VERSION=$(git describe --tags --always); VERSION=${VERSION#v}
           for arch in amd64 arm64; do
             GOOS=windows GOARCH=$arch CGO_ENABLED=0 go build -trimpath -tags desktop,production -ldflags "-s -w -X main.version=$VERSION" -o skiff-windows-$arch.exe .
           done
@@ -205,6 +205,13 @@ jobs:
     needs: [linux, macos, windows]
     runs-on: ubuntu-24.04
     steps:
+      - uses: actions/checkout@v7
+      - name: Notes of the release (its section of CHANGELOG.md)
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          awk -v h="## [$v]" 'index($0, h) == 1 { on = 1; next } on && /^## \[/ { exit } on' CHANGELOG.md > notes.md
+          [ -s notes.md ] || { echo "CHANGELOG.md has no section for $v" >&2; exit 1; }
+          printf '\n---\n\nmacOS in one command: `curl -fsSL https://raw.githubusercontent.com/%s/main/install.sh | sh` · [Installation](https://github.com/%s/blob/main/docs/en/01-installation.md) · [Documentation](https://github.com/%s/blob/main/docs/en/README.md)\n' "$GITHUB_REPOSITORY" "$GITHUB_REPOSITORY" "$GITHUB_REPOSITORY" >> notes.md
       - uses: actions/download-artifact@v8
         with: { path: artifacts }
       - name: Gather the files (the packages come in dist/)
@@ -218,5 +225,6 @@ jobs:
           cd release && sha256sum * > SHA256SUMS
       - uses: softprops/action-gh-release@v3
         with:
+          name: Skiff ${{ github.ref_name }}
+          body_path: notes.md
           files: release/*
-          generate_release_notes: true

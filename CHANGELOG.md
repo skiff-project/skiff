@@ -6,7 +6,9 @@ All notable changes to Skiff are listed here. The format follows
 configuration of every earlier 1.x release (see "Configuration format"
 below).
 
-## [Unreleased] — 1.0.0
+## [Unreleased]
+
+## [1.0.0] — 2026-10-21
 
 The first public release.
 

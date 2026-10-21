@@ -6,7 +6,7 @@ Skiff est un client de transfert de fichiers moderne et multiplateforme, livré 
 
 ![Skiff connecté à un serveur SFTP, en interface Commander](images/commander.png)
 
-Cette documentation décrit chaque fonctionnalité, écran par écran. Les captures ont été prises sur Skiff 0.1.0 en français, avec le thème clair, sauf mention contraire.
+Cette documentation décrit chaque fonctionnalité, écran par écran. Les captures ont été prises sur Skiff 1.0.0 en français, avec le thème clair, sauf mention contraire.
 
 ## Sommaire
 

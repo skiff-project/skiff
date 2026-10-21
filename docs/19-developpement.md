@@ -75,7 +75,7 @@ Skiff suit le [versionnage sémantique](https://semver.org/lang/fr/) : un correc
 2. `python3 build/notices.py` si les dépendances ont changé, puis `./build.sh test`, `./build.sh itest` et `./build.sh uitest`.
 3. Un tag annoté : `git tag -a v1.0.0 -m "Skiff 1.0.0"`, puis `git push origin v1.0.0`.
 
-La CI compile alors les binaires et les installateurs des trois systèmes et publie la release, avec `SHA256SUMS`. La version affichée par Skiff (`skiff version`, **À propos**) vient du tag (`git describe`) ; sans tag, c'est `0.1.0~git.<commit>`.
+La CI compile alors les binaires et les installateurs des trois systèmes et publie la release, avec `SHA256SUMS` ; ses notes sont la section de la version dans `CHANGELOG.md` (la CI échoue s'il n'y en a pas). La version affichée par Skiff (`skiff version`, **À propos**) vient du tag (`git describe`, sans le `v` : `1.0.0`) ; sans tag, c'est le commit.
 
 Une modification du format de la configuration ajoute une migration dans `internal/config/format.go` (`FormatVersion` augmente de 1, `migrations[n]` passe du format n au format n+1) et un test qui part d'un dossier de l'ancien format.
 
