@@ -197,7 +197,7 @@ When the link points to a saved site (same protocol, server, port and user), Ski
 | System | Where Skiff registers |
 |---|---|
 | Linux, FreeBSD | The `mimeapps.list` file of the user (`~/.config`), following the freedesktop standard; the menu entry of Skiff lists these links. Without the `.deb` package, the menu entry of the user is created when needed. |
-| Windows | The registry of the user (without administrator rights), and **Settings → Apps → Default apps**, where Skiff shows. An application chosen in these settings keeps its links: **Windows default apps…** opens them to choose Skiff there. The installer offers the same (ticked box). |
+| Windows | The registry of the user (without administrator rights), and **Settings → Apps → Default apps**, where Skiff shows. An application chosen in these settings keeps its links: **Windows default apps…** opens them to choose Skiff there. The installer offers the same (ticked box). The Microsoft Store version declares these links itself in its package: only the default apps of Windows give them to it, and the section says so. |
 | macOS | `Skiff.app` declares these links; the button makes Skiff their application. To give them back, choose another application from that one: macOS keeps the last one chosen. |
 
 In web mode, this section does not exist: the links are those of the server.

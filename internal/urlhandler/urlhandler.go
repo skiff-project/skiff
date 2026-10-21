@@ -29,10 +29,17 @@ type Status struct {
 	// Settings: the default applications of the system can be opened
 	// (another application may keep the links there, on Windows)
 	Settings bool `json:"settings"`
+	// Packaged: Skiff runs from its Microsoft Store package (MSIX), whose
+	// manifest declares the links: they are chosen in the settings only
+	Packaged bool `json:"packaged,omitempty"`
 }
 
 // ErrUnsupported: no way to register the links on this system or build.
 var ErrUnsupported = errors.New("this system or build of Skiff cannot open links")
+
+// ErrPackaged: the Microsoft Store version declares its links in its
+// package; only the settings of Windows choose the application.
+var ErrPackaged = errors.New("the Microsoft Store version of Skiff declares these links in its package: choose Skiff for them in the default apps of Windows")
 
 // All reports whether Skiff opens the links of every scheme.
 func (s Status) All() bool {

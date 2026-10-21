@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The MSIX package of Skiff for the Microsoft Store, filled in by
+     build/windows/msix.ps1: __NAME__, __PUBLISHER__ and __PUBLISHER_NAME__
+     come from Partner Center (Product identity), __VERSION__ is a.b.c.0 and
+     __ARCH__ x64 or arm64. The Store signs the package. -->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap rescap">
+
+  <Identity Name="__NAME__" Publisher="__PUBLISHER__" Version="__VERSION__" ProcessorArchitecture="__ARCH__" />
+
+  <Properties>
+    <DisplayName>Skiff</DisplayName>
+    <PublisherDisplayName>__PUBLISHER_NAME__</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+    <Resource Language="fr-fr" />
+  </Resources>
+
+  <Applications>
+    <Application Id="Skiff" Executable="skiff.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="Skiff"
+        Description="SFTP, SCP, FTP/FTPS, WebDAV and S3 file transfer client"
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+      </uap:VisualElements>
+      <!-- the links Skiff opens (internal/urlhandler): Windows starts skiff.exe
+           with the link, and the window asks before connecting -->
+      <Extensions>
+        <uap:Extension Category="windows.protocol"><uap:Protocol Name="sftp" Parameters="--link &quot;%1&quot;"><uap:DisplayName>SFTP</uap:DisplayName></uap:Protocol></uap:Extension>
+        <uap:Extension Category="windows.protocol"><uap:Protocol Name="scp" Parameters="--link &quot;%1&quot;"><uap:DisplayName>SCP</uap:DisplayName></uap:Protocol></uap:Extension>
+        <uap:Extension Category="windows.protocol"><uap:Protocol Name="ftp" Parameters="--link &quot;%1&quot;"><uap:DisplayName>FTP</uap:DisplayName></uap:Protocol></uap:Extension>
+        <uap:Extension Category="windows.protocol"><uap:Protocol Name="ftps" Parameters="--link &quot;%1&quot;"><uap:DisplayName>FTPS</uap:DisplayName></uap:Protocol></uap:Extension>
+        <uap:Extension Category="windows.protocol"><uap:Protocol Name="ftpes" Parameters="--link &quot;%1&quot;"><uap:DisplayName>FTPES</uap:DisplayName></uap:Protocol></uap:Extension>
+        <uap:Extension Category="windows.protocol"><uap:Protocol Name="dav" Parameters="--link &quot;%1&quot;"><uap:DisplayName>WebDAV</uap:DisplayName></uap:Protocol></uap:Extension>
+        <uap:Extension Category="windows.protocol"><uap:Protocol Name="davs" Parameters="--link &quot;%1&quot;"><uap:DisplayName>WebDAV (HTTPS)</uap:DisplayName></uap:Protocol></uap:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <!-- a desktop application (files, network, terminals); the Store asks why -->
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

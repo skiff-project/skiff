@@ -314,6 +314,8 @@ interface LinkStatus {
   supported: boolean
   canRemove: boolean
   settings: boolean
+  /** the Microsoft Store package declares the links: chosen in the settings only */
+  packaged?: boolean
   schemes: { scheme: string; skiff: boolean; handler?: string }[]
 }
 
@@ -360,12 +362,14 @@ function SystemSection() {
               </tbody>
             </table>
             <div className="row" style={{ flexWrap: 'wrap' }}>
-              {!all && <button className="btn primary" disabled={busy} onClick={() => change(true)}>{busy ? <span className="spinner sm" /> : <Link2 />} {t('links.enable')}</button>}
-              {some && st.canRemove && <button className="btn" disabled={busy} onClick={() => change(false)}>{t('links.disable')}</button>}
+              {!all && !st.packaged && <button className="btn primary" disabled={busy} onClick={() => change(true)}>{busy ? <span className="spinner sm" /> : <Link2 />} {t('links.enable')}</button>}
+              {some && st.canRemove && !st.packaged && <button className="btn" disabled={busy} onClick={() => change(false)}>{t('links.disable')}</button>}
               {st.settings && <button className="btn" onClick={() => call('app.openDefaultApps').catch((e) => errorToast(t('links.settings'), e))}><ExternalLink /> {t('links.settings')}</button>}
             </div>
-            {st.settings && <span className="hint">{t('links.settingsHint')}</span>}
-            {!st.canRemove && <span className="hint">{t('links.macHint')}</span>}
+            {st.packaged ? <span className="hint">{t('links.packagedHint')}</span> : <>
+              {st.settings && <span className="hint">{t('links.settingsHint')}</span>}
+              {!st.canRemove && <span className="hint">{t('links.macHint')}</span>}
+            </>}
             <span className="hint">{t('links.ask')}</span>
           </>
         )}

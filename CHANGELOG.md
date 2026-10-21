@@ -57,6 +57,10 @@ The first public release.
   for every system, and a portable mode.
 - French and English interface; the documentation, its nineteen chapters
   and their screenshots in both languages (`docs/` and `docs/en/`).
+- A Microsoft Store package (MSIX, made by the CI), Windows signing
+  through SignPath prepared (CODE_SIGNING.md), a one-command install for
+  macOS without the Gatekeeper warning (install.sh), and a privacy policy
+  (PRIVACY.md: Skiff collects nothing).
 
 ### Configuration format
 - The configuration folder records its format (`format.json`, format 1).

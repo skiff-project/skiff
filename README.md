@@ -127,11 +127,11 @@ Skiff reprend les fonctionnalités de WinSCP (interface Commander à deux pannea
 | Système | Installateur |
 |---|---|
 | Windows 10/11 | `skiff-setup-<version>-windows-amd64.exe` (ou `-arm64`) : pour votre compte, sans droits d'administrateur, menu Démarrer, désinstallation dans Paramètres → Applications |
-| macOS 11+ | `Skiff-<version>-macos.dmg` : glisser Skiff dans Applications (universel Intel / Apple Silicon) |
+| macOS 11+ | `Skiff-<version>-macos.dmg` : glisser Skiff dans Applications (universel Intel / Apple Silicon), ou `curl -fsSL https://raw.githubusercontent.com/skiff-project/skiff/main/install.sh \| sh` (sans l'avertissement de Gatekeeper) |
 | Debian, Ubuntu… | `sudo apt install ./skiff_<version>_amd64.deb` |
 | Autres Linux | `Skiff-<version>-x86_64.AppImage` : `chmod +x`, puis lancer |
 
-Détails, premier lancement des installateurs non signés, mise à jour et désinstallation : [chapitre 1 de la documentation](docs/01-installation.md).
+Détails, premier lancement des installateurs non signés, mise à jour et désinstallation : [chapitre 1 de la documentation](docs/01-installation.md). Signature : [CODE_SIGNING.md](CODE_SIGNING.md) ; confidentialité : [PRIVACY.md](PRIVACY.md) (Skiff ne collecte rien).
 
 **Prérequis pour compiler** : Go ≥ 1.27.2 (le `go` installé télécharge seul cette version au besoin), Node ≥ 22 et pnpm (uniquement pour compiler l'interface).
 

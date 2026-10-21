@@ -193,9 +193,16 @@ setup_windows() {
   ui
   pkg_work
   mkdir -p dist
-  local arch v; v="$(pkg_version)"
+  local arch v exe; v="$(pkg_version)"
   for arch in amd64 arm64; do
-    GOOS=windows GOARCH=$arch CGO_ENABLED=0 $GO build -trimpath -tags desktop,production -ldflags "$LDFLAGS" -o "$PKG_WORK/skiff-$arch.exe" .
+    # SKIFF_WINDOWS_EXES: a folder of skiff-windows-<arch>.exe already built
+    # (and signed: the CI signs them before making the installers)
+    if [ -n "${SKIFF_WINDOWS_EXES:-}" ]; then
+      exe="$(cd "$SKIFF_WINDOWS_EXES" && pwd)/skiff-windows-$arch.exe"
+      cp "$exe" "$PKG_WORK/skiff-$arch.exe"
+    else
+      GOOS=windows GOARCH=$arch CGO_ENABLED=0 $GO build -trimpath -tags desktop,production -ldflags "$LDFLAGS" -o "$PKG_WORK/skiff-$arch.exe" .
+    fi
     makensis -V2 -DVERSION="$v" -DNUMVERSION="$(num_version).0" -DARCH="$arch" \
       -DEXE="$PKG_WORK/skiff-$arch.exe" -DOUTFILE="$PWD/dist/skiff-setup-$v-windows-$arch.exe" build/windows/installer.nsi
     echo "dist/skiff-setup-$v-windows-$arch.exe"

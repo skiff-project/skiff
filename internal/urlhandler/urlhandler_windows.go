@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"unsafe"
 
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
@@ -54,7 +55,59 @@ func exeName(cmd string) string {
 	return strings.TrimSuffix(filepath.Base(cmd), filepath.Ext(cmd))
 }
 
+// packageFamily is the family name of the MSIX package Skiff runs from
+// (Microsoft Store), "" outside a package. In a package, the manifest
+// declares the links (windows.protocol) and the registry of the user is
+// virtualized: writing the protocols there would change nothing outside.
+func packageFamily() string {
+	proc := windows.NewLazySystemDLL("kernel32.dll").NewProc("GetCurrentPackageFamilyName")
+	if proc.Find() != nil {
+		return ""
+	}
+	const errorInsufficientBuffer = 122 // APPMODEL_ERROR_NO_PACKAGE (15700) outside a package
+	n := uint32(0)
+	if r, _, _ := proc.Call(uintptr(unsafe.Pointer(&n)), 0); r != errorInsufficientBuffer || n == 0 {
+		return ""
+	}
+	buf := make([]uint16, n)
+	if r, _, _ := proc.Call(uintptr(unsafe.Pointer(&n)), uintptr(unsafe.Pointer(&buf[0]))); r != 0 {
+		return ""
+	}
+	return windows.UTF16ToString(buf)
+}
+
+// getPackaged: the application chosen for each scheme, Skiff being the one
+// of this package (its ProgId, AppX…, names the package).
+func getPackaged(family string) Status {
+	st := Status{Supported: true, Settings: true, Packaged: true}
+	fam := strings.ToLower(family)
+	name := fam
+	if i := strings.LastIndex(fam, "_"); i > 0 {
+		name = fam[:i] // Name_PublisherId
+	}
+	for _, s := range Schemes {
+		x := Scheme{Scheme: s}
+		if choice := readString(registry.CURRENT_USER, `Software\Microsoft\Windows\Shell\Associations\UrlAssociations\`+s+`\UserChoice`, "ProgId"); choice != "" {
+			aumid := strings.ToLower(readString(registry.CLASSES_ROOT, choice+`\Application`, "AppUserModelID"))
+			app := readString(registry.CLASSES_ROOT, choice+`\Application`, "ApplicationName")
+			x.Skiff = strings.HasPrefix(aumid, fam+"!") || (aumid == "" && strings.Contains(strings.ToLower(app), name))
+			x.Handler = app
+			if strings.HasPrefix(app, "@") || x.Handler == "" {
+				x.Handler = exeName(readString(registry.CLASSES_ROOT, choice+`\shell\open\command`, ""))
+			}
+		}
+		if x.Skiff {
+			x.Handler = "Skiff"
+		}
+		st.Schemes = append(st.Schemes, x)
+	}
+	return st
+}
+
 func get() Status {
+	if fam := packageFamily(); fam != "" {
+		return getPackaged(fam)
+	}
 	st := Status{Supported: true, CanRemove: true, Settings: true}
 	for _, s := range Schemes {
 		x := Scheme{Scheme: s}
@@ -103,6 +156,9 @@ func setValues(path string, values map[string]string) error {
 }
 
 func register(exe string, icon []byte) error {
+	if packageFamily() != "" {
+		return ErrPackaged
+	}
 	if exe == "" {
 		return errors.New("cannot tell where this program is")
 	}
@@ -160,6 +216,9 @@ func deleteTree(root registry.Key, path string) error {
 }
 
 func remove(exe string) error {
+	if packageFamily() != "" {
+		return ErrPackaged
+	}
 	for _, s := range Schemes {
 		// only the protocols that start Skiff
 		if isSkiff(readString(registry.CURRENT_USER, classes+s+`\shell\open\command`, "")) {

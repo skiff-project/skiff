@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SignPath artifact configuration "windows-exe": the GitHub artifact
+     windows-exe-unsigned of the CI (.github/workflows/build.yml), that is
+     the two Windows programs of Skiff, signed before the installers are
+     made from them. Paste it into the project on SignPath. -->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file path="skiff-windows-amd64.exe">
+      <authenticode-sign />
+    </pe-file>
+    <pe-file path="skiff-windows-arm64.exe">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

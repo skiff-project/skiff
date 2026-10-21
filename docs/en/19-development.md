@@ -79,6 +79,16 @@ The CI then builds the binaries and the installers of the three systems and publ
 
 A change of the format of the configuration adds a migration in `internal/config/format.go` (`FormatVersion` goes up by 1, `migrations[n]` goes from format n to format n+1) and a test that starts from a folder of the old format.
 
+### Signing and the Microsoft Store
+
+| What | How | Settings of the GitHub repository (**Settings → Secrets and variables → Actions**) |
+|---|---|---|
+| Windows: programs and installers | Signed by SignPath (SignPath Foundation certificate, [CODE_SIGNING.md](../../CODE_SIGNING.md)), for the `v*` tags only: the CI first sends the two programs (artifact configuration `windows-exe`), then the installers made from them (`windows-setup`), and each request is approved by hand in SignPath. The two configurations to paste into SignPath are in `.signpath/artifact-configurations/`. Without `SIGNPATH_ORGANIZATION_ID`, nothing is signed and the CI publishes the files as they are. | variables `SIGNPATH_ORGANIZATION_ID`, `SIGNPATH_PROJECT_SLUG` (`skiff` by default) and `SIGNPATH_POLICY_SLUG` (`release-signing`); secret `SIGNPATH_API_TOKEN` |
+| Microsoft Store | The `msix` job (on Windows) makes `Skiff-<version>-windows.msixbundle` (x64 and ARM64) with `build/windows/msix.ps1` and the manifest `build/windows/msix/AppxManifest.xml`: an artifact of each run, to upload to Partner Center, outside the release. The Store signs it. In this package, the `sftp://`… links are declared by the manifest: Skiff detects it and points to the default apps of Windows. | variables `MSIX_IDENTITY_NAME`, `MSIX_PUBLISHER` and `MSIX_PUBLISHER_NAME`, copied from the **Product identity** page of Partner Center |
+| macOS | Ad hoc signature only (Apple's notarization is paid); [`install.sh`](../../install.sh) installs Skiff without quarantine. The CI installs the image it has just made with this script and starts `skiff version`. | — |
+
+The CI also installs the Windows installer silently (`/S`) and starts the installed `skiff.exe`.
+
 ### Licences
 
 Skiff is under the Apache 2.0 licence (`LICENSE`, `NOTICE`); a contribution is made under the same licence. `THIRD_PARTY_NOTICES.txt` lists the libraries compiled into the program, for each system (`go list`) and for the interface (`pnpm licenses`), with the text of their licence and their `NOTICE` files. The program embeds it (**About**, `skiff licenses`) and the installers copy it next to `LICENSE`.

@@ -197,7 +197,7 @@ Quand le lien désigne un site enregistré (même protocole, serveur, port et ut
 | Système | Où Skiff s'inscrit |
 |---|---|
 | Linux, FreeBSD | Le fichier `mimeapps.list` de l'utilisateur (`~/.config`), selon la norme freedesktop ; l'entrée du menu de Skiff liste ces liens. Sans le paquet `.deb`, l'entrée du menu de l'utilisateur est créée au besoin. |
-| Windows | Le registre de l'utilisateur (sans droits d'administrateur), et **Paramètres → Applications → Applications par défaut**, où Skiff apparaît. Une application choisie dans ces paramètres garde ses liens : **Applications par défaut de Windows…** les ouvre pour y choisir Skiff. L'installateur propose la même chose (case cochée). |
+| Windows | Le registre de l'utilisateur (sans droits d'administrateur), et **Paramètres → Applications → Applications par défaut**, où Skiff apparaît. Une application choisie dans ces paramètres garde ses liens : **Applications par défaut de Windows…** les ouvre pour y choisir Skiff. L'installateur propose la même chose (case cochée). La version du Microsoft Store déclare elle-même ces liens dans son paquet : seules les applications par défaut de Windows les lui donnent, et la section l'indique. |
 | macOS | `Skiff.app` déclare ces liens ; le bouton fait de Skiff leur application. Pour les rendre, choisissez une autre application depuis celle-ci : macOS garde la dernière choisie. |
 
 En mode web, cette section n'existe pas : les liens sont ceux du serveur.

@@ -9,13 +9,21 @@ Chaque système a son installateur :
 | Système | Fichier | Installation |
 |---|---|---|
 | Windows 10/11 (x64, ARM64) | `skiff-setup-<version>-windows-amd64.exe` (ou `-arm64.exe`) | Double-cliquez. Skiff s'installe pour votre compte, **sans droits d'administrateur**, dans `%LOCALAPPDATA%\Programs\Skiff`, avec un raccourci dans le menu Démarrer (et sur le bureau si vous cochez la case). La case **Ouvrir les liens sftp://, scp://, ftp://… avec Skiff**, cochée, fait ouvrir ces liens par Skiff ([§ 12.14](12-preferences.md#1214-système)) |
-| macOS 11 et plus (Intel et Apple Silicon) | `Skiff-<version>-macos.dmg` | Ouvrez l'image disque et glissez **Skiff** sur le dossier **Applications** |
+| macOS 11 et plus (Intel et Apple Silicon) | `Skiff-<version>-macos.dmg` | Ouvrez l'image disque et glissez **Skiff** sur le dossier **Applications**, ou installez-le d'une commande (voir ci-dessous) |
 | Debian, Ubuntu, Linux Mint… (x64, ARM64) | `skiff_<version>_amd64.deb` (ou `_arm64.deb`) | `sudo apt install ./skiff_<version>_amd64.deb` : apt installe aussi WebKitGTK si besoin |
 | Autres Linux (x64, ARM64) | `Skiff-<version>-x86_64.AppImage` (ou `-aarch64`) | Rendez le fichier exécutable (`chmod +x Skiff-*.AppImage`, ou **Propriétés → Autoriser l'exécution**), puis lancez-le. Rien n'est installé |
 
 Skiff est un logiciel libre et gratuit, sous licence Apache 2.0. Tous ouvrent la **fenêtre native** : WebView2 sous Windows (préinstallé sur Windows 10/11), WKWebView sous macOS, WebKitGTK sous Linux.
 
-**Premier lancement sous Windows et macOS.** Les installateurs ne sont pas encore signés par un certificat d'éditeur. Windows affiche alors « Windows a protégé votre ordinateur » : cliquez sur **Informations complémentaires**, puis sur **Exécuter quand même**. macOS indique qu'il ne peut pas vérifier l'application : ouvrez **Réglages Système → Confidentialité et sécurité** et cliquez sur **Ouvrir quand même** en face de Skiff. Ces deux avertissements n'apparaissent qu'une fois.
+**Premier lancement sous Windows et macOS.** Les installateurs ne sont pas encore signés par un certificat d'éditeur (la signature gratuite de SignPath Foundation est demandée pour Windows : voir [CODE_SIGNING.md](../CODE_SIGNING.md)). Windows affiche alors « Windows a protégé votre ordinateur » : cliquez sur **Informations complémentaires**, puis sur **Exécuter quand même**. macOS indique qu'il ne peut pas vérifier l'application : ouvrez **Réglages Système → Confidentialité et sécurité** et cliquez sur **Ouvrir quand même** en face de Skiff. Ces deux avertissements n'apparaissent qu'une fois.
+
+**macOS, en une commande, sans avertissement :**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/skiff-project/skiff/main/install.sh | sh
+```
+
+Le script ([`install.sh`](../install.sh)) télécharge l'image disque de la dernière version, la vérifie avec le fichier `SHA256SUMS` de la version et copie `Skiff.app` dans **Applications** (`~/Applications` si ce dossier n'est pas modifiable). Un fichier téléchargé ainsi n'est pas mis en quarantaine : macOS ouvre Skiff sans l'avertissement ci-dessus. Relancez la même commande pour mettre Skiff à jour.
 
 **L'AppImage** contient deux versions de Skiff. Elle lance la fenêtre native quand le système a WebKitGTK 4.1, sinon la variante qui ouvre une fenêtre de navigateur. Elle a besoin de FUSE pour s'ouvrir (présent sur presque toutes les distributions) ; à défaut, lancez-la avec l'option `--appimage-extract-and-run`. Elle ajoute son entrée au menu des applications à son premier lancement (voir [Lancer Skiff](#13-lancer-skiff)).
 

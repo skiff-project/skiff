@@ -100,12 +100,23 @@ jobs:
         with: { node-version: '${{ env.NODE_VERSION }}', cache: pnpm, cache-dependency-path: frontend/pnpm-lock.yaml }
       - name: Disk image (universal Skiff.app, native window)
         run: ./build.sh dmg
+      - name: Installed by install.sh, signed ad hoc, starts
+        run: |
+          SKIFF_DMG="$(ls dist/*.dmg)" sh install.sh
+          codesign --verify --deep --strict /Applications/Skiff.app
+          /Applications/Skiff.app/Contents/MacOS/skiff version
       - uses: actions/upload-artifact@v7
         with: { name: macos, path: 'dist/*.dmg' }
 
   windows:
     needs: test
     runs-on: ubuntu-24.04
+    env:
+      # Authenticode signing by SignPath (SignPath Foundation certificate), for
+      # the releases only, once the project is set up there (see
+      # docs/19-developpement.md): the programs first, then the installers
+      # made from them
+      SIGN: ${{ startsWith(github.ref, 'refs/tags/v') && vars.SIGNPATH_ORGANIZATION_ID != '' }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -122,10 +133,72 @@ jobs:
           for arch in amd64 arm64; do
             GOOS=windows GOARCH=$arch CGO_ENABLED=0 go build -trimpath -tags desktop,production -ldflags "-s -w -X main.version=$VERSION" -o skiff-windows-$arch.exe .
           done
+      - id: exe
+        if: env.SIGN == 'true'
+        uses: actions/upload-artifact@v7
+        with: { name: windows-exe-unsigned, path: 'skiff-windows-*.exe' }
+      - if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
+          organization-id: '${{ vars.SIGNPATH_ORGANIZATION_ID }}'
+          project-slug: "${{ vars.SIGNPATH_PROJECT_SLUG || 'skiff' }}"
+          signing-policy-slug: "${{ vars.SIGNPATH_POLICY_SLUG || 'release-signing' }}"
+          artifact-configuration-slug: windows-exe
+          github-artifact-id: '${{ steps.exe.outputs.artifact-id }}'
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: signed-exe
+      - if: env.SIGN == 'true'
+        run: mv -f signed-exe/skiff-windows-*.exe .
       - name: Installers (NSIS)
-        run: ./build.sh setup-windows
+        run: SKIFF_WINDOWS_EXES=. ./build.sh setup-windows
+      - id: setup
+        if: env.SIGN == 'true'
+        uses: actions/upload-artifact@v7
+        with: { name: windows-setup-unsigned, path: 'dist/skiff-setup-*.exe' }
+      - if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
+          organization-id: '${{ vars.SIGNPATH_ORGANIZATION_ID }}'
+          project-slug: "${{ vars.SIGNPATH_PROJECT_SLUG || 'skiff' }}"
+          signing-policy-slug: "${{ vars.SIGNPATH_POLICY_SLUG || 'release-signing' }}"
+          artifact-configuration-slug: windows-setup
+          github-artifact-id: '${{ steps.setup.outputs.artifact-id }}'
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: signed-setup
+      - if: env.SIGN == 'true'
+        run: mv -f signed-setup/skiff-setup-*.exe dist/
       - uses: actions/upload-artifact@v7
         with: { name: windows, path: "skiff-windows-*.exe\ndist/skiff-setup-*.exe" }
+
+  # the MSIX packages of the Microsoft Store (the Store signs them): an
+  # artifact of the run, to upload to Partner Center, not part of the release
+  msix:
+    needs: windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with: { name: windows, path: win }
+      - name: The installer installs silently, Skiff starts
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem win/dist/skiff-setup-*-windows-amd64.exe | Select-Object -First 1
+          Start-Process -Wait -FilePath $setup.FullName -ArgumentList '/S'
+          & "$env:LOCALAPPDATA\Programs\Skiff\skiff.exe" version
+          if ($LASTEXITCODE) { throw "skiff version failed ($LASTEXITCODE)" }
+      - name: MSIX bundle (x64 and arm64)
+        shell: pwsh
+        run: |
+          $d = git describe --tags --always
+          $v = if ($d -match '^v?(\d+\.\d+(\.\d+)?)') { $Matches[1] } else { '0.1.0' }
+          ./build/windows/msix.ps1 -Version $v -ExeDir win -OutDir dist `
+            -IdentityName "${{ vars.MSIX_IDENTITY_NAME || 'Laterna.Skiff' }}" `
+            -Publisher "${{ vars.MSIX_PUBLISHER || 'CN=Laterna' }}" `
+            -PublisherName "${{ vars.MSIX_PUBLISHER_NAME || 'Laterna' }}"
+      - uses: actions/upload-artifact@v7
+        with: { name: store-msix, path: 'dist/*.msixbundle' }
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -133,11 +206,15 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/download-artifact@v8
-        with: { path: artifacts, merge-multiple: true }
+        with: { path: artifacts }
       - name: Gather the files (the packages come in dist/)
         run: |
           mkdir release
-          find artifacts -type f -exec mv -t release {} +
+          # one folder per artifact: only the published ones, not the
+          # unsigned programs of the signing nor the package of the Store
+          for a in artifacts/linux-* artifacts/macos artifacts/windows; do
+            find "$a" -type f -exec mv -t release {} +
+          done
           cd release && sha256sum * > SHA256SUMS
       - uses: softprops/action-gh-release@v3
         with:

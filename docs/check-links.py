@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Checks the links of the documentation, in both languages.
 
-Every relative link and image of README.md, README.en.md, docs/*.md and
-docs/en/*.md must lead to a file that exists and, with a #fragment, to a
+Every relative link and image of the READMEs, PRIVACY.md, CODE_SIGNING.md,
+SECURITY.md, CHANGELOG.md, docs/*.md and docs/en/*.md must lead to a file that exists and, with a #fragment, to a
 heading of that file (anchors as GitHub makes them). Each chapter
 docs/NN-*.md must have its English counterpart docs/en/NN-*.md, the same
 number, and the other way round, each linking to the other.
@@ -61,7 +61,7 @@ def anchors(path):
 
 
 def main():
-    files = [os.path.join(ROOT, 'README.md'), os.path.join(ROOT, 'README.en.md')]
+    files = [os.path.join(ROOT, f) for f in ('README.md', 'README.en.md', 'PRIVACY.md', 'CODE_SIGNING.md', 'SECURITY.md', 'CHANGELOG.md')]
     for d in (DOCS, EN):
         files += sorted(os.path.join(d, f) for f in os.listdir(d) if f.endswith('.md'))
     bad = []
