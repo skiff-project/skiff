@@ -247,8 +247,28 @@ test_all() {
 }
 
 testenv() {
-  docker compose -f testenv/docker-compose.yml up -d
-  sleep 5
+  # the missing images are pulled one at a time, with a few retries: the
+  # registries refuse bursts of pulls ("toomanyrequests") on a fresh machine
+  local i port
+  for i in 1 2 3 4 5; do
+    COMPOSE_PARALLEL_LIMIT=1 docker compose -f testenv/docker-compose.yml up -d && break
+    [ "$i" = 5 ] && return 1
+    echo "the test servers did not start, again in $((i * 20)) s" >&2
+    sleep $((i * 20))
+  done
+  # every server answers before the tests start; pure-ftpd first makes its
+  # Diffie-Hellman parameters (about a minute on a new container)
+  for port in 2222 2223 2121 9990 8080 9000; do
+    for i in $(seq 1 120); do
+      if [ "$port" = 2121 ]; then
+        timeout 3 bash -c 'exec 3<>/dev/tcp/127.0.0.1/2121 && read -r -t 2 l <&3 && [[ $l == 220* ]]' 2>/dev/null && break
+      else
+        timeout 3 bash -c "exec 3<>/dev/tcp/127.0.0.1/$port" 2>/dev/null && break
+      fi
+      [ "$i" = 120 ] && { echo "the test server on port $port does not answer" >&2; return 1; }
+      sleep 2
+    done
+  done
 }
 
 itest() {
