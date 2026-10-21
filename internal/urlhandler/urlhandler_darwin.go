@@ -3,6 +3,9 @@
 package urlhandler
 
 /*
+// LSCopyDefaultHandlerForURLScheme and LSSetDefaultHandlerForURLScheme are
+// deprecated since macOS 10.15 but still the C way to do it
+#cgo CFLAGS: -Wno-deprecated-declarations
 #cgo LDFLAGS: -framework CoreServices -framework CoreFoundation
 #include <stdlib.h>
 #include <CoreServices/CoreServices.h>

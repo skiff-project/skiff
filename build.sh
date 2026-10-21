@@ -23,6 +23,13 @@ LDFLAGS="-s -w -X main.version=${VERSION}"
 GO="${GO:-go}"
 PNPM="${PNPM:-pnpm}"
 
+# the native macOS window (Wails) uses UniformTypeIdentifiers, which the
+# wails command links by itself; Skiff runs on macOS 11 and later (Info.plist)
+if [ "$(uname -s)" = Darwin ]; then
+  export CGO_CFLAGS="${CGO_CFLAGS:--O2 -g} -mmacosx-version-min=11.0"
+  export CGO_LDFLAGS="${CGO_LDFLAGS:--O2 -g} -framework UniformTypeIdentifiers -mmacosx-version-min=11.0"
+fi
+
 native_tags() {
   case "$(uname -s)" in
     Linux)
