@@ -39,6 +39,8 @@ jobs:
         with: { version: 12 }
       - uses: actions/setup-node@v4
         with: { node-version: '${{ env.NODE_VERSION }}', cache: pnpm, cache-dependency-path: frontend/pnpm-lock.yaml }
+      # the native Linux window is analysed too: it needs the GTK/WebKit headers
+      - run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
       - name: Known vulnerabilities (Go, every system)
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@v1.9.0

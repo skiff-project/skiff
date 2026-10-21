@@ -5,7 +5,7 @@ NOTICE). It includes the following software, each under its own licence,
 whose texts and notices follow. This file is made by build/notices.py.
 
 Go (compiled into the program):
-  go1.27.2 (standard library and runtime) — BSD-3-Clause
+  Go 1.27 (standard library and runtime) — BSD-3-Clause
   git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 — Unlicense OR MIT
   github.com/bep/debounce v1.2.1 — MIT
   github.com/cespare/xxhash/v2 v2.3.0 — MIT
@@ -121,7 +121,7 @@ JavaScript (the interface, embedded in the program):
   zustand 5.0.15 — MIT
 
 ==============================================================================
-Go go1.27.2 (standard library and runtime)
+Go 1.27 (standard library and runtime)
 Licence: BSD-3-Clause
 ------------------------------------------------------------------------------
 Copyright 2009 The Go Authors.

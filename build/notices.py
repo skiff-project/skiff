@@ -10,6 +10,7 @@ It lists the Go modules compiled into Skiff on every system (go list) and
 the JavaScript packages of the interface (pnpm licenses), so the module
 cache and frontend/node_modules must be there.
 """
+import difflib
 import json
 import os
 import re
@@ -120,12 +121,16 @@ def entry(title, licence, text, notice):
 
 def build():
     goroot = run(["go", "env", "GOROOT"]).strip()
+    # Go 1.27, not go1.27.3: the file must not depend on the patch release of
+    # the machine that makes it (the CI may have a newer one)
     gover = run(["go", "env", "GOVERSION"]).strip()
+    m = re.match(r"go(\d+\.\d+)", gover)
+    gover = "Go " + (m.group(1) if m else gover)
     parts = []
     toc = []
     text = read(os.path.join(goroot, "LICENSE"))
     toc.append(f"  {gover} (standard library and runtime) — {spdx(text)}")
-    parts.append(entry(f"Go {gover} (standard library and runtime)", spdx(text), text, None))
+    parts.append(entry(f"{gover} (standard library and runtime)", spdx(text), text, None))
     mods = go_modules()
     for path in sorted(mods, key=str.lower):
         version, d = mods[path]
@@ -164,6 +169,8 @@ def main():
     if "--check" in sys.argv:
         cur = read(OUT) + "\n" if os.path.exists(OUT) else ""
         if cur != text:
+            diff = difflib.unified_diff(cur.splitlines(), text.splitlines(), "THIRD_PARTY_NOTICES.txt", "expected", lineterm="", n=1)
+            sys.stderr.write("\n".join(list(diff)[:40]) + "\n")
             sys.exit("THIRD_PARTY_NOTICES.txt is not up to date: run build/notices.py")
         print("THIRD_PARTY_NOTICES.txt up to date")
         return
