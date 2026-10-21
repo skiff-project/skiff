@@ -7,9 +7,9 @@ SFTP · SCP · FTP/FTPS · WebDAV · S3 — an alternative to WinSCP for Windows
 
 Skiff takes up the features of WinSCP (two-panel Commander interface, transfer queue, synchronization, editor, `winscp.com`-compatible scripts, session import…) with a modern, fluid interface, and adds a built-in SSH terminal, tunnel and jump host management, a visual diff, a command palette and a remote web mode.
 
-> 📖 **[Full documentation](docs/README.md)** (in French): every feature described screen by screen, with more than a hundred screenshots. The [installation chapter](docs/en/01-installation.md) is also in English.
+> 📖 **[Full documentation](docs/en/README.md)**: every feature described screen by screen, with more than a hundred screenshots ([in French](docs/README.md) too).
 
-![Skiff connected to an SFTP server](docs/images/commander.png)
+![Skiff connected to an SFTP server](docs/en/images/commander.png)
 
 ---
 

@@ -1,6 +1,6 @@
 # 16. Raccourcis clavier
 
-[← Protocoles](15-protocoles.md) · [Sommaire](README.md) · [Dépannage →](17-depannage.md)
+[← Protocoles](15-protocoles.md) · [Sommaire](README.md) · [Dépannage →](17-depannage.md) · 🇬🇧 [English](en/16-shortcuts.md)
 
 Sous macOS, `Ctrl` correspond à `⌘ Cmd`. La liste est aussi affichée dans **Préférences → Raccourcis clavier**.
 
@@ -128,4 +128,4 @@ Pendant un glisser-déposer : `Ctrl` (ou `Alt`) force la copie, `Maj` force le d
 
 ---
 
-[← Protocoles](15-protocoles.md) · [Sommaire](README.md) · [Dépannage →](17-depannage.md)
+[← Protocoles](15-protocoles.md) · [Sommaire](README.md) · [Dépannage →](17-depannage.md) · 🇬🇧 [English](en/16-shortcuts.md)

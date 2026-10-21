@@ -1,6 +1,6 @@
 # 17. Dépannage
 
-[← Raccourcis clavier](16-raccourcis.md) · [Sommaire](README.md) · [Correspondance WinSCP → Skiff →](18-winscp.md)
+[← Raccourcis clavier](16-raccourcis.md) · [Sommaire](README.md) · [Correspondance WinSCP → Skiff →](18-winscp.md) · 🇬🇧 [English](en/17-troubleshooting.md)
 
 ## 17.1 Échec de la connexion
 
@@ -106,4 +106,4 @@ Joignez :
 
 ---
 
-[← Raccourcis clavier](16-raccourcis.md) · [Sommaire](README.md) · [Correspondance WinSCP → Skiff →](18-winscp.md)
+[← Raccourcis clavier](16-raccourcis.md) · [Sommaire](README.md) · [Correspondance WinSCP → Skiff →](18-winscp.md) · 🇬🇧 [English](en/17-troubleshooting.md)

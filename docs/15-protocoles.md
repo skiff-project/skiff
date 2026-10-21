@@ -1,6 +1,6 @@
 # 15. Protocoles
 
-[← Mode web distant](14-mode-web.md) · [Sommaire](README.md) · [Raccourcis clavier →](16-raccourcis.md)
+[← Mode web distant](14-mode-web.md) · [Sommaire](README.md) · [Raccourcis clavier →](16-raccourcis.md) · 🇬🇧 [English](en/15-protocols.md)
 
 Skiff présente tous les protocoles de la même façon : mêmes panneaux, mêmes transferts, même synchronisation. Ce chapitre décrit leurs particularités.
 
@@ -159,4 +159,4 @@ protocole://[utilisateur[:mot-de-passe]@]hôte[:port][/chemin]
 
 ---
 
-[← Mode web distant](14-mode-web.md) · [Sommaire](README.md) · [Raccourcis clavier →](16-raccourcis.md)
+[← Mode web distant](14-mode-web.md) · [Sommaire](README.md) · [Raccourcis clavier →](16-raccourcis.md) · 🇬🇧 [English](en/15-protocols.md)

@@ -1,6 +1,6 @@
 # 11. Sécurité
 
-[← Recherche, journal et palette](10-recherche-journal.md) · [Sommaire](README.md) · [Préférences →](12-preferences.md)
+[← Recherche, journal et palette](10-recherche-journal.md) · [Sommaire](README.md) · [Préférences →](12-preferences.md) · 🇬🇧 [English](en/11-security.md)
 
 ## 11.1 Clés d'hôte SSH
 
@@ -191,4 +191,4 @@ Les clés du trousseau sont **proposées à tous les serveurs SSH**, avant celle
 
 ---
 
-[← Recherche, journal et palette](10-recherche-journal.md) · [Sommaire](README.md) · [Préférences →](12-preferences.md)
+[← Recherche, journal et palette](10-recherche-journal.md) · [Sommaire](README.md) · [Préférences →](12-preferences.md) · 🇬🇧 [English](en/11-security.md)

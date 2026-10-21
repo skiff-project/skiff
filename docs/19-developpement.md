@@ -1,6 +1,6 @@
 # 19. Développement
 
-[← Correspondance WinSCP → Skiff](18-winscp.md) · [Sommaire](README.md)
+[← Correspondance WinSCP → Skiff](18-winscp.md) · [Sommaire](README.md) · 🇬🇧 [English](en/19-development.md)
 
 ## 19.1 Architecture
 
@@ -27,7 +27,7 @@ skiff/
 │   └── desktop/              fenêtre Wails (WebView2, WKWebView, WebKitGTK) ou repli navigateur
 ├── frontend/                 React 19 + TypeScript + Vite (zustand, TanStack Virtual, CodeMirror 6, xterm.js)
 ├── testenv/                  serveurs Docker de test (OpenSSH, OpenSSH ancien, Pure-FTPd + TLS, vsftpd TLS implicite, WebDAV, S3)
-└── docs/                     cette documentation, ses captures et l'outil qui les produit
+└── docs/                     cette documentation (en français, et en anglais dans docs/en), ses captures et l'outil qui les produit
 ```
 
 L'interface communique avec le cœur Go par HTTP et WebSocket :
@@ -48,7 +48,7 @@ C'est la même interface, et la même API, dans la fenêtre native et en mode we
 ./build.sh packages   # installateurs (deb, appimage, setup-windows, dmg ; voir le chapitre 1)
 ./build.sh ui         # interface seule (frontend/dist)
 ./build.sh dev        # recompile l'interface à la volée ; Skiff sur http://127.0.0.1:8484/?token=dev
-./build.sh test       # go vet, tests unitaires, vérification TypeScript et des traductions
+./build.sh test       # go vet, tests unitaires, vérification TypeScript, des traductions et des liens de la documentation
 ./build.sh itest      # tests de bout en bout de l'API, du mode web, de la ligne de commande et des scripts
 ./build.sh uitest     # tests de bout en bout de l'interface dans un navigateur
 ```
@@ -94,6 +94,10 @@ Une nouvelle dépendance doit avoir une licence compatible avec Apache 2.0 (MIT,
 
 Un bouton qui ne montre qu'une icône porte une infobulle (`data-tip`) : `frontend/src/lib/a11y.ts` en fait son nom pour les lecteurs d'écran (`aria-label`), donne aux champs d'un `.field` le texte de leur étiquette et indique le choix coché des contrôles segmentés (`aria-pressed`). Le test d'interface « accessibilité » échoue dès qu'un contrôle visible des écrans principaux n'a pas de nom.
 
+### Langues
+
+Chaque texte de l'interface passe par `frontend/src/lib/i18n.ts`, en anglais et en français (textes d'exemple compris : `~/Projects` / `~/Projets`). `./build.sh test` vérifie que les deux langues ont les mêmes clés.
+
 ## 19.3 Les tests
 
 Les tests de bout en bout s'exécutent contre les serveurs Docker de `testenv/` (lancés automatiquement par `itest` et `uitest`). Ils utilisent aussi le client OpenSSH de la machine (`ssh-agent`, `ssh-add`, `ssh-keygen`) pour l'agent et les certificats.
@@ -102,6 +106,7 @@ Les tests de bout en bout s'exécutent contre les serveurs Docker de `testenv/` 
 |---|---|---|
 | Tests unitaires | `go test ./...` | Masques, scripts (syntaxe, variables), clés PPK, configuration OpenSSH (guillemets, `Host`/`Match`, `Include`, jetons, chemins par OS, algorithmes) et sa priorité face aux réglages des sites, lecture de `/proc` par le moniteur, calcul des exécutions planifiées (cron compris), rattrapage, chiffrement et fusion de la synchronisation entre appareils, import WinSCP/OpenSSH/FileZilla, secrets et mot de passe maître, dossiers de sites, moteur de transferts, analyse des listages FTP et SCP, prison du mode web, découpage des commandes d'éditeur |
 | Traductions | `node frontend/scripts/check-i18n.mjs` | Chaque clé utilisée par l'interface existe en français et en anglais, et les deux langues ont les mêmes clés |
+| Documentation | `python3 docs/check-links.py` | Chaque lien, ancre et image des chapitres français et anglais mène quelque part, et chaque chapitre a son pendant dans l'autre langue |
 | API de bout en bout | `go test -tags integration ./internal/server/` | `TestE2E` démarre un vrai serveur Skiff et appelle **chacune des méthodes de l'API** comme le fait l'interface, en vérifiant leur effet sur les serveurs : sites, import et export, les cinq protocoles et le disque local, transferts et toutes leurs options, file d'attente, transferts de serveur à serveur, synchronisation (sens, modes, critères), surveillance, recherche, éditeur externe, terminaux, tunnels `-L`/`-R`/`-D`, hôtes de rebond (y compris FTP, WebDAV et S3 derrière SSH), proxys SOCKS4/5, HTTP, Telnet et commande, clés et conversion, agent SSH réel (`ssh-agent` : connexion par les clés de l'agent seul, `IdentitiesOnly` qui filtre les clés de l'agent, `IdentityFile` désignant la clé publique ou une clé privée absente, `IdentityAgent` vers une autre socket, une variable ou `none`, phrase secrète non demandée quand l'agent détient la clé), certificats OpenSSH signés par `ssh-keygen` (`<clé>-cert.pub` à côté de la clé, `CertificateFile`, clé dans l'agent, certificat d'un autre utilisateur refusé), clés d'hôte, anciens algorithmes (refus sans l'option, connexion avec **Autoriser les anciens algorithmes** ou avec `KexAlgorithms`/`Ciphers`/`HostKeyAlgorithms` dans `ssh_config`), configuration OpenSSH (alias, `IdentityFile` seul, `StrictHostKeyChecking`, `HostKeyAlias`, `ProxyJump`, `ProxyCommand`, `LocalForward` ouvert à la connexion, fichier système, désactivation), certificats TLS, FTPS à TLS implicite (connexion par URL `ftps://`, toutes les opérations sur les fichiers, transferts dans les deux sens), mot de passe maître, coupure et reconnexion, transferts en parties parallèles (envoi, téléchargement, serveur à serveur, annulation), trousseau et transfert d'agent (`ssh-add -l` dans un terminal distant), clés autorisées (liste, clé de la session, retrait refusé sans confirmation ou depuis une liste périmée, remplacement vérifié par une seconde connexion, remplacement refusé sans la clé privée), liens du système (`mimeapps.list`, URL passée à la fenêtre ouverte, clé et en-tête `Origin` contrôlés, liens `docker://` refusés), moniteur et arrêt d'un processus, conteneurs (Docker réel, Docker par SSH, Kubernetes), tâches planifiées (synchronisation, script, échec, annulation, historique), synchronisation entre deux appareils (chiffrement, mauvaise phrase secrète, suppressions propagées). Le test échoue si une méthode de l'API n'a pas été exercée. `TestE2EWeb` vérifie le mode web (authentification, limitation des tentatives, CSRF, origine, prison `--root`, fonctions désactivées). |
 | Ligne de commande | `go test -tags integration .` | Compile le binaire et exécute toutes les commandes de script, la compatibilité `winscp.com` (`/script`, `/command`, `/parameter`, `/log`, `/ini`), les modes `batch`, `keepuptodate`, la console (dans un pseudo-terminal), `keygen`, `import`, `serve`, l'ouverture d'un hôte de `~/.ssh/config` par son nom, `skiff task` et l'ouverture d'une URL au démarrage, le second lancement qui passe son lien à la fenêtre ouverte (et le lancement après un plantage), la connexion par une clé que seul un `ssh-agent` détient |
 | Protocoles | `go test -tags integration ./internal/core/` | Opérations de base sur chaque protocole |
@@ -141,9 +146,9 @@ Variables utiles en développement :
 
 ## 19.4 Régénérer les captures d'écran
 
-Toutes les images de `docs/images` sont produites automatiquement par `docs/capture`, qui pilote l'interface de Skiff avec Playwright sur des données de démonstration. Il suffit de relancer l'outil après une modification de l'interface.
+Toutes les images de `docs/images` (en français) et de `docs/en/images` (en anglais) sont produites automatiquement par `docs/capture`, qui pilote l'interface de Skiff avec Playwright sur des données de démonstration. Il suffit de relancer l'outil après une modification de l'interface, dans les deux langues.
 
-Prérequis : Docker, Node 22 ou plus, pnpm, et un binaire Skiff compilé.
+Prérequis : Docker, Node 22 ou plus, pnpm, Python 3 et un binaire Skiff compilé.
 
 ```bash
 # 1. serveurs de test
@@ -159,12 +164,26 @@ cd docs/capture && pnpm install && pnpm exec playwright install chromium && cd .
 DEMO_DIR=/tmp/skiff-demo SKIFF_BIN=bin/skiff node docs/capture/capture.mjs
 DEMO_DIR=/tmp/skiff-demo SKIFF_BIN=bin/skiff node docs/capture/capture.mjs '^(connexion-sftp|editeur)$'
 
-# 5. réduire le poids des images (palette de 256 couleurs, nécessite Pillow)
+# 5. la même chose en anglais, dans docs/en/images
+DEMO_LANG=en ./docs/capture/demo-setup.sh /tmp/skiff-demo-en
+CAPTURE_LANG=en DEMO_DIR=/tmp/skiff-demo-en SKIFF_BIN=bin/skiff node docs/capture/capture.mjs
+
+# 6. réduire le poids des images (palette de 256 couleurs, nécessite Pillow)
 python3 docs/capture/optimize-images.py
+python3 docs/capture/optimize-images.py docs/en/images
 ```
 
-L'outil démarre Skiff sans fenêtre, avec un dossier personnel et une configuration de démonstration, crée les sites, puis rejoue une trentaine de scènes (sites, connexion, menus, transferts, synchronisation, éditeur, terminal, tunnels, préférences, thèmes, verrouillage, mode web…). Les captures sont prises en 1280 × 800 à l'échelle 1,5, en français et en thème clair. Une scène qui échoue laisse une capture `fail-<scène>.png` dans le dossier de démonstration ; les autres scènes continuent. La scène `sites`, qui crée les sites, est toujours jouée, et `connexion-sftp` doit précéder les scènes qui utilisent la session SFTP.
+L'outil démarre Skiff sans fenêtre, avec un dossier personnel et une configuration de démonstration, crée les sites, puis rejoue une quarantaine de scènes (sites, connexion, menus, transferts, synchronisation, éditeur, terminal, tunnels, préférences, thèmes, verrouillage, mode web…). Les captures sont prises en 1280 × 800 à l'échelle 1,5, en thème clair. Une scène qui échoue laisse une capture `fail-<scène>.png` dans le dossier de démonstration ; les autres scènes continuent. La scène `sites`, qui crée les sites, est toujours jouée, et `connexion-sftp` doit précéder les scènes qui utilisent la session SFTP. Les serveurs gardent le contenu de la dernière démonstration préparée : relancez `demo-setup.sh` avant de changer de langue.
+
+### Deux langues
+
+Les scènes sont écrites une seule fois, en français. En anglais :
+
+- `demo-setup.sh` avec `DEMO_LANG=en` prépare la même démonstration, puis `translate-demo.py` la traduit avec `demo-en.json` : noms des fichiers et des dossiers (`Projets/site-vitrine` → `Projects/showcase-site`), leurs textes, les conteneurs (`shop-web`), en gardant les dates des fichiers ;
+- `capture.mjs` avec `CAPTURE_LANG=en` lance Skiff en anglais et traduit par `T()` chaque texte qu'il clique ou tape : les données de démonstration par le même `demo-en.json`, les libellés de l'interface par `i18n.ts` (le libellé français donne sa clé, la clé son libellé anglais). Quand un libellé français en a plusieurs en anglais (`Connexion` : *Connect* ou *Connection*), la scène désigne la clé avec `K('site.connection')`. À la fin, l'outil liste les textes qu'il n'a pas su traduire : ajoutez-les à `demo-en.json`, ou utilisez `K()`.
+
+Un nouveau nom dans les données de démonstration va dans `demo-en.json` ; un nouveau chapitre, ou la modification d'un chapitre, se fait dans les deux langues : `docs/NN-nom.md` et `docs/en/NN-name.md` (même numéro), chacun avec le lien vers l'autre en haut et en bas. `python3 docs/check-links.py` vérifie que chaque lien mène quelque part.
 
 ---
 
-[← Correspondance WinSCP → Skiff](18-winscp.md) · [Sommaire](README.md)
+[← Correspondance WinSCP → Skiff](18-winscp.md) · [Sommaire](README.md) · 🇬🇧 [English](en/19-development.md)

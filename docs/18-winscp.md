@@ -1,6 +1,6 @@
 # 18. Correspondance WinSCP → Skiff
 
-[← Dépannage](17-depannage.md) · [Sommaire](README.md) · [Développement →](19-developpement.md)
+[← Dépannage](17-depannage.md) · [Sommaire](README.md) · [Développement →](19-developpement.md) · 🇬🇧 [English](en/18-winscp.md)
 
 Ce chapitre aide les habitués de WinSCP à retrouver chaque fonction dans Skiff.
 
@@ -68,4 +68,4 @@ Ce chapitre aide les habitués de WinSCP à retrouver chaque fonction dans Skiff
 
 ---
 
-[← Dépannage](17-depannage.md) · [Sommaire](README.md) · [Développement →](19-developpement.md)
+[← Dépannage](17-depannage.md) · [Sommaire](README.md) · [Développement →](19-developpement.md) · 🇬🇧 [English](en/18-winscp.md)

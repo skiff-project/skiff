@@ -55,8 +55,8 @@ The first public release.
 - Installers: Windows (for the current user, without administrator
   rights), macOS disk image, Debian package and AppImage; binaries alone
   for every system, and a portable mode.
-- French and English interface; documentation in French, the README and
-  the installation chapter in English.
+- French and English interface; the documentation, its nineteen chapters
+  and their screenshots in both languages (`docs/` and `docs/en/`).
 
 ### Configuration format
 - The configuration folder records its format (`format.json`, format 1).

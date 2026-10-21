@@ -1,6 +1,6 @@
 # 2. Premiers pas
 
-[← Installation](01-installation.md) · [Sommaire](README.md) · [Gestionnaire de sites →](03-sites.md)
+[← Installation](01-installation.md) · [Sommaire](README.md) · [Gestionnaire de sites →](03-sites.md) · 🇬🇧 [English](en/02-first-steps.md)
 
 ## 2.1 L'écran d'accueil
 
@@ -95,4 +95,4 @@ De haut en bas :
 
 ---
 
-[← Installation](01-installation.md) · [Sommaire](README.md) · [Gestionnaire de sites →](03-sites.md)
+[← Installation](01-installation.md) · [Sommaire](README.md) · [Gestionnaire de sites →](03-sites.md) · 🇬🇧 [English](en/02-first-steps.md)

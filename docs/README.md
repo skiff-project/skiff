@@ -1,5 +1,7 @@
 # Documentation de Skiff
 
+🇬🇧 [English documentation](en/README.md) · [README](../README.md)
+
 Skiff est un client de transfert de fichiers moderne et multiplateforme, livré en **un seul binaire**. Il gère SFTP, SCP, FTP/FTPS, WebDAV et S3 et reprend les fonctionnalités de WinSCP : interface Commander à deux panneaux, file de transferts, synchronisation, éditeur intégré, scripts compatibles `winscp.com` et import des sessions. Il y ajoute un terminal SSH, la gestion des tunnels et des hôtes de rebond, un diff visuel, une palette de commandes et un mode web distant.
 
 ![Skiff connecté à un serveur SFTP, en interface Commander](images/commander.png)

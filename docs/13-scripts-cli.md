@@ -1,6 +1,6 @@
 # 13. Scripts et ligne de commande
 
-[← Préférences](12-preferences.md) · [Sommaire](README.md) · [Mode web distant →](14-mode-web.md)
+[← Préférences](12-preferences.md) · [Sommaire](README.md) · [Mode web distant →](14-mode-web.md) · 🇬🇧 [English](en/13-scripts-cli.md)
 
 Le binaire `skiff` sert aussi d'outil en ligne de commande. Son langage de script reprend celui de `winscp.com` : les scripts WinSCP existants fonctionnent tels quels dans la plupart des cas.
 
@@ -260,4 +260,4 @@ Affiche la mention de Skiff (licence Apache 2.0) et la liste des bibliothèques 
 
 ---
 
-[← Préférences](12-preferences.md) · [Sommaire](README.md) · [Mode web distant →](14-mode-web.md)
+[← Préférences](12-preferences.md) · [Sommaire](README.md) · [Mode web distant →](14-mode-web.md) · 🇬🇧 [English](en/13-scripts-cli.md)

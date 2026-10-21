@@ -1,6 +1,6 @@
 # 7. Synchronisation
 
-[← Transferts](06-transferts.md) · [Sommaire](README.md) · [Édition, diff et aperçu →](08-edition.md)
+[← Transferts](06-transferts.md) · [Sommaire](README.md) · [Édition, diff et aperçu →](08-edition.md) · 🇬🇧 [English](en/07-synchronization.md)
 
 ## 7.1 Synchroniser deux dossiers
 
@@ -100,4 +100,4 @@ schtasks /Create /SC DAILY /ST 02:00 /TN "Skiff - Publier le site" /TR "\"C:\Pro
 
 ---
 
-[← Transferts](06-transferts.md) · [Sommaire](README.md) · [Édition, diff et aperçu →](08-edition.md)
+[← Transferts](06-transferts.md) · [Sommaire](README.md) · [Édition, diff et aperçu →](08-edition.md) · 🇬🇧 [English](en/07-synchronization.md)

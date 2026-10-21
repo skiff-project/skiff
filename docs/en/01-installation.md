@@ -1,6 +1,6 @@
 # 1. Installation and first start
 
-🇫🇷 [Version française](../01-installation.md) · [Contents of the documentation (in French)](../README.md) · [README](../../README.en.md)
+[Contents](README.md) · [First steps →](02-first-steps.md) · 🇫🇷 [Français](../01-installation.md)
 
 ## 1.1 Installing Skiff
 
@@ -8,7 +8,7 @@ Each system has its installer:
 
 | System | File | Installation |
 |---|---|---|
-| Windows 10/11 (x64, ARM64) | `skiff-setup-<version>-windows-amd64.exe` (or `-arm64.exe`) | Double-click it. Skiff installs for your account, **without administrator rights**, into `%LOCALAPPDATA%\Programs\Skiff`, with a shortcut in the Start menu (and on the desktop if you tick the box). The **Open sftp://, scp://, ftp://… links with Skiff** box, ticked, makes Skiff open those links ([Preferences > System](../12-preferences.md#1214-système), in French) |
+| Windows 10/11 (x64, ARM64) | `skiff-setup-<version>-windows-amd64.exe` (or `-arm64.exe`) | Double-click it. Skiff installs for your account, **without administrator rights**, into `%LOCALAPPDATA%\Programs\Skiff`, with a shortcut in the Start menu (and on the desktop if you tick the box). The **Open sftp://, scp://, ftp://… links with Skiff** box, ticked, makes Skiff open those links ([Preferences → System](12-preferences.md#1214-system)) |
 | macOS 11 and later (Intel and Apple Silicon) | `Skiff-<version>-macos.dmg` | Open the disk image and drag **Skiff** onto the **Applications** folder |
 | Debian, Ubuntu, Linux Mint… (x64, ARM64) | `skiff_<version>_amd64.deb` (or `_arm64.deb`) | `sudo apt install ./skiff_<version>_amd64.deb`: apt also installs WebKitGTK when needed |
 | Other Linux (x64, ARM64) | `Skiff-<version>-x86_64.AppImage` (or `-aarch64`) | Make the file executable (`chmod +x Skiff-*.AppImage`, or **Properties → Allow executing**), then run it. Nothing is installed |
@@ -29,7 +29,7 @@ Skiff also fits in a single executable, without installation: the interface, the
 | Linux (x64, ARM64) | `skiff-linux-amd64-desktop` | Native **WebKitGTK** window (`libwebkit2gtk-4.1` package to run it) |
 | Linux, FreeBSD, macOS, all | `skiff-<os>-<arch>` (portable variant) | A Chrome, Edge or Brave app window when one of them is installed, else the default browser |
 
-The portable variant depends on no library: it also serves for the [remote web mode](../14-mode-web.md) (in French) on a server or a NAS.
+The portable variant depends on no library: it also serves for the [remote web mode](14-web-mode.md) on a server or a NAS.
 
 ## 1.2 Building from the sources
 
@@ -72,7 +72,7 @@ skiff sftp://alex@server.example.com   # opens the window and connects
 
 At the first start, no site is saved. The welcome screen offers to create a site, to import your WinSCP, FileZilla, PuTTY or OpenSSH sessions, or to connect at once with a URL.
 
-![First start: no site saved](../images/accueil-premier-lancement.png)
+![First start: no site saved](images/accueil-premier-lancement.png)
 
 The installers put Skiff in the Start menu (Windows), the Applications folder and the Launchpad (macOS) or the application menu (`.deb` package, for every user).
 
@@ -80,7 +80,7 @@ The installers put Skiff in the Start menu (Windows), the Applications folder an
 
 **One window.** Starting Skiff again while it is open (the shortcut, `skiff sftp://…`, a clicked link) does not make a second window: the open window comes to the front and opens the connection asked for. Two windows on the same configuration could write the same files and run the scheduled tasks twice. A copy in [portable mode](#15-portable-mode) has its own configuration, hence its own window.
 
-What follows is described in the chapter [First steps](../02-premiers-pas.md) (in French). The other commands (`serve`, `run`, `shell`, `keygen`, `import`, `task`, `desktop-entry`, `url-handler`, `licenses`, `version`) are described in the chapter [Scripts and command line](../13-scripts-cli.md) (in French), and `skiff <command> -h` gives their options.
+What follows is described in the chapter [First steps](02-first-steps.md). The other commands (`serve`, `run`, `shell`, `keygen`, `import`, `task`, `desktop-entry`, `url-handler`, `licenses`, `version`) are described in the chapter [Scripts and command line](13-scripts-cli.md), and `skiff <command> -h` gives their options.
 
 ## 1.4 Configuration folder
 
@@ -153,4 +153,4 @@ To erase the configuration as well, delete the [configuration folder](#14-config
 
 ---
 
-🇫🇷 [Version française](../01-installation.md) · [README](../../README.en.md)
+[Contents](README.md) · [First steps →](02-first-steps.md) · 🇫🇷 [Français](../01-installation.md)

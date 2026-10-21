@@ -333,7 +333,7 @@ export function SiteEditor({ site, isNew, onSaved, onDeleted, onCancel }: { site
                 </div>
                 <div className="field">
                   <label>{t('site.localDir')}</label>
-                  <input className="input mono" value={s.localDir || ''} placeholder="~/Projets" onChange={(e) => up({ localDir: e.target.value })} spellCheck={false} />
+                  <input className="input mono" value={s.localDir || ''} placeholder={t('site.localDirExample')} onChange={(e) => up({ localDir: e.target.value })} spellCheck={false} />
                 </div>
               </div>
             </div>

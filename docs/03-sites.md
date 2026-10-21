@@ -1,6 +1,6 @@
 # 3. Gestionnaire de sites
 
-[← Premiers pas](02-premiers-pas.md) · [Sommaire](README.md) · [Interface et navigation →](04-interface.md)
+[← Premiers pas](02-premiers-pas.md) · [Sommaire](README.md) · [Interface et navigation →](04-interface.md) · 🇬🇧 [English](en/03-sites.md)
 
 Un **site** regroupe tout ce qu'il faut pour se connecter à un serveur : protocole, hôte, identifiants, dossiers d'ouverture, proxy, hôtes de rebond, tunnels et options propres au protocole. C'est l'équivalent du gestionnaire de sites de WinSCP.
 
@@ -398,4 +398,4 @@ Cochez les sites à importer, choisissez le dossier de destination (**Importer d
 
 ---
 
-[← Premiers pas](02-premiers-pas.md) · [Sommaire](README.md) · [Interface et navigation →](04-interface.md)
+[← Premiers pas](02-premiers-pas.md) · [Sommaire](README.md) · [Interface et navigation →](04-interface.md) · 🇬🇧 [English](en/03-sites.md)

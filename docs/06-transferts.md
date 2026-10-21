@@ -1,6 +1,6 @@
 # 6. Transferts
 
-[← Opérations sur les fichiers](05-fichiers.md) · [Sommaire](README.md) · [Synchronisation →](07-synchronisation.md)
+[← Opérations sur les fichiers](05-fichiers.md) · [Sommaire](README.md) · [Synchronisation →](07-synchronisation.md) · 🇬🇧 [English](en/06-transfers.md)
 
 ## 6.1 Copier et déplacer
 
@@ -150,4 +150,4 @@ Les données transitent par Skiff en flux continu, sans fichier temporaire sur l
 
 ---
 
-[← Opérations sur les fichiers](05-fichiers.md) · [Sommaire](README.md) · [Synchronisation →](07-synchronisation.md)
+[← Opérations sur les fichiers](05-fichiers.md) · [Sommaire](README.md) · [Synchronisation →](07-synchronisation.md) · 🇬🇧 [English](en/06-transfers.md)

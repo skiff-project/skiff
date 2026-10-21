@@ -1,6 +1,6 @@
 # 8. Édition, diff et aperçu
 
-[← Synchronisation](07-synchronisation.md) · [Sommaire](README.md) · [Terminal, tunnels, proxys et rebonds →](09-terminal-tunnels.md)
+[← Synchronisation](07-synchronisation.md) · [Sommaire](README.md) · [Terminal, tunnels, proxys et rebonds →](09-terminal-tunnels.md) · 🇬🇧 [English](en/08-editing.md)
 
 ## 8.1 L'éditeur intégré
 
@@ -162,4 +162,4 @@ Les copies sont dans le dossier de configuration (`history/`), une par fichier e
 
 ---
 
-[← Synchronisation](07-synchronisation.md) · [Sommaire](README.md) · [Terminal, tunnels, proxys et rebonds →](09-terminal-tunnels.md)
+[← Synchronisation](07-synchronisation.md) · [Sommaire](README.md) · [Terminal, tunnels, proxys et rebonds →](09-terminal-tunnels.md) · 🇬🇧 [English](en/08-editing.md)

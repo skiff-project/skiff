@@ -242,6 +242,8 @@ test_all() {
   (cd frontend && $PNPM run typecheck && node scripts/check-i18n.mjs)
   # the notices of the included software follow the dependencies
   python3 build/notices.py --check
+  # the links of the documentation, in both languages
+  python3 docs/check-links.py
 }
 
 testenv() {

@@ -153,4 +153,4 @@ Pour effacer aussi la configuration, supprimez le [dossier de configuration](#14
 
 ---
 
-[← Sommaire](README.md) · [Chapitre suivant →](02-premiers-pas.md)
+[← Sommaire](README.md) · [Chapitre suivant →](02-premiers-pas.md) · 🇬🇧 [English](en/01-installation.md)

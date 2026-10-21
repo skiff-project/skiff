@@ -1,6 +1,6 @@
 # 12. Préférences
 
-[← Sécurité](11-securite.md) · [Sommaire](README.md) · [Scripts et ligne de commande →](13-scripts-cli.md)
+[← Sécurité](11-securite.md) · [Sommaire](README.md) · [Scripts et ligne de commande →](13-scripts-cli.md) · 🇬🇧 [English](en/12-preferences.md)
 
 **Préférences** (`Ctrl+,`, roue dentée en haut à droite, ou palette) ouvre une fenêtre en quatorze sections. Chaque modification s'applique **immédiatement** et est enregistrée dans `settings.json` : il n'y a pas de bouton « Appliquer ». Le bas de la fenêtre rappelle le **Dossier de configuration**.
 
@@ -210,4 +210,4 @@ La version, la **Plateforme** (système et architecture), le **Mode** (bureau ou
 
 ---
 
-[← Sécurité](11-securite.md) · [Sommaire](README.md) · [Scripts et ligne de commande →](13-scripts-cli.md)
+[← Sécurité](11-securite.md) · [Sommaire](README.md) · [Scripts et ligne de commande →](13-scripts-cli.md) · 🇬🇧 [English](en/12-preferences.md)

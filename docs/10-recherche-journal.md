@@ -1,6 +1,6 @@
 # 10. Recherche, journal et palette
 
-[← Terminal, tunnels, proxys et rebonds](09-terminal-tunnels.md) · [Sommaire](README.md) · [Sécurité →](11-securite.md)
+[← Terminal, tunnels, proxys et rebonds](09-terminal-tunnels.md) · [Sommaire](README.md) · [Sécurité →](11-securite.md) · 🇬🇧 [English](en/10-search-log.md)
 
 ## 10.1 Rechercher des fichiers
 
@@ -81,4 +81,4 @@ Sans rien taper, la palette liste les commandes. En tapant, elle filtre de faço
 
 ---
 
-[← Terminal, tunnels, proxys et rebonds](09-terminal-tunnels.md) · [Sommaire](README.md) · [Sécurité →](11-securite.md)
+[← Terminal, tunnels, proxys et rebonds](09-terminal-tunnels.md) · [Sommaire](README.md) · [Sécurité →](11-securite.md) · 🇬🇧 [English](en/10-search-log.md)

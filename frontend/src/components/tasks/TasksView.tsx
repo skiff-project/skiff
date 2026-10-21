@@ -219,7 +219,7 @@ function TaskEditor({ task, view, isNew, sites, onSaved, onDeleted, onCancel }: 
                 </select>
               </div>
               <div className="field-row">
-                <div className="field"><label>{t('sync.localDir')}</label><input className="input mono" value={s.sync?.localDir || ''} placeholder="~/Projets/site" onChange={(e) => upSync({ localDir: e.target.value })} spellCheck={false} /></div>
+                <div className="field"><label>{t('sync.localDir')}</label><input className="input mono" value={s.sync?.localDir || ''} placeholder={t('tasks.localDirExample')} onChange={(e) => upSync({ localDir: e.target.value })} spellCheck={false} /></div>
                 <div className="field"><label>{t('sync.remoteDir')}</label><input className="input mono" value={s.sync?.remoteDir || ''} placeholder={t('tasks.remoteDirDefault')} onChange={(e) => upSync({ remoteDir: e.target.value })} spellCheck={false} /></div>
               </div>
               <SyncOptionsFields req={s.sync as SyncRequest} up={upSync} />

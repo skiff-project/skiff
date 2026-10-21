@@ -5,17 +5,25 @@
 //   ./docs/capture/demo-setup.sh /tmp/skiff-demo
 //   DEMO_DIR=/tmp/skiff-demo SKIFF_BIN=./bin/skiff node docs/capture/capture.mjs [scene-filter]
 //
-// Screenshots are written to docs/images/. Each scene is independent: a
-// failing scene is reported and the run continues.
+// In English (the demo made with DEMO_LANG=en):
+//   DEMO_LANG=en ./docs/capture/demo-setup.sh /tmp/skiff-demo-en
+//   CAPTURE_LANG=en DEMO_DIR=/tmp/skiff-demo-en SKIFF_BIN=./bin/skiff node docs/capture/capture.mjs
+//
+// Screenshots are written to docs/images/ (docs/en/images/ in English).
+// Each scene is independent: a failing scene is reported and the run
+// continues.
 import { chromium } from 'playwright'
 import { spawn, execSync } from 'node:child_process'
-import { mkdirSync, rmSync, appendFileSync, writeFileSync, existsSync } from 'node:fs'
+import { mkdirSync, rmSync, appendFileSync, writeFileSync, existsSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '../..')
-const OUT = join(ROOT, 'docs/images')
+const LANG = process.env.CAPTURE_LANG || 'fr'
+const OUT = join(ROOT, LANG === 'fr' ? 'docs/images' : `docs/${LANG}/images`)
+const LOCALE = { fr: 'fr-FR', en: 'en-US' }[LANG]
+const OTHER = LANG === 'fr' ? 'en' : 'fr' // the other language (the "language" screenshot)
 const DEMO = process.env.DEMO_DIR
 if (!DEMO) throw new Error('set DEMO_DIR (see demo-setup.sh)')
 const HOME = join(DEMO, 'home/alex')
@@ -25,7 +33,86 @@ const PORT = 8590
 const TOKEN = 'doc'
 const BASE = `http://127.0.0.1:${PORT}`
 const FILTER = process.argv[2] ? new RegExp(process.argv[2]) : null
-const SITE = join(HOME, 'Projets/site-vitrine')
+// ---------------------------------------------------------------------------
+// Languages. The scenes are written in French; in another language, T()
+// gives the same text in it: the demo data from demo-<lang>.json (made by
+// demo-setup.sh with it), the labels of the interface from its own
+// dictionaries (frontend/src/lib/i18n.ts). K() gives a label by its key,
+// where a French label has several English ones.
+
+function loadI18n() {
+  const src = readFileSync(join(ROOT, 'frontend/src/lib/i18n.ts'), 'utf8')
+  const block = (name) => {
+    const at = src.indexOf(`const ${name}: Dict = {`)
+    const map = new Map()
+    // one entry or several per line: 'key': 'value', 'key2': "value"
+    const rx = /'([\w.-]+)':\s*(?:'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)")/g
+    for (const m of src.slice(at, src.indexOf('\n}\n', at)).matchAll(rx)) {
+      map.set(m[1], (m[2] ?? m[3]).replace(/\\(.)/g, (_, c) => (c === 'n' ? '\n' : c)))
+    }
+    return map
+  }
+  return { en: block('en'), fr: block('fr') }
+}
+const DICT = loadI18n()
+const DEMO_WORDS = LANG === 'fr' ? {} : JSON.parse(readFileSync(join(HERE, `demo-${LANG}.json`), 'utf8'))
+// French label -> keys
+const BY_FR = new Map()
+for (const [k, v] of DICT.fr) BY_FR.set(v, [...(BY_FR.get(v) || []), k])
+const TEMPLATES = [...DICT.fr].filter(([, v]) => v.includes('{')).map(([k, v]) => {
+  const names = []
+  const rx = new RegExp('^' + v.split(/(\{\w+\})/).map((part) => {
+    const m = part.match(/^\{(\w+)\}$/)
+    if (m) { names.push(m[1]); return '(.+?)' }
+    return part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  }).join('') + '$')
+  return { k, rx, names }
+})
+const demoKeys = Object.keys(DEMO_WORDS).filter((k) => DEMO_WORDS[k] !== k).sort((a, b) => b.length - a.length)
+const DEMO_RX = demoKeys.length ? new RegExp(demoKeys.map((k) => '(?<![\\p{L}\\p{N}_])' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\p{L}\\p{N}_])').join('|'), 'gu') : null
+const LABELS = new Set(DICT[LANG]?.values() ?? [])
+const untranslated = new Set()
+
+function T(s) {
+  if (LANG === 'fr' || typeof s !== 'string' || s === '') return s
+  if (s in DEMO_WORDS) return DEMO_WORDS[s]
+  const keys = BY_FR.get(s)
+  if (keys) {
+    const outs = [...new Set(keys.map((k) => DICT[LANG].get(k)).filter(Boolean))]
+    if (outs.length > 1) untranslated.add(`ambiguous "${s}": ${outs.join(' | ')} (use K)`)
+    if (outs.length) return outs[0]
+  }
+  if (LABELS.has(s)) return s // already in the language (K)
+  for (const t of TEMPLATES) {
+    const m = s.match(t.rx)
+    if (m) {
+      let out = DICT[LANG].get(t.k) || s
+      t.names.forEach((n, i) => (out = out.split(`{${n}}`).join(m[i + 1])))
+      return out
+    }
+  }
+  // the start of a label ("Importer" for "Importer…"): the whole label, as
+  // the scenes look for it inside the text of an element
+  if (BY_FR.has(s + '…')) return T(s + '…')
+  const longer = [...new Set([...BY_FR.keys()].filter((v) => v.startsWith(s)).flatMap((v) => BY_FR.get(v).map((k) => DICT[LANG].get(k)).filter(Boolean)))]
+  if (longer.length === 1) return longer[0]
+  if (longer.length > 1) untranslated.add(`ambiguous start "${s}": ${longer.slice(0, 4).join(' | ')} (use K)`)
+  if (DEMO_RX) {
+    const out = s.replace(DEMO_RX, (w) => DEMO_WORDS[w])
+    if (out !== s) return out
+  }
+  // still French: accented letters, or a piece of a French label only
+  const low = s.toLowerCase()
+  const inLabel = (labels) => s.length > 3 && [...labels].some((v) => v.toLowerCase().includes(low))
+  if (/[à-ÿ]/i.test(s) || (inLabel(BY_FR.keys()) && !inLabel(LABELS))) untranslated.add(s)
+  return s
+}
+
+const K = (key) => DICT[LANG].get(key) ?? key
+// CAPTURE_T='Importer|Clé' shows what T() makes of these texts, and quits
+if (process.env.CAPTURE_T) { for (const x of process.env.CAPTURE_T.split('|')) console.log(JSON.stringify(x), '→', JSON.stringify(T(x))); process.exit(0) }
+
+const SITE = join(HOME, T('Projets/site-vitrine'))
 
 mkdirSync(OUT, { recursive: true })
 rmSync(CFG, { recursive: true, force: true })
@@ -36,7 +123,7 @@ rmSync(CFG, { recursive: true, force: true })
 // the environment of the Skiff of the captures: everything in the demo home
 // (the links of the system included)
 const skiffEnv = (env = {}) => ({
-  ...process.env, HOME, SKIFF_HOME: CFG, SKIFF_NO_WINDOW: '1', SKIFF_PORT: String(PORT), SKIFF_DEV_TOKEN: TOKEN, SSH_AUTH_SOCK: '', LANG: 'fr_FR.UTF-8',
+  ...process.env, HOME, SKIFF_HOME: CFG, SKIFF_NO_WINDOW: '1', SKIFF_PORT: String(PORT), SKIFF_DEV_TOKEN: TOKEN, SSH_AUTH_SOCK: '', LANG: LANG === 'fr' ? 'fr_FR.UTF-8' : 'en_US.UTF-8',
   XDG_CONFIG_HOME: join(HOME, '.config'), XDG_DATA_HOME: join(HOME, '.local/share'), ...env,
 })
 
@@ -83,17 +170,17 @@ const ids = {}
 async function seed() {
   // a personal key, as most users have one
   if (!existsSync(join(HOME, '.ssh/id_ed25519'))) {
-    await rpc('keys.generate', { type: 'ed25519', comment: 'alex@portable', passphrase: '', format: 'openssh', saveTo: join(HOME, '.ssh/id_ed25519') })
+    await rpc('keys.generate', { type: 'ed25519', comment: T('alex@portable'), passphrase: '', format: 'openssh', saveTo: join(HOME, '.ssh/id_ed25519') })
   }
   const prefs = await rpc('prefs.get')
   await rpc('prefs.set', {
-    ...prefs, language: 'fr', theme: 'light', accent: '#4f7cff', density: 'comfortable', showFKeyBar: true, restoreTabs: false,
+    ...prefs, language: LANG, theme: 'light', accent: '#4f7cff', density: 'comfortable', showFKeyBar: true, restoreTabs: false,
     confirmTransfer: false, queue: { ...prefs.queue, autoPopup: true },
     bookmarks: {
       local: [
-        { name: 'site-vitrine', path: SITE, side: 'local' },
+        { name: T('site-vitrine'), path: SITE, side: 'local' },
         { name: 'Documents', path: join(HOME, 'Documents'), side: 'local' },
-        { name: 'Téléchargements', path: join(HOME, 'Téléchargements'), side: 'local' },
+        { name: T('Téléchargements'), path: join(HOME, T('Téléchargements')), side: 'local' },
       ],
     },
   })
@@ -102,37 +189,41 @@ async function seed() {
     const s = await rpc('sites.save', { site: { ...base, ...site }, secrets: password ? { password } : {} })
     return s.id
   }
-  ids.vitrine = await save({ name: 'Site vitrine (SFTP)', folder: 'Production', protocol: 'sftp', host: '127.0.0.1', port: 2222, user: 'skiff', color: '#22c55e', remoteDir: '/config/www', localDir: '~/Projets/site-vitrine', recycleBin: '/config/.corbeille', notes: 'Serveur web de production.\nDéployer avec Ctrl+S (synchronisation).' }, 'skiff')
-  ids.scp = await save({ name: 'Serveur SCP', folder: 'Production', protocol: 'scp', host: '127.0.0.1', port: 2222, user: 'skiff', color: '#14b8a6', remoteDir: '/config' })
-  ids.ftp = await save({ name: 'FTP partenaire', folder: 'Partenaires', protocol: 'ftp', ftps: 'explicit', host: '127.0.0.1', port: 2121, user: 'skiff', color: '#f97316' }, 'skiff')
-  ids.dav = await save({ name: 'Nuage WebDAV', folder: 'Stockage', protocol: 'webdav', host: '127.0.0.1', port: 8080, user: 'skiff', color: '#3b82f6', remoteDir: '/' }, 'skiff')
-  ids.s3 = await save({ name: 'Objets S3', folder: 'Stockage', protocol: 's3', host: '127.0.0.1', port: 9000, user: 'skiffadmin', tls: false, s3PathStyle: true, s3Region: 'us-east-1', color: '#8b5cf6' }, 'skiffsecret')
-  ids.bastion = await save({ name: 'Bastion', folder: 'Recette', protocol: 'sftp', host: 'bastion.example.com', user: 'alex', keyFile: '~/.ssh/id_ed25519', color: '#64748b' })
+  ids.vitrine = await save({ name: T('Site vitrine (SFTP)'), folder: 'Production', protocol: 'sftp', host: '127.0.0.1', port: 2222, user: 'skiff', color: '#22c55e', remoteDir: '/config/www', localDir: T('~/Projets/site-vitrine'), recycleBin: T('/config/.corbeille'), notes: T('Serveur web de production.\nDéployer avec Ctrl+S (synchronisation).') }, 'skiff')
+  ids.scp = await save({ name: T('Serveur SCP'), folder: 'Production', protocol: 'scp', host: '127.0.0.1', port: 2222, user: 'skiff', color: '#14b8a6', remoteDir: '/config' })
+  ids.ftp = await save({ name: T('FTP partenaire'), folder: T('Partenaires'), protocol: 'ftp', ftps: 'explicit', host: '127.0.0.1', port: 2121, user: 'skiff', color: '#f97316' }, 'skiff')
+  ids.dav = await save({ name: T('Nuage WebDAV'), folder: T('Stockage'), protocol: 'webdav', host: '127.0.0.1', port: 8080, user: 'skiff', color: '#3b82f6', remoteDir: '/' }, 'skiff')
+  ids.s3 = await save({ name: T('Objets S3'), folder: T('Stockage'), protocol: 's3', host: '127.0.0.1', port: 9000, user: 'skiffadmin', tls: false, s3PathStyle: true, s3Region: 'us-east-1', color: '#8b5cf6' }, 'skiffsecret')
+  ids.bastion = await save({ name: 'Bastion', folder: T('Recette'), protocol: 'sftp', host: 'bastion.example.com', user: 'alex', keyFile: '~/.ssh/id_ed25519', color: '#64748b' })
   ids.recette = await save({
-    name: 'Recette', folder: 'Recette', protocol: 'sftp', host: 'recette.example.com', user: 'deploy', color: '#eab308', remoteDir: '/srv/recette',
+    name: T('Recette'), folder: T('Recette'), protocol: 'sftp', host: T('recette.example.com'), user: 'deploy', color: '#eab308', remoteDir: T('/srv/recette'),
     jumps: [{ siteId: ids.bastion }],
     forwards: [
       { id: 'pg', type: 'local', bindHost: '127.0.0.1', bindPort: 15432, destHost: 'db.internal', destPort: 5432, autoStart: true, label: 'PostgreSQL' },
-      { id: 'socks', type: 'dynamic', bindHost: '127.0.0.1', bindPort: 1080, autoStart: false, label: 'Proxy SOCKS' },
+      { id: 'socks', type: 'dynamic', bindHost: '127.0.0.1', bindPort: 1080, autoStart: false, label: T('Proxy SOCKS') },
     ],
     proxy: { type: 'socks5', host: 'proxy.example.com', port: 1080, user: 'alex', remoteDns: true },
   })
-  ids.nas = await save({ name: 'NAS maison', protocol: 'sftp', host: '192.168.1.20', port: 2200, user: 'alex', color: '#ec4899' })
+  ids.nas = await save({ name: T('NAS maison'), protocol: 'sftp', host: '192.168.1.20', port: 2200, user: 'alex', color: '#ec4899' })
   await rpc('folders.add', { name: 'Clients' })
   const p2 = await rpc('prefs.get')
   await rpc('prefs.set', {
     ...p2,
     workspaces: [
-      { name: 'Déploiement du site', tabs: [{ siteId: ids.vitrine, remote: '/config/www', local: '~/Projets/site-vitrine' }] },
-      { name: 'Stockage', tabs: [{ siteId: ids.dav }, { siteId: ids.s3 }] },
+      { name: T('Déploiement du site'), tabs: [{ siteId: ids.vitrine, remote: '/config/www', local: T('~/Projets/site-vitrine') }] },
+      { name: T('Stockage'), tabs: [{ siteId: ids.dav }, { siteId: ids.s3 }] },
     ],
   })
   // S3 demo content
   const c = await rpc('conn.open', { siteId: ids.s3 })
-  for (const b of ['/medias', '/sauvegardes']) await rpc('fs.mkdir', { conn: c.id, path: b, mode: 0 }).catch(() => {})
-  await rpc('fs.mkdir', { conn: c.id, path: '/medias/catalogue-2027', mode: 0 }).catch(() => {})
-  await rpc('fs.createFile', { conn: c.id, path: '/medias/catalogue-2027/sommaire.txt', content: 'Catalogue 2027 — sommaire\n' }).catch(() => {})
-  await rpc('fs.createFile', { conn: c.id, path: '/sauvegardes/base-2026-10-14.sql.gz', content: 'demo' }).catch(() => {})
+  // the buckets of the other languages go (MinIO keeps them between runs)
+  const buckets = ['/medias', '/sauvegardes']
+  const others = ['/medias', '/sauvegardes', '/media', '/backups'].filter((b) => !buckets.map(T).includes(b))
+  await rpc('fs.delete', { conn: c.id, paths: others }).catch(() => {})
+  for (const b of buckets) await rpc('fs.mkdir', { conn: c.id, path: T(b), mode: 0 }).catch(() => {})
+  await rpc('fs.mkdir', { conn: c.id, path: T('/medias/catalogue-2027'), mode: 0 }).catch(() => {})
+  await rpc('fs.createFile', { conn: c.id, path: T('/medias/catalogue-2027/sommaire.txt'), content: T('Catalogue 2027 — sommaire\n') }).catch(() => {})
+  await rpc('fs.createFile', { conn: c.id, path: T('/sauvegardes/base-2026-10-14.sql.gz'), content: 'demo' }).catch(() => {})
   await rpc('conn.close', { conn: c.id })
 }
 
@@ -146,10 +237,10 @@ let context
 const V = (sel) => page.locator(`.tab-content:visible ${sel}`)
 const pane = (i) => V('.pane').nth(i)
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-const row = (i, name) => pane(i).locator('.fl-row', { has: page.locator('.fl-name', { hasText: new RegExp(`^${esc(name)}$`) }) })
-const tip = (t) => V(`[data-tip="${t}"]`)
+const row = (i, name) => pane(i).locator('.fl-row', { has: page.locator('.fl-name', { hasText: new RegExp(`^${esc(T(name))}$`) }) })
+const tip = (t) => V(`[data-tip="${T(t)}"]`)
 const dialog = () => page.locator('.dialog').last()
-const btnIn = (scope, name) => scope.getByRole('button', { name, exact: true })
+const btnIn = (scope, name) => scope.getByRole('button', { name: T(name), exact: true })
 
 async function settle(ms = 350) {
   await page.mouse.move(2, 2)
@@ -208,7 +299,7 @@ async function closeDialogs() {
 }
 
 async function openTab(title) {
-  await page.locator('.tab', { has: page.locator('.tab-title', { hasText: title }) }).first().click()
+  await page.locator('.tab', { has: page.locator('.tab-title', { hasText: T(title) }) }).first().click()
   await sleep(300)
 }
 
@@ -218,7 +309,7 @@ async function sitesTab() {
 }
 
 async function site(name) {
-  return page.locator('.sites-tree .tree-site', { has: page.locator('.site-name', { hasText: new RegExp(`^${esc(name)}$`) }) }).last()
+  return page.locator('.sites-tree .tree-site', { has: page.locator('.site-name', { hasText: new RegExp(`^${esc(T(name))}$`) }) }).last()
 }
 
 async function connect(name) {
@@ -233,7 +324,7 @@ async function prompt(kind) {
 }
 
 async function waitSession(title) {
-  await page.locator('.tab.active .tab-title', { hasText: title }).waitFor({ timeout: 30000 })
+  await page.locator('.tab.active .tab-title', { hasText: T(title) }).waitFor({ timeout: 30000 })
   await V('.commander .pane').first().waitFor({ timeout: 30000 })
   await waitList(0)
   await waitList(1)
@@ -259,16 +350,16 @@ scene('sites', async () => {
   await (await site('Site vitrine (SFTP)')).click()
   await shot('site-general-sftp')
   const se = page.locator('.site-editor')
-  await se.locator('[data-tip="Choisir une clé de ~/.ssh"]').first().click()
+  await se.locator(`[data-tip="${T('Choisir une clé de ~/.ssh')}"]`).first().click()
   await page.locator('.menu-label', { hasText: '~/.ssh' }).waitFor()
   await shot('site-choisir-cle')
   await page.keyboard.press('Escape')
-  for (const [label, file] of [['Dossiers', 'site-dossiers'], ['Environnement', 'site-environnement'], ['Connexion', 'site-connexion'], ['SSH', 'site-ssh'], ['Notes', 'site-notes']]) {
+  for (const [label, file] of [[K('site.directories'), 'site-dossiers'], [T('Environnement'), 'site-environnement'], [K('site.connection'), 'site-connexion'], ['SSH', 'site-ssh'], ['Notes', 'site-notes']]) {
     await se.locator('nav.vtabs').getByRole('button', { name: label, exact: true }).click()
     await shot(file, { el: se, pad: 0 })
   }
   await (await site('Recette')).click()
-  for (const [label, file] of [['Proxy', 'site-proxy'], ['Hôtes de rebond', 'site-rebonds'], ['Redirection de ports', 'site-redirections']]) {
+  for (const [label, file] of [['Proxy', 'site-proxy'], [T('Hôtes de rebond'), 'site-rebonds'], [T('Redirection de ports'), 'site-redirections']]) {
     await se.locator('nav.vtabs').getByRole('button', { name: label, exact: true }).click()
     await shot(file, { el: se, pad: 0 })
   }
@@ -285,7 +376,7 @@ scene('sites', async () => {
   await (await site('Nuage WebDAV')).click()
   await shot('site-general-webdav', { el: se, pad: 0 })
   // new site
-  await page.locator('.sites-side-head [data-tip="Nouveau site"]').click()
+  await page.locator(`.sites-side-head [data-tip="${T('Nouveau site')}"]`).click()
   await shot('site-nouveau')
   await btnIn(page.locator('.se-head'), 'Annuler').click()
 })
@@ -302,7 +393,7 @@ scene('sites-menus', async () => {
   await shot('sites-menu-plus')
   await page.keyboard.press('Escape')
   await (await site('Site vitrine (SFTP)')).click({ button: 'right' })
-  await page.locator('.menu-item', { hasText: 'Générer URL' }).click()
+  await page.locator('.menu-item', { hasText: K('gen.menu') }).click()
   await shot('generer-url-code', { el: dialog() })
   await closeDialogs()
 })
@@ -319,17 +410,17 @@ scene('sites-selection', async () => {
 
 scene('openssh', async () => {
   await sitesTab()
-  const host = page.locator('[data-ssh-host="recette"]')
+  const host = page.locator(`[data-ssh-host="${T('recette')}"]`)
   await host.click()
   await page.locator('.sshcfg-panel .sshcfg-options').waitFor()
   await shot('openssh-hote')
   await host.click({ button: 'right' })
   await shot('openssh-menu')
-  await page.locator('.menu-item', { hasText: 'Créer un site' }).click()
+  await page.locator('.menu-item', { hasText: T('Créer un site') }).click()
   const se = page.locator('.site-editor')
   await se.locator('.sshcfg-detected').waitFor()
   await shot('openssh-site-detecte', { el: se, pad: 0 })
-  await se.locator('.field', { hasText: "Nom d'utilisateur" }).locator('input').first().fill('admin')
+  await se.locator('.field', { hasText: T("Nom d'utilisateur") }).locator('input').first().fill('admin')
   await se.locator('.sshcfg-detected button').click()
   await se.locator('.sshcfg-row[data-status="site"]').waitFor()
   await shot('openssh-site-ssh', { el: se, pad: 0, wait: 500 })
@@ -339,7 +430,7 @@ scene('openssh', async () => {
 scene('import-export', async () => {
   await sitesTab()
   await page.locator('.sites-side-head .icon-btn').nth(1).click()
-  await page.locator('.menu-item', { hasText: 'Importer' }).click()
+  await page.locator('.menu-item', { hasText: T('Importer') }).click()
   await dialog().locator('.source-item').first().waitFor()
   await shot('import-sources', { el: dialog() })
   await dialog().locator('.source-item', { hasText: 'OpenSSH' }).click()
@@ -348,7 +439,7 @@ scene('import-export', async () => {
   await shot('import-apercu', { el: dialog() })
   await closeDialogs()
   await page.locator('.sites-side-head .icon-btn').nth(1).click()
-  await page.locator('.menu-item', { hasText: 'Exporter' }).click()
+  await page.locator('.menu-item', { hasText: T('Exporter') }).click()
   await dialog().locator('pre').waitFor()
   await dialog().getByRole('button', { name: 'WinSCP.ini' }).click()
   await sleep(300)
@@ -359,10 +450,10 @@ scene('import-export', async () => {
 scene('keygen', async () => {
   await sitesTab()
   await page.locator('.sites-side-head .icon-btn').nth(1).click()
-  await page.locator('.menu-item', { hasText: 'paire de clés' }).click()
+  await page.locator('.menu-item', { hasText: K('prefs.generateKey').replace('…', '') }).click()
   await dialog().waitFor()
   await shot('cles-generateur', { el: dialog() })
-  await dialog().locator('input[type=password]').fill('une phrase secrète solide')
+  await dialog().locator('input[type=password]').fill(T('une phrase secrète solide'))
   await btnIn(dialog(), 'Générer').click()
   await dialog().locator('.code-block').waitFor()
   await shot('cles-resultat', { el: dialog() })
@@ -393,10 +484,10 @@ scene('interface', async () => {
   await shot('panneau-choix-connexion')
   await page.keyboard.press('Escape')
   // bookmarks and history
-  await pane(0).locator('[data-tip="Favoris"]').click()
+  await pane(0).locator(`[data-tip="${T('Favoris')}"]`).click()
   await shot('favoris')
   await page.keyboard.press('Escape')
-  await pane(0).locator('[data-tip="Dossiers récents"]').click()
+  await pane(0).locator(`[data-tip="${T('Dossiers récents')}"]`).click()
   await shot('historique')
   await page.keyboard.press('Escape')
   // filter
@@ -436,7 +527,7 @@ scene('menus-fichiers', async () => {
   await openTab('Site vitrine')
   await row(1, 'index.html').click({ button: 'right' })
   await shot('menu-fichier')
-  await page.locator('.menu-item', { hasText: 'Commandes personnalisées' }).hover()
+  await page.locator('.menu-item', { hasText: T('Commandes personnalisées') }).hover()
   await sleep(300)
   await shot('menu-commandes-personnalisees')
   await page.keyboard.press('Escape')
@@ -466,26 +557,26 @@ scene('operations', async () => {
   await page.keyboard.press('F9')
   await dialog().getByText('Octal').waitFor()
   await shot('proprietes-fichier', { el: dialog() })
-  await btnIn(dialog(), 'Calculer').click()
+  await btnIn(dialog(), K('props.compute')).click()
   await dialog().locator('.code-block').waitFor()
   await shot('proprietes-somme', { el: dialog() })
   await closeDialogs()
   await row(1, 'css').click()
   await page.keyboard.press('F9')
-  await btnIn(dialog(), 'Calculer').click()
+  await btnIn(dialog(), K('props.calc')).click()
   await sleep(800)
-  await dialog().getByText('Appliquer récursivement').click()
+  await dialog().getByText(K('props.recursive')).click()
   await shot('proprietes-dossier', { el: dialog() })
   await closeDialogs()
   await row(1, 'index.html').click({ button: 'right' })
-  await page.locator('.menu-item', { hasText: 'Somme de contrôle' }).click()
+  await page.locator('.menu-item', { hasText: T('Somme de contrôle') }).click()
   await dialog().locator('.code-block').waitFor()
   await shot('somme-de-controle', { el: dialog() })
   await closeDialogs()
   const box = await pane(1).locator('.filelist').boundingBox()
   await row(1, 'index.html').click()
   await page.mouse.click(box.x + box.width / 2, box.y + box.height - 40, { button: 'right' })
-  await page.locator('.menu-item', { hasText: 'Nouveau lien' }).click()
+  await page.locator('.menu-item', { hasText: T('Nouveau lien') }).click()
   await shot('nouveau-lien', { el: dialog() })
   await closeDialogs()
   await row(1, 'index.html').click()
@@ -507,7 +598,7 @@ scene('transferts', async () => {
   await closeDialogs()
   // a slow transfer to show the queue
   await nav(1, '/config/releases')
-  await nav(0, join(HOME, 'Téléchargements'))
+  await nav(0, join(HOME, T('Téléchargements')))
   await row(0, 'sauvegarde-photos.tar.gz').click()
   await page.keyboard.press('Shift+F5')
   await dialog().locator('.disclosure').click()
@@ -531,7 +622,7 @@ scene('transferts', async () => {
   await row(0, 'catalogue-2027.zip').click()
   await page.keyboard.press('F5')
   const e = await prompt()
-  await e.getByText('Ignorer').first().waitFor()
+  await e.getByText(T('Ignorer')).first().waitFor()
   await shot('erreur-transfert')
   await btnIn(e, 'Ignorer').click()
   await sleep(1200)
@@ -551,7 +642,7 @@ scene('synchronisation', async () => {
   await openTab('Site vitrine')
   await row(0, 'index.html').click()
   await page.keyboard.press('Control+s')
-  await dialog().getByText('Sens', { exact: true }).waitFor()
+  await dialog().getByText(T('Sens'), { exact: true }).waitFor()
   await shot('sync-dialogue', { el: dialog() })
   await btnIn(dialog(), 'Comparer').click()
   await page.locator('.sync-table').waitFor({ timeout: 30000 })
@@ -568,7 +659,7 @@ scene('garder-a-jour', async () => {
   await btnIn(dialog(), 'Démarrer').click()
   await sleep(1200)
   appendFileSync(join(SITE, 'css/style.css'), '\n.footer { padding: 32px; }\n')
-  writeFileSync(join(SITE, 'mentions-legales.html'), '<!doctype html><title>Mentions légales</title>\n')
+  writeFileSync(join(SITE, T('mentions-legales.html')), T('<!doctype html><title>Mentions légales</title>\n'))
   await sleep(3500)
   await shot('surveillance-panneau')
   const ws = await rpc('watch.list')
@@ -584,7 +675,7 @@ scene('editeur', async () => {
   await sleep(600)
   await V('.cm-content').click()
   await page.keyboard.press('Control+End')
-  await page.keyboard.type('\n<!-- modifié avec Skiff -->')
+  await page.keyboard.type(T('\n<!-- modifié avec Skiff -->'))
   await shot('editeur')
   // conflict: the file changes on the server meanwhile
   execSync(`docker exec testenv-ssh-1 sh -c 'echo "<!-- changement serveur -->" >> /config/www/index.html'`)
@@ -592,12 +683,12 @@ scene('editeur', async () => {
   await page.keyboard.press('Control+s')
   await V('.lost-bar.warn').waitFor()
   await shot('editeur-conflit')
-  await V('.lost-bar.warn').getByRole('button', { name: 'Recharger' }).click()
+  await V('.lost-bar.warn').getByRole('button', { name: T('Recharger') }).click()
   await sleep(500)
   await V('.cm-content').click()
   await page.keyboard.press('Control+f')
   await V('.cm-search').waitFor()
-  await page.keyboard.type('Atelier')
+  await page.keyboard.type(T('Atelier'))
   await sleep(300)
   await shot('editeur-recherche')
   await page.keyboard.press('Escape')
@@ -609,7 +700,7 @@ scene('diff', async () => {
   await row(0, 'index.html').click()
   await row(1, 'index.html').click()
   await row(0, 'index.html').click({ button: 'right' })
-  await page.locator('.menu-item', { hasText: 'Comparer avec le fichier' }).click()
+  await page.locator('.menu-item', { hasText: T('Comparer avec le fichier') }).click()
   await V('.cm-mergeView').waitFor()
   await sleep(600)
   await shot('diff')
@@ -634,11 +725,11 @@ scene('terminal-divise', async () => {
   await tip('Ouvrir un terminal').click()
   await V('.xterm').waitFor()
   await sleep(1200)
-  await V('[data-tip="Diviser à droite"]').click()
-  await page.locator('.menu-item', { hasText: 'même serveur' }).click()
+  await V(`[data-tip="${T('Diviser à droite')}"]`).click()
+  await page.locator('.menu-item', { hasText: K('term.sameServer') }).click()
   await V('.term-pane').nth(1).waitFor()
   await sleep(1500)
-  await V('[data-tip="Diffuser la saisie à tous les terminaux de l’onglet"]').click()
+  await V(`[data-tip="${T('Diffuser la saisie à tous les terminaux de l’onglet')}"]`).click()
   await V('.term-pane').nth(0).click()
   await page.keyboard.type('uptime && df -h /config | tail -1\n')
   await sleep(1500)
@@ -667,7 +758,7 @@ scene('terminal-menu', async () => {
   await sleep(1000)
   const box = await V('.term-host').first().boundingBox()
   await page.mouse.click(box.x + 420, box.y + 110, { button: 'right' })
-  await page.locator('.menu-item', { hasText: 'Tout sélectionner' }).waitFor()
+  await page.locator('.menu-item', { hasText: T('Tout sélectionner') }).waitFor()
   await shot('terminal-menu')
   await page.keyboard.press('Escape')
   await rpc('prefs.set', { ...(await rpc('prefs.get')), terminal: prefs.terminal })
@@ -677,11 +768,11 @@ scene('terminal-menu', async () => {
 scene('cle-installer', async () => {
   // a key of ~/.ssh to offer (the keygen scene makes one)
   if (!(await rpc('keys.list')).some((k) => k.publicKey)) {
-    await rpc('keys.generate', { type: 'ed25519', comment: 'alex@portable', format: 'openssh', saveTo: join(HOME, '.ssh', 'id_ed25519_skiff') })
+    await rpc('keys.generate', { type: 'ed25519', comment: T('alex@portable'), format: 'openssh', saveTo: join(HOME, '.ssh', 'id_ed25519_skiff') })
   }
   await openTab('Site vitrine')
   await page.keyboard.press('Control+k')
-  await page.locator('.palette input').fill('Installer une clé publique')
+  await page.locator('.palette input').fill(T('Installer une clé publique'))
   await page.keyboard.press('Enter')
   await dialog().locator('.code-block').waitFor()
   await shot('cle-installer', { el: dialog() })
@@ -690,10 +781,10 @@ scene('cle-installer', async () => {
 
 scene('cles-autorisees', async () => {
   await openTab('Site vitrine')
-  const conn = (await rpc('conn.list')).find((c) => c.title.startsWith('Site vitrine') && c.state === 'connected')
+  const conn = (await rpc('conn.list')).find((c) => c.title.startsWith(T('Site vitrine')) && c.state === 'connected')
   const mine = (await rpc('keys.list')).find((k) => k.publicKey && k.path.endsWith('id_ed25519'))
-  const ci = await rpc('keys.generate', { type: 'ed25519', comment: 'deploiement-ci', format: 'openssh' })
-  const old = await rpc('keys.generate', { type: 'rsa', bits: 3072, comment: 'ancien-portable', format: 'openssh' })
+  const ci = await rpc('keys.generate', { type: 'ed25519', comment: T('deploiement-ci'), format: 'openssh' })
+  const old = await rpc('keys.generate', { type: 'rsa', bits: 3072, comment: T('ancien-portable'), format: 'openssh' })
   for (const line of [mine?.publicKey, `command="/usr/local/bin/deployer",no-pty,from="10.0.0.0/8" ${ci.public}`, old.public]) {
     if (line) await rpc('keys.install', { conn: conn.id, publicKey: line })
   }
@@ -703,10 +794,10 @@ scene('cles-autorisees', async () => {
     await sleep(300)
     await shot('cles-autorisees', { el: dialog() })
     // replacing one: the new key is checked before the old one goes
-    await dialog().locator(`.ak-row[data-fingerprint="${old.fingerprint}"] [data-tip="Remplacer par une autre clé…"]`).click()
+    await dialog().locator(`.ak-row[data-fingerprint="${old.fingerprint}"] [data-tip="${T('Remplacer par une autre clé…')}"]`).click()
     const r = page.locator('.dialog').last()
     await r.locator('.roll-row').waitFor()
-    const newKey = r.locator('.field').filter({ has: page.locator('label', { hasText: /^Nouvelle clé$/ }) })
+    const newKey = r.locator('.field').filter({ has: page.locator('label', { hasText: new RegExp(`^${esc(T('Nouvelle clé'))}$`) }) })
     const opt = await newKey.locator('option', { hasText: 'id_ed25519' }).first().getAttribute('value')
     if (opt) await newKey.locator('select').selectOption(opt)
     await sleep(300)
@@ -724,10 +815,10 @@ scene('cles-plusieurs-sites', async () => {
   await (await site('Serveur SCP')).click({ modifiers: ['Control'] })
   await (await site('FTP partenaire')).click({ modifiers: ['Control'] })
   await (await site('Site vitrine (SFTP)')).click({ button: 'right' })
-  await page.locator('.menu-item', { hasText: 'Installer une clé sur les sites SSH sélectionnés' }).click()
+  await page.locator('.menu-item', { hasText: K('roll.menuMany').replace(' ({n})', '') }).click()
   const r = dialog()
   await r.locator('.roll-row').first().waitFor()
-  const keyField = r.locator('.field').filter({ has: page.locator('label', { hasText: /^Clé$/ }) })
+  const keyField = r.locator('.field').filter({ has: page.locator('label', { hasText: new RegExp(`^${esc(T('Clé'))}$`) }) })
   const opt = await keyField.locator('option', { hasText: 'id_ed25519' }).first().getAttribute('value')
   if (opt) await keyField.locator('select').selectOption(opt)
   await btnIn(r, 'Installer (2)').click()
@@ -748,17 +839,17 @@ scene('cles-plusieurs-sites', async () => {
   // a plain click lets go of the selection (the next scenes edit sites)
   await (await site('Site vitrine (SFTP)')).click()
   await page.locator('.sites-multi').waitFor({ state: 'detached' })
-  const conn = (await rpc('conn.list')).find((c) => c.title.startsWith('Site vitrine') && c.state === 'connected')
+  const conn = (await rpc('conn.list')).find((c) => c.title.startsWith(T('Site vitrine')) && c.state === 'connected')
   if (conn && mine) await rpc('keys.removeAuthorized', { conn: conn.id, fingerprints: [mine.fingerprint], version: '', force: true })
 })
 
 scene('lien-ouvrir', async () => {
   // a link clicked in a browser: the system starts "skiff --link <url>",
   // which hands it to the open window
-  const p = spawn(SKIFF, ['--link', 'sftp://deploy@recette.example.com/srv/recette/releases'], { env: skiffEnv({ SKIFF_PORT: String(PORT + 1) }), stdio: 'ignore' })
+  const p = spawn(SKIFF, ['--link', T('sftp://deploy@recette.example.com/srv/recette/releases')], { env: skiffEnv({ SKIFF_PORT: String(PORT + 1) }), stdio: 'ignore' })
   await new Promise((r) => p.on('exit', r))
   const d = dialog()
-  await d.locator('.dialog-head h3', { hasText: 'Ouvrir un lien' }).waitFor()
+  await d.locator('.dialog-head h3', { hasText: T('Ouvrir un lien') }).waitFor()
   await sleep(300)
   await shot('lien-ouvrir', { el: d })
   await closeDialogs()
@@ -767,7 +858,7 @@ scene('lien-ouvrir', async () => {
 scene('preferences-systeme', async () => {
   await page.keyboard.press('Control+,')
   const d = dialog()
-  await d.locator('nav.vtabs').getByRole('button', { name: 'Système', exact: true }).click()
+  await d.locator('nav.vtabs').getByRole('button', { name: T('Système'), exact: true }).click()
   await btnIn(d, 'Ouvrir ces liens avec Skiff').click()
   await d.locator('tr[data-scheme="davs"] .badge', { hasText: 'Skiff' }).waitFor()
   await sleep(300)
@@ -779,7 +870,7 @@ scene('preferences-systeme', async () => {
 scene('projet', async () => {
   await openTab('Site vitrine')
   await activeSide(1)
-  await page.locator('.tab-content:visible .tb-btn', { hasText: 'Projet' }).click()
+  await page.locator('.tab-content:visible .tb-btn', { hasText: T('Projet') }).click()
   const pv = page.locator('.tab-content:visible .project')
   const tree = pv.locator('.ptree')
   await tree.locator('[data-path="index.html"]').click()
@@ -797,7 +888,7 @@ scene('projet', async () => {
   await page.keyboard.type('ls -la css\n')
   await sleep(900)
   await shot('projet-terminal')
-  await pv.locator('[data-tip="Masquer le terminal"]').click()
+  await pv.locator(`[data-tip="${T('Masquer le terminal')}"]`).click()
   // a search in all the files
   await page.keyboard.press('Control+Shift+F')
   await pv.locator('.psearch input').fill('title')
@@ -816,8 +907,8 @@ scene('projet', async () => {
   await pv.locator('.ptab[data-file="css/style.css"]').click()
   await pv.locator('.project-editor:visible .cm-content').click()
   await page.keyboard.press('Control+s')
-  await pv.locator('.project-editor:visible .editor-bar', { hasText: 'Enregistré' }).waitFor()
-  await pv.locator('.project-editor:visible [data-tip="Versions précédentes"]').click()
+  await pv.locator('.project-editor:visible .editor-bar', { hasText: T('Enregistré') }).waitFor()
+  await pv.locator(`.project-editor:visible [data-tip="${T('Versions précédentes')}"]`).click()
   await dialog().locator('.versions-item').first().waitFor()
   await sleep(700)
   await shot('versions-precedentes', { el: dialog() })
@@ -838,14 +929,14 @@ scene('journal-direct', async () => {
   await openTab('Site vitrine')
   await nav(1, '/config/logs')
   await row(1, 'access.log').click({ button: 'right' })
-  await page.locator('.menu-item', { hasText: 'Suivre en direct' }).click()
+  await page.locator('.menu-item', { hasText: T('Suivre en direct') }).click()
   const lv = page.locator('.tab-content:visible .logs')
   await lv.locator('.logs-line').first().waitFor()
   execSync(`docker exec testenv-ssh-1 sh -c 'for i in 1 2 3; do echo "198.51.100.7 - - [15/Oct/2026:10:0$i:00 +0200] \\"POST /contact.php HTTP/2\\" 500 312" >> /config/logs/access.log; done'`)
   await lv.locator('.logs-line', { hasText: '198.51.100.7' }).nth(2).waitFor()
   await sleep(400)
   await shot('journal-direct')
-  await lv.locator('.btn', { hasText: 'Erreurs et alertes' }).click()
+  await lv.locator('.btn', { hasText: T('Erreurs et alertes') }).click()
   await sleep(300)
   await shot('journal-direct-erreurs')
   await page.locator('.tab.active .tab-close').click()
@@ -859,14 +950,14 @@ scene('archives', async () => {
   await row(0, 'js').click({ modifiers: ['Control'] })
   await row(0, 'index.html').click({ modifiers: ['Control'] })
   await row(0, 'index.html').click({ button: 'right' })
-  await page.locator('.menu-item', { hasText: 'Compresser' }).click()
+  await page.locator('.menu-item', { hasText: T('Compresser') }).click()
   await dialog().waitFor()
   await btnIn(dialog(), 'TAR.GZ').click()
   await shot('archive-compresser', { el: dialog() })
   await closeDialogs()
   await nav(1, '/config/backups')
   await row(1, 'site-2026-10-01.tar.gz').click({ button: 'right' })
-  await page.locator('.menu-item', { hasText: 'Extraire' }).click()
+  await page.locator('.menu-item', { hasText: T('Extraire') }).click()
   await dialog().waitFor()
   await shot('archive-extraire', { el: dialog() })
   await closeDialogs()
@@ -885,7 +976,7 @@ scene('espace-disque', async () => {
   await openTab('Site vitrine')
   await nav(1, '/config')
   await page.keyboard.press('Control+k')
-  await page.locator('.palette input').fill('prend de la place ici')
+  await page.locator('.palette input').fill(K('usage.here').replace(/ ?\?$/, ''))
   await page.keyboard.press('Enter')
   await V('.usage .usage-row').first().waitFor()
   await sleep(400)
@@ -906,37 +997,37 @@ scene('moniteur', async () => {
 scene('conteneurs', async () => {
   await sitesTab()
   await page.locator('.sites-side-head .icon-btn').nth(1).click()
-  await page.locator('.menu-item', { hasText: 'Conteneurs de cet ordinateur' }).click()
-  await dialog().locator('[data-container="boutique-web"]').waitFor()
+  await page.locator('.menu-item', { hasText: T('Conteneurs de cet ordinateur') }).click()
+  await dialog().locator(`[data-container="${T('boutique-web')}"]`).waitFor()
   await shot('conteneurs', { el: dialog() })
-  await dialog().locator('[data-container="boutique-web"] [data-tip="Plus"]').click()
-  await page.locator('.menu-item', { hasText: 'Redémarrer' }).waitFor()
+  await dialog().locator(`[data-container="${T('boutique-web')}"] [data-tip="${T('Plus')}"]`).click()
+  await page.locator('.menu-item', { hasText: T('Redémarrer') }).waitFor()
   await shot('conteneurs-menu', { el: dialog() })
   await page.keyboard.press('Escape')
   await closeDialogs()
-  await page.locator('.sites-side-head [data-tip="Nouveau site"]').click()
+  await page.locator(`.sites-side-head [data-tip="${T('Nouveau site')}"]`).click()
   const se = page.locator('.site-editor')
-  await se.locator('.segmented button', { hasText: 'Conteneur' }).click()
-  await se.locator('.se-name').fill('Boutique (conteneur)')
-  await se.locator('.field', { hasText: 'Conteneur' }).locator('input').first().fill('boutique-web')
-  await se.locator('.field', { hasText: 'Utilisateur' }).locator('input').fill('www-data')
+  await se.locator('.segmented button', { hasText: T('Conteneur') }).click()
+  await se.locator('.se-name').fill(T('Boutique (conteneur)'))
+  await se.locator('.field', { hasText: T('Conteneur') }).locator('input').first().fill(T('boutique-web'))
+  await se.locator('.field', { hasText: K('ctr.user') }).locator('input').fill('www-data')
   await shot('site-conteneur', { el: se, pad: 0 })
   await btnIn(page.locator('.se-head'), 'Annuler').click()
 })
 
 scene('taches', async () => {
   const task = await rpc('tasks.save', {
-    name: 'Publier le site vitrine', kind: 'sync', enabled: true, siteId: ids.vitrine, catchUp: true, notify: 'failure',
-    sync: { localConn: 'local', localDir: '~/Projets/site-vitrine', remoteConn: '', remoteDir: '/config/www', direction: 'remote', mode: 'standard', criteria: 'time', delete: false, existingOnly: false, fileMask: '* | .git/; *.tmp', excludeHidden: true },
+    name: T('Publier le site vitrine'), kind: 'sync', enabled: true, siteId: ids.vitrine, catchUp: true, notify: 'failure',
+    sync: { localConn: 'local', localDir: T('~/Projets/site-vitrine'), remoteConn: '', remoteDir: '/config/www', direction: 'remote', mode: 'standard', criteria: 'time', delete: false, existingOnly: false, fileMask: '* | .git/; *.tmp', excludeHidden: true },
     schedule: { kind: 'weekly', at: '02:30', days: [1, 2, 3, 4, 5] },
   })
-  await rpc('tasks.save', { name: 'Sauvegarde des journaux', kind: 'script', enabled: true, catchUp: false, notify: 'always', schedule: { kind: 'cron', cron: '0 3 * * *' }, script: 'open "Site vitrine (SFTP)"\nlcd ~/Documents\nget -neweronly /config/logs/*.log\nexit\n' })
+  await rpc('tasks.save', { name: T('Sauvegarde des journaux'), kind: 'script', enabled: true, catchUp: false, notify: 'always', schedule: { kind: 'cron', cron: '0 3 * * *' }, script: T('open "Site vitrine (SFTP)"\nlcd ~/Documents\nget -neweronly /config/logs/*.log\nexit\n') })
   await rpc('tasks.run', { id: task.id })
   for (let i = 0; i < 100 && (await rpc('tasks.runs', { id: task.id }))[0]?.status !== 'ok'; i++) await sleep(200)
   await page.keyboard.press('Control+k')
-  await page.keyboard.type('Tâches planifiées')
+  await page.keyboard.type(T('Tâches planifiées'))
   await page.keyboard.press('Enter')
-  await page.locator('[data-task="Publier le site vitrine"]').click()
+  await page.locator(`[data-task="${T('Publier le site vitrine')}"]`).click()
   const ed = page.locator('.task-editor')
   await ed.locator('.task-run-head').first().click()
   await ed.locator('.task-body').evaluate((el) => (el.scrollTop = el.scrollHeight))
@@ -964,7 +1055,7 @@ scene('recherche', async () => {
   await page.keyboard.press('Control+Shift+F')
   await dialog().locator('input').first().fill('*.html; *.css')
   await shot('recherche-dialogue', { el: dialog() })
-  await btnIn(dialog(), 'Rechercher').click()
+  await btnIn(dialog(), K('find.start')).click()
   await page.locator('.findp table').waitFor()
   await sleep(1500)
   await shot('recherche-resultats')
@@ -1021,7 +1112,7 @@ scene('autres-protocoles', async () => {
   await shot('session-s3')
   // server to server: show the SFTP connection in the left panel
   await pane(0).locator('.conn-chip').click()
-  await page.locator('.menu-item', { hasText: 'Site vitrine' }).click()
+  await page.locator('.menu-item', { hasText: T('Site vitrine') }).click()
   await waitList(0)
   await nav(0, '/config/backups')
   await shot('serveur-a-serveur')
@@ -1037,7 +1128,7 @@ scene('echec-connexion', async () => {
   await shot('connexion-en-cours', { wait: 100 })
   await V('.state-icon.danger').waitFor({ timeout: 40000 })
   await shot('connexion-echec')
-  await V('.state-card').getByRole('button', { name: 'Fermer' }).click()
+  await V('.state-card').getByRole('button', { name: T('Fermer') }).click()
 })
 
 scene('connexion-perdue', async () => {
@@ -1046,32 +1137,32 @@ scene('connexion-perdue', async () => {
   await V('.lost-bar').waitFor({ timeout: 40000 })
   await shot('connexion-perdue')
   await sleep(9000)
-  await V('.lost-bar').getByRole('button', { name: 'Reconnecter' }).click()
+  await V('.lost-bar').getByRole('button', { name: T('Reconnecter') }).click()
   await V('.lost-bar').waitFor({ state: 'detached', timeout: 40000 }).catch(() => {})
   await sleep(800)
 })
 
 scene('preferences', async () => {
   // the keychain and the sync between devices have something to show
-  await rpc('keychain.add', { path: join(HOME, '.ssh/id_ed25519'), name: 'Clé du portable' }).catch(() => {})
-  await rpc('devsync.set', { config: { enabled: true, siteId: ids.vitrine, path: '/config/skiff-sync.bin', interval: 15, device: 'Portable d’Alex', sites: true, keychain: true, prefs: true, hostKeys: true }, passphrase: 'phrase de démonstration' })
+  await rpc('keychain.add', { path: join(HOME, '.ssh/id_ed25519'), name: T('Clé du portable') }).catch(() => {})
+  await rpc('devsync.set', { config: { enabled: true, siteId: ids.vitrine, path: '/config/skiff-sync.bin', interval: 15, device: T('Portable d’Alex'), sites: true, keychain: true, prefs: true, hostKeys: true }, passphrase: T('phrase de démonstration') })
   await rpc('devsync.now').catch(() => {})
   await openTab('Site vitrine')
   await page.keyboard.press('Control+,')
   await dialog().locator('.prefs').waitFor()
   const sections = [
-    ['Apparence', 'prefs-apparence'], ['Panneaux', 'prefs-panneaux'], ['Transferts', 'prefs-transferts'], ["File d'attente", 'prefs-file'],
-    ['Éditeur', 'prefs-editeur'], ['Terminal', 'prefs-terminal'], ['SSH', 'prefs-ssh'], ['Appareils', 'prefs-appareils'], ['Confirmations', 'prefs-confirmations'], ['Sécurité', 'prefs-securite'],
-    ['Commandes personnalisées', 'prefs-commandes'], ['Journalisation', 'prefs-journalisation'], ['Raccourcis clavier', 'prefs-raccourcis'], ['À propos de Skiff', 'prefs-a-propos'],
+    [T('Apparence'), 'prefs-apparence'], [T('Panneaux'), 'prefs-panneaux'], [K('prefs.transfer'), 'prefs-transferts'], [T("File d'attente"), 'prefs-file'],
+    [T('Éditeur'), 'prefs-editeur'], ['Terminal', 'prefs-terminal'], ['SSH', 'prefs-ssh'], [T('Appareils'), 'prefs-appareils'], ['Confirmations', 'prefs-confirmations'], [T('Sécurité'), 'prefs-securite'],
+    [T('Commandes personnalisées'), 'prefs-commandes'], [T('Journalisation'), 'prefs-journalisation'], [T('Raccourcis clavier'), 'prefs-raccourcis'], [T('À propos de Skiff'), 'prefs-a-propos'],
   ]
   for (const [label, file] of sections) {
     await dialog().locator('nav.vtabs').getByRole('button', { name: label, exact: true }).click()
     await sleep(300)
     await shot(file, { el: dialog() })
   }
-  await dialog().locator('nav.vtabs button', { hasText: 'Sécurité' }).click()
+  await dialog().locator('nav.vtabs button', { hasText: T('Sécurité') }).click()
   // key conversion (OpenSSH -> PuTTY)
-  await dialog().getByRole('button', { name: 'Convertir', exact: true }).first().click()
+  await dialog().getByRole('button', { name: T('Convertir'), exact: true }).first().click()
   const k = page.locator('.dialog').last()
   await k.getByText('PuTTY .ppk (v3)').waitFor()
   await shot('cles-conversion', { el: k })
@@ -1079,18 +1170,18 @@ scene('preferences', async () => {
   await sleep(300)
   await btnIn(dialog(), 'Définir un mot de passe maître').click()
   const m = page.locator('.dialog').last()
-  await m.locator('input[type=password]').nth(0).fill('Mon-Mot-De-Passe-2026!')
-  await m.locator('input[type=password]').nth(1).fill('Mon-Mot-De-Passe-2026!')
+  await m.locator('input[type=password]').nth(0).fill(T('Mon-Mot-De-Passe-2026!'))
+  await m.locator('input[type=password]').nth(1).fill(T('Mon-Mot-De-Passe-2026!'))
   await shot('mot-de-passe-maitre', { el: m })
   await closeDialogs()
 })
 
 scene('editions-externes', async () => {
   await openTab('Site vitrine')
-  await rpc('edit.external', { conn: (await rpc('conn.list')).find((c) => c.title.includes('vitrine')).id, path: '/config/www/contact.html', editor: 'true' })
+  await rpc('edit.external', { conn: (await rpc('conn.list')).find((c) => c.title.startsWith(T('Site vitrine'))).id, path: '/config/www/contact.html', editor: 'true' })
   await sleep(500)
   await page.keyboard.press('Control+Shift+Q')
-  await page.locator('.bp-tab', { hasText: 'Fichiers édités' }).click()
+  await page.locator('.bp-tab', { hasText: T('Fichiers édités') }).click()
   await sleep(400)
   await shot('editions-externes', { el: page.locator('.bottom'), pad: 0 })
   for (const e of await rpc('edit.list')) await rpc('edit.stop', { id: e.id })
@@ -1111,10 +1202,10 @@ scene('themes', async () => {
   await rpc('prefs.set', { ...(await rpc('prefs.get')), theme: 'dark', accent: '#14b8a6', density: 'compact' })
   await sleep(800)
   await shot('commander-compact-accent')
-  await rpc('prefs.set', { ...(await rpc('prefs.get')), theme: 'light', accent: '#4f7cff', density: 'comfortable', language: 'en' })
+  await rpc('prefs.set', { ...(await rpc('prefs.get')), theme: 'light', accent: '#4f7cff', density: 'comfortable', language: OTHER })
   await sleep(800)
   await shot('commander-anglais')
-  await rpc('prefs.set', { ...(await rpc('prefs.get')), language: 'fr' })
+  await rpc('prefs.set', { ...(await rpc('prefs.get')), language: LANG })
   await sleep(500)
 })
 
@@ -1127,23 +1218,23 @@ scene('accueil-recents', async () => {
 })
 
 scene('verrouillage', async () => {
-  await rpc('security.setMaster', { old: '', new: 'Mon-Mot-De-Passe-2026!' })
+  await rpc('security.setMaster', { old: '', new: T('Mon-Mot-De-Passe-2026!') })
   await rpc('security.lock')
   await page.reload()
   await page.locator('.locked-banner').waitFor()
   await shot('mots-de-passe-verrouilles', { el: page.locator('.sites-side'), pad: 0 })
   await page.locator('.locked-banner').click()
-  await dialog().locator('input[type=password]').fill('Mon-Mot-De-Passe-2026!')
+  await dialog().locator('input[type=password]').fill(T('Mon-Mot-De-Passe-2026!'))
   await shot('deverrouiller', { el: dialog() })
   await btnIn(dialog(), 'Déverrouiller').click()
   await sleep(500)
   // security preferences with a master password
   await page.keyboard.press('Control+,')
-  await dialog().locator('nav.vtabs').getByRole('button', { name: 'Sécurité', exact: true }).click()
-  await dialog().getByText('Verrouiller les mots de passe maintenant').waitFor()
+  await dialog().locator('nav.vtabs').getByRole('button', { name: T('Sécurité'), exact: true }).click()
+  await dialog().getByText(T('Verrouiller les mots de passe maintenant')).waitFor()
   await shot('prefs-securite-maitre', { el: dialog() })
   await closeDialogs()
-  await rpc('security.setMaster', { old: 'Mon-Mot-De-Passe-2026!', new: '' })
+  await rpc('security.setMaster', { old: T('Mon-Mot-De-Passe-2026!'), new: '' })
 })
 
 // ---------------------------------------------------------------------------
@@ -1154,7 +1245,7 @@ async function main() {
   try {
     await waitHttp(`${BASE}/api/auth/status`)
     browser = await chromium.launch()
-    context = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1.5, locale: 'fr-FR', colorScheme: 'light' })
+    context = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1.5, locale: LOCALE, colorScheme: 'light' })
     page = await context.newPage()
     page.setDefaultTimeout(10000)
     page.on('pageerror', (e) => console.log('  page error:', e.message))
@@ -1182,6 +1273,7 @@ async function main() {
     // web mode login page (separate instance)
     if (!FILTER || FILTER.test('web')) await webLogin()
     console.log(failures.length ? `failed scenes: ${failures.join(', ')}` : 'all scenes captured')
+    if (untranslated.size) console.log(`not translated into ${LANG}:\n  ` + [...untranslated].join('\n  '))
   } finally {
     await browser?.close()
     proc.kill()
@@ -1192,11 +1284,11 @@ async function webLogin() {
   const cfg = join(DEMO, 'skiff-web')
   rmSync(cfg, { recursive: true, force: true })
   const p = spawn(SKIFF, ['serve', '--no-tls', '--listen', '127.0.0.1:8591', '--user', 'alex', '--password-env', 'WEBPW'], {
-    env: { ...process.env, HOME, SKIFF_HOME: cfg, WEBPW: 'demo-password-123' }, stdio: 'ignore',
+    env: { ...process.env, HOME, SKIFF_HOME: cfg, WEBPW: 'demo-password-123', LANG: LANG === 'fr' ? 'fr_FR.UTF-8' : 'en_US.UTF-8' }, stdio: 'ignore',
   })
   try {
     await waitHttp('http://127.0.0.1:8591/api/auth/status')
-    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1.5, locale: 'fr-FR' })
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1.5, locale: LOCALE })
     const pg = await ctx.newPage()
     await pg.goto('http://127.0.0.1:8591/')
     await pg.locator('.login-card').waitFor()

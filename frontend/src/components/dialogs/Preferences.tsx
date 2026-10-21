@@ -498,7 +498,7 @@ function CommandsSection() {
   return (
     <div className="form">
       <p className="muted" style={{ margin: 0, fontSize: 12 }}>
-        {t('cmd.patterns')} <code>!</code> {t('cmd.p.file')} · <code>!&amp;</code> {t('cmd.p.selected')} · <code>!/</code> {t('cmd.p.path')} · <code>!@</code> {t('cmd.p.host')} · <code>!U</code> {t('cmd.p.user')} · <code>!?Question?défaut!</code> {t('cmd.p.ask')}
+        {t('cmd.patterns')} <code>!</code> {t('cmd.p.file')} · <code>!&amp;</code> {t('cmd.p.selected')} · <code>!/</code> {t('cmd.p.path')} · <code>!@</code> {t('cmd.p.host')} · <code>!U</code> {t('cmd.p.user')} · <code>{t('cmd.p.askPattern')}</code> {t('cmd.p.ask')}
       </p>
       {cmds.map((c, i) => (
         <div key={c.id} className="card" style={{ padding: 12 }}>

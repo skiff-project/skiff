@@ -1,6 +1,6 @@
 # 4. Interface et navigation
 
-[← Gestionnaire de sites](03-sites.md) · [Sommaire](README.md) · [Opérations sur les fichiers →](05-fichiers.md)
+[← Gestionnaire de sites](03-sites.md) · [Sommaire](README.md) · [Opérations sur les fichiers →](05-fichiers.md) · 🇬🇧 [English](en/04-interface.md)
 
 ## 4.1 Les onglets
 
@@ -228,4 +228,4 @@ Skiff se pilote au clavier ([Raccourcis clavier](16-raccourcis.md)) et s'annonce
 
 ---
 
-[← Gestionnaire de sites](03-sites.md) · [Sommaire](README.md) · [Opérations sur les fichiers →](05-fichiers.md)
+[← Gestionnaire de sites](03-sites.md) · [Sommaire](README.md) · [Opérations sur les fichiers →](05-fichiers.md) · 🇬🇧 [English](en/04-interface.md)

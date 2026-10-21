@@ -1,6 +1,6 @@
 # 9. Terminal, tunnels, proxys et rebonds
 
-[← Édition, diff et aperçu](08-edition.md) · [Sommaire](README.md) · [Recherche, journal et palette →](10-recherche-journal.md)
+[← Édition, diff et aperçu](08-edition.md) · [Sommaire](README.md) · [Recherche, journal et palette →](10-recherche-journal.md) · 🇬🇧 [English](en/09-terminal-tunnels.md)
 
 ## 9.1 Terminal SSH
 
@@ -224,4 +224,4 @@ Le navigateur est celui du système ; la variable d'environnement `SKIFF_BROWSER
 
 ---
 
-[← Édition, diff et aperçu](08-edition.md) · [Sommaire](README.md) · [Recherche, journal et palette →](10-recherche-journal.md)
+[← Édition, diff et aperçu](08-edition.md) · [Sommaire](README.md) · [Recherche, journal et palette →](10-recherche-journal.md) · 🇬🇧 [English](en/09-terminal-tunnels.md)

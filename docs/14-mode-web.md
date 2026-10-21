@@ -1,6 +1,6 @@
 # 14. Mode web distant
 
-[← Scripts et ligne de commande](13-scripts-cli.md) · [Sommaire](README.md) · [Protocoles →](15-protocoles.md)
+[← Scripts et ligne de commande](13-scripts-cli.md) · [Sommaire](README.md) · [Protocoles →](15-protocoles.md) · 🇬🇧 [English](en/14-web-mode.md)
 
 `skiff serve` lance Skiff sans fenêtre et sert son interface en HTTPS. On l'utilise depuis n'importe quel navigateur : Skiff installé sur un serveur, un NAS ou une machine de rebond devient un client de transfert accessible partout, par exemple pour transférer entre deux serveurs distants sans faire passer les données par son ordinateur portable.
 
@@ -104,4 +104,4 @@ La variante portable du binaire (sans dépendance) convient aux serveurs, aux NA
 
 ---
 
-[← Scripts et ligne de commande](13-scripts-cli.md) · [Sommaire](README.md) · [Protocoles →](15-protocoles.md)
+[← Scripts et ligne de commande](13-scripts-cli.md) · [Sommaire](README.md) · [Protocoles →](15-protocoles.md) · 🇬🇧 [English](en/14-web-mode.md)

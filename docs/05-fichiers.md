@@ -1,6 +1,6 @@
 # 5. Opérations sur les fichiers
 
-[← Interface et navigation](04-interface.md) · [Sommaire](README.md) · [Transferts →](06-transferts.md)
+[← Interface et navigation](04-interface.md) · [Sommaire](README.md) · [Transferts →](06-transferts.md) · 🇬🇧 [English](en/05-files.md)
 
 Toutes les opérations s'appliquent à la sélection du panneau actif, ou à l'élément sous le curseur s'il n'y a pas de sélection. Elles fonctionnent de la même façon en local et sur tous les protocoles, dans la limite de ce que chaque protocole permet (voir [Protocoles](15-protocoles.md)). Les commandes impossibles sont masquées.
 
@@ -231,4 +231,4 @@ Sur une connexion SFTP ou SCP avec un shell, `du` compte la place sur le serveur
 
 ---
 
-[← Interface et navigation](04-interface.md) · [Sommaire](README.md) · [Transferts →](06-transferts.md)
+[← Interface et navigation](04-interface.md) · [Sommaire](README.md) · [Transferts →](06-transferts.md) · 🇬🇧 [English](en/05-files.md)
