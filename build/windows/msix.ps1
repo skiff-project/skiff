@@ -40,9 +40,10 @@ foreach ($a in @(@{ go = 'amd64'; msix = 'x64' }, @{ go = 'arm64'; msix = 'arm64
   Copy-Item (Join-Path $ExeDir "skiff-windows-$($a.go).exe") (Join-Path $layout 'skiff.exe')
   Copy-Item -Recurse (Join-Path $here 'msix\Assets') (Join-Path $layout 'Assets')
   foreach ($f in 'LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.txt') { Copy-Item (Join-Path $root $f) $layout }
-  $manifest = $template.Replace('__NAME__', (& $esc $IdentityName)).Replace('__PUBLISHER_NAME__', (& $esc $PublisherName)).
-    Replace('__PUBLISHER__', (& $esc $Publisher)).Replace('__VERSION__', $msixVersion).Replace('__ARCH__', $a.msix)
-  Set-Content -Encoding utf8NoBOM -NoNewline (Join-Path $layout 'AppxManifest.xml') $manifest
+  $manifest = $template.Replace('__NAME__', (& $esc $IdentityName))
+  $manifest = $manifest.Replace('__PUBLISHER_NAME__', (& $esc $PublisherName)).Replace('__PUBLISHER__', (& $esc $Publisher))
+  $manifest = $manifest.Replace('__VERSION__', $msixVersion).Replace('__ARCH__', $a.msix)
+  [IO.File]::WriteAllText((Join-Path $layout 'AppxManifest.xml'), $manifest, [Text.UTF8Encoding]::new($false))
   & $makeappx.FullName pack /o /h SHA256 /d $layout /p (Join-Path $packages "Skiff-$msixVersion-$($a.msix).msix")
   if ($LASTEXITCODE) { throw "makeappx pack failed ($($a.msix))" }
 }
