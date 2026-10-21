@@ -6,8 +6,9 @@
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap rescap">
+  IgnorableNamespaces="uap uap3 rescap">
 
   <Identity Name="__NAME__" Publisher="__PUBLISHER__" Version="__VERSION__" ProcessorArchitecture="__ARCH__" />
 
@@ -37,15 +38,16 @@
         <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
       </uap:VisualElements>
       <!-- the links Skiff opens (internal/urlhandler): Windows starts skiff.exe
-           with the link, and the window asks before connecting -->
+           with the link, and the window asks before connecting (Parameters,
+           for a desktop application, is in the uap3 namespace) -->
       <Extensions>
-        <uap:Extension Category="windows.protocol"><uap:Protocol Name="sftp" Parameters="--link &quot;%1&quot;"><uap:DisplayName>SFTP</uap:DisplayName></uap:Protocol></uap:Extension>
-        <uap:Extension Category="windows.protocol"><uap:Protocol Name="scp" Parameters="--link &quot;%1&quot;"><uap:DisplayName>SCP</uap:DisplayName></uap:Protocol></uap:Extension>
-        <uap:Extension Category="windows.protocol"><uap:Protocol Name="ftp" Parameters="--link &quot;%1&quot;"><uap:DisplayName>FTP</uap:DisplayName></uap:Protocol></uap:Extension>
-        <uap:Extension Category="windows.protocol"><uap:Protocol Name="ftps" Parameters="--link &quot;%1&quot;"><uap:DisplayName>FTPS</uap:DisplayName></uap:Protocol></uap:Extension>
-        <uap:Extension Category="windows.protocol"><uap:Protocol Name="ftpes" Parameters="--link &quot;%1&quot;"><uap:DisplayName>FTPES</uap:DisplayName></uap:Protocol></uap:Extension>
-        <uap:Extension Category="windows.protocol"><uap:Protocol Name="dav" Parameters="--link &quot;%1&quot;"><uap:DisplayName>WebDAV</uap:DisplayName></uap:Protocol></uap:Extension>
-        <uap:Extension Category="windows.protocol"><uap:Protocol Name="davs" Parameters="--link &quot;%1&quot;"><uap:DisplayName>WebDAV (HTTPS)</uap:DisplayName></uap:Protocol></uap:Extension>
+        <uap3:Extension Category="windows.protocol"><uap3:Protocol Name="sftp" Parameters="--link &quot;%1&quot;"><uap:DisplayName>SFTP</uap:DisplayName></uap3:Protocol></uap3:Extension>
+        <uap3:Extension Category="windows.protocol"><uap3:Protocol Name="scp" Parameters="--link &quot;%1&quot;"><uap:DisplayName>SCP</uap:DisplayName></uap3:Protocol></uap3:Extension>
+        <uap3:Extension Category="windows.protocol"><uap3:Protocol Name="ftp" Parameters="--link &quot;%1&quot;"><uap:DisplayName>FTP</uap:DisplayName></uap3:Protocol></uap3:Extension>
+        <uap3:Extension Category="windows.protocol"><uap3:Protocol Name="ftps" Parameters="--link &quot;%1&quot;"><uap:DisplayName>FTPS</uap:DisplayName></uap3:Protocol></uap3:Extension>
+        <uap3:Extension Category="windows.protocol"><uap3:Protocol Name="ftpes" Parameters="--link &quot;%1&quot;"><uap:DisplayName>FTPES</uap:DisplayName></uap3:Protocol></uap3:Extension>
+        <uap3:Extension Category="windows.protocol"><uap3:Protocol Name="dav" Parameters="--link &quot;%1&quot;"><uap:DisplayName>WebDAV</uap:DisplayName></uap3:Protocol></uap3:Extension>
+        <uap3:Extension Category="windows.protocol"><uap3:Protocol Name="davs" Parameters="--link &quot;%1&quot;"><uap:DisplayName>WebDAV (HTTPS)</uap:DisplayName></uap3:Protocol></uap3:Extension>
       </Extensions>
     </Application>
   </Applications>
