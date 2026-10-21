@@ -16,6 +16,7 @@ import { chromium } from 'playwright'
 import { spawn, execSync } from 'node:child_process'
 import { mkdirSync, rmSync, appendFileSync, writeFileSync, existsSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
+import { hostname, userInfo } from 'node:os'
 import { fileURLToPath } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -127,8 +128,44 @@ const skiffEnv = (env = {}) => ({
   XDG_CONFIG_HOME: join(HOME, '.config'), XDG_DATA_HOME: join(HOME, '.local/share'), ...env,
 })
 
+// Skiff runs as the demo user, alex, on the demo machine, so that no
+// screenshot shows the user or machine name of whoever makes them (the
+// owner of the local files, the comment of a new key, the prompt of a local
+// terminal, the name of the web mode server…). On Linux: user namespaces
+// with their own /etc/passwd, /etc/group and host name; the uid stays the
+// same inside, so the files and Docker are reached as before.
+const DEMO_USER = 'alex'
+const DEMO_HOST = T('portable')
+const NAMESPACES = (() => {
+  if (process.platform !== 'linux') return false
+  try {
+    execSync('unshare --user --map-root-user --mount --uts true', { stdio: 'ignore' })
+    return true
+  } catch {
+    console.log('  ! no user namespaces here: the screenshots will show your user and machine names')
+    return false
+  }
+})()
+
+function spawnSkiff(args, opts) {
+  if (!NAMESPACES) return spawn(SKIFF, args, opts)
+  const { uid, gid } = userInfo()
+  const etc = join(DEMO, 'etc')
+  mkdirSync(etc, { recursive: true })
+  writeFileSync(join(etc, 'passwd'), `${DEMO_USER}:x:${uid}:${gid}:Alex:${HOME}:/bin/bash\n`)
+  writeFileSync(join(etc, 'group'), `${DEMO_USER}:x:${gid}:\n`)
+  // as root of a first namespace: the demo files and host name; then back to
+  // the same uid in a second one
+  const inner = `mount --bind "$0/passwd" /etc/passwd && mount --bind "$0/group" /etc/group && hostname "$1" && shift && exec unshare --user --map-user=${uid} --map-group=${gid} "$@"`
+  return spawn('unshare', ['--user', '--map-root-user', '--mount', '--uts', 'sh', '-c', inner, etc, DEMO_HOST, SKIFF, ...args], opts)
+}
+
+// the real user and machine names must not show in a screenshot
+const REAL_NAMES = [userInfo().username, hostname()].filter((n) => n.length > 2 && ![DEMO_USER, DEMO_HOST, 'skiff', 'localhost'].includes(n))
+const leaks = new Set()
+
 function startSkiff(extraArgs = [], env = {}) {
-  const p = spawn(SKIFF, extraArgs, {
+  const p = spawnSkiff(extraArgs, {
     env: skiffEnv(env),
     stdio: ['ignore', 'pipe', 'pipe'],
   })
@@ -262,7 +299,13 @@ async function shot(name, opts = {}) {
   } else {
     await page.screenshot({ path: file, animations: 'disabled' })
   }
+  await checkNames(page, name)
   console.log('  ✓', name)
+}
+
+async function checkNames(pg, name) {
+  const text = await pg.evaluate(() => document.body.innerText)
+  for (const n of REAL_NAMES) if (new RegExp(`\\b${esc(n)}\\b`, 'i').test(text)) leaks.add(`${name}: "${n}"`)
 }
 
 async function activeSide(i) {
@@ -846,7 +889,7 @@ scene('cles-plusieurs-sites', async () => {
 scene('lien-ouvrir', async () => {
   // a link clicked in a browser: the system starts "skiff --link <url>",
   // which hands it to the open window
-  const p = spawn(SKIFF, ['--link', T('sftp://deploy@recette.example.com/srv/recette/releases')], { env: skiffEnv({ SKIFF_PORT: String(PORT + 1) }), stdio: 'ignore' })
+  const p = spawnSkiff(['--link', T('sftp://deploy@recette.example.com/srv/recette/releases')], { env: skiffEnv({ SKIFF_PORT: String(PORT + 1) }), stdio: 'ignore' })
   await new Promise((r) => p.on('exit', r))
   const d = dialog()
   await d.locator('.dialog-head h3', { hasText: T('Ouvrir un lien') }).waitFor()
@@ -1274,6 +1317,7 @@ async function main() {
     if (!FILTER || FILTER.test('web')) await webLogin()
     console.log(failures.length ? `failed scenes: ${failures.join(', ')}` : 'all scenes captured')
     if (untranslated.size) console.log(`not translated into ${LANG}:\n  ` + [...untranslated].join('\n  '))
+    if (leaks.size) console.log('real user or machine name shown in:\n  ' + [...leaks].join('\n  '))
   } finally {
     await browser?.close()
     proc.kill()
@@ -1283,7 +1327,7 @@ async function main() {
 async function webLogin() {
   const cfg = join(DEMO, 'skiff-web')
   rmSync(cfg, { recursive: true, force: true })
-  const p = spawn(SKIFF, ['serve', '--no-tls', '--listen', '127.0.0.1:8591', '--user', 'alex', '--password-env', 'WEBPW'], {
+  const p = spawnSkiff(['serve', '--no-tls', '--listen', '127.0.0.1:8591', '--user', 'alex', '--password-env', 'WEBPW'], {
     env: { ...process.env, HOME, SKIFF_HOME: cfg, WEBPW: 'demo-password-123', LANG: LANG === 'fr' ? 'fr_FR.UTF-8' : 'en_US.UTF-8' }, stdio: 'ignore',
   })
   try {
@@ -1295,6 +1339,7 @@ async function webLogin() {
     await pg.locator('.login-card input').first().fill('alex')
     await sleep(300)
     await pg.screenshot({ path: join(OUT, 'mode-web-connexion.png'), animations: 'disabled' })
+    await checkNames(pg, 'mode-web-connexion')
     console.log('  ✓ mode-web-connexion')
     // signed in: the same interface, with a sign-out button
     await pg.locator('.login-card input[type=password]').fill('demo-password-123')
@@ -1302,6 +1347,7 @@ async function webLogin() {
     await pg.locator('.welcome').waitFor({ timeout: 15000 })
     await sleep(600)
     await pg.screenshot({ path: join(OUT, 'mode-web-session.png'), animations: 'disabled' })
+    await checkNames(pg, 'mode-web-session')
     console.log('  ✓ mode-web-session')
     await ctx.close()
   } finally {

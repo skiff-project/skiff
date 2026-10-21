@@ -1,6 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: Skiff
-Upstream-Contact: Laterna <337788684+laterna-media@users.noreply.github.com>
+Upstream-Contact: https://github.com/skiff-project/skiff
+Source: https://github.com/skiff-project/skiff
 Comment: The program includes Go modules and JavaScript packages under
  their own licences (MIT, BSD, ISC, Apache-2.0, Unlicense): their notices
  are in /usr/share/doc/skiff/THIRD_PARTY_NOTICES.txt.
